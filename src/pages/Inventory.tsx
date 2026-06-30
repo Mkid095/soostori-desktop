@@ -323,39 +323,55 @@ const ProductFormModal: React.FC<{
                     <div>
                       <label className="block text-xs text-slate-400 mb-1">Units per Box/Package</label>
                       <input type="number" value={form.unitsPerPackage}
-                        onChange={(e) => setForm({ ...form, unitsPerPackage: e.target.value })}
+                        onChange={(e) => {
+                          const units = e.target.value
+                          setForm(f => ({ ...f, unitsPerPackage: units }))
+                          // Auto-calculate cost per unit
+                          if (f.boxBuyingPrice && units) {
+                            const costPerUnit = parseFloat(f.boxBuyingPrice) / parseInt(units)
+                            setForm(prev => ({ ...prev, costPrice: costPerUnit.toFixed(2) }))
+                          }
+                        }}
                         className="w-full bg-white border border-slate-200 rounded-xl py-2.5 px-3.5 font-semibold text-slate-700 focus:border-brand-orange outline-none"
                         placeholder="e.g. 24"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-slate-400 mb-1">Box Buying Price</label>
+                      <label className="block text-xs text-slate-400 mb-1">Box Buying Price (KES)</label>
                       <input type="number" step="0.01" value={form.boxBuyingPrice}
-                        onChange={(e) => setForm({ ...form, boxBuyingPrice: e.target.value })}
+                        onChange={(e) => {
+                          const boxPrice = e.target.value
+                          setForm(f => ({ ...f, boxBuyingPrice: boxPrice }))
+                          // Auto-calculate cost per unit
+                          if (boxPrice && f.unitsPerPackage) {
+                            const costPerUnit = parseFloat(boxPrice) / parseInt(f.unitsPerPackage)
+                            setForm(prev => ({ ...prev, costPrice: costPerUnit.toFixed(2) }))
+                          }
+                        }}
                         className="w-full bg-white border border-slate-200 rounded-xl py-2.5 px-3.5 font-semibold text-slate-700 focus:border-brand-orange outline-none"
-                        placeholder="Cost per full box"
+                        placeholder="Cost of full box"
                       />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs text-slate-400 mb-1">Cost per Unit</label>
-                      <input type="number" step="0.01" value={form.costPrice}
-                        onChange={(e) => setForm({ ...form, costPrice: e.target.value })}
-                        className="w-full bg-white border border-slate-200 rounded-xl py-2.5 px-3.5 font-semibold text-slate-700 focus:border-brand-orange outline-none"
-                        placeholder="0.00"
-                      />
+                      <label className="block text-xs text-slate-400 mb-1">Cost per Unit (auto)</label>
+                      <div className="w-full bg-slate-100 border border-slate-200 rounded-xl py-2.5 px-3.5 font-semibold text-slate-500 text-center">
+                        {form.boxBuyingPrice && form.unitsPerPackage
+                          ? `KES ${(parseFloat(form.boxBuyingPrice) / parseInt(form.unitsPerPackage)).toFixed(2)}`
+                          : '— calculated —'}
+                      </div>
                     </div>
                     <div>
-                      <label className="block text-xs text-slate-400 mb-1">Selling Price (per box)</label>
+                      <label className="block text-xs text-slate-400 mb-1">Selling Price per Box (KES)</label>
                       <input type="number" step="0.01" value={form.bulkSellingPrice}
                         onChange={(e) => setForm({ ...form, bulkSellingPrice: e.target.value })}
                         className="w-full bg-white border border-slate-200 rounded-xl py-2.5 px-3.5 font-semibold text-slate-700 focus:border-brand-orange outline-none"
-                        placeholder="Price per box"
+                        placeholder="Price per full box"
                       />
                     </div>
                   </div>
-                  <p className="text-[10px] text-slate-400 italic">Selling price is per box/package. Add bulk discounts below for quantity-based pricing.</p>
+                  <p className="text-[10px] text-slate-400 italic">Cost per unit is calculated automatically from box price ÷ units. Add bulk discounts below for quantity pricing.</p>
                 </div>
               ) : (
                 /* LOOSE MODE: buy price + sell price + single unit toggle */

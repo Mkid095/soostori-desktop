@@ -41,6 +41,12 @@ const CheckoutSheet: React.FC<{
   const [note, setNote] = useState('')
   const [mpesaConfirmed, setMpesaConfirmed] = useState(false)
   const [showThankYou, setShowThankYou] = useState(false)
+  const paymentRef = useRef(false)
+
+  // Track when payment was initiated
+  useEffect(() => {
+    if (saleAmount > 0) paymentRef.current = true
+  }, [saleAmount])
 
   // Debt: customer selection
   const { data: customers = [] } = useCustomers()
@@ -154,9 +160,9 @@ const CheckoutSheet: React.FC<{
     })
   }
 
-  // Show thank you screen after payment is processed
+  // Show thank you screen only after payment was actually initiated and cart cleared
   useEffect(() => {
-    if (!isProcessing && cart.length === 0) {
+    if (!isProcessing && cart.length === 0 && paymentRef.current) {
       setShowThankYou(true)
     }
   }, [isProcessing, cart.length])
