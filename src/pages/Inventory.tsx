@@ -51,11 +51,22 @@ const ProductFormModal: React.FC<{
   const barcodeInputRef = useRef<HTMLInputElement>(null)
 
   const [form, setForm] = useState({
-    name: '', sku: '', barcode: '', categoryId: '', unit: 'piece',
-    distributorName: '', distributorPhone: '',
-    costPrice: '0', sellingPrice: '0',
-    stockQuantity: '0', lowStockThreshold: '10', trackInventory: true,
-    allowSingleUnitSale: true, unitsPerPackage: '', boxBuyingPrice: '', bulkSellingPrice: '',
+    name: product?.name || '',
+    sku: product?.sku || '',
+    barcode: product?.barcode || '',
+    categoryId: product?.categoryId || '',
+    unit: product?.unit || 'piece',
+    distributorName: product?.distributorName || '',
+    distributorPhone: product?.distributorPhone || '',
+    costPrice: product?.costPrice !== undefined ? String(product.costPrice) : '0',
+    sellingPrice: product?.sellingPrice !== undefined ? String(product.sellingPrice) : '0',
+    stockQuantity: product?.stockQuantity !== undefined ? String(product.stockQuantity) : '0',
+    lowStockThreshold: product?.lowStockThreshold !== undefined ? String(product.lowStockThreshold) : '10',
+    trackInventory: product?.trackInventory ?? true,
+    allowSingleUnitSale: product?.allowSingleUnitSale ?? true,
+    unitsPerPackage: product?.unitsPerPackage !== undefined ? String(product.unitsPerPackage) : '',
+    boxBuyingPrice: product?.boxBuyingPrice !== undefined ? String(product.boxBuyingPrice) : '',
+    bulkSellingPrice: product?.bulkSellingPrice !== undefined ? String(product.bulkSellingPrice) : '',
   })
 
   // When initialBarcode is set (from scanner), fill the barcode field
