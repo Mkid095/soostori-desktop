@@ -1,0 +1,61 @@
+appId: com.soostori.pos
+productName: Soostori POS
+copyright: Copyright © 2025 Soostori
+
+directories:
+  output: dist-electron
+  buildResources: build
+
+# Disable asar so native modules (.node files) are directly accessible
+# This is the safest approach for native modules like better-sqlite3 and serialport
+asar: false
+
+files:
+  - dist/**/*
+  - dist-electron/**/*
+  # Native modules that must be bundled
+  - node_modules/better-sqlite3/**/*
+  - node_modules/bindings/**/*
+  - node_modules/file-uri-to-path/**/*
+  - node_modules/serialport/**/*
+  - node_modules/@serialport/**/*
+  - node_modules/debug/**/*
+  - node_modules/ms/**/*
+  # Core deps needed at runtime
+  - node_modules/electron-log/**/*
+  - node_modules/electron-store/**/*
+  - node_modules/conf/**/*
+  - node_modules/atomically/**/*
+  - node_modules/dot-prop/**/*
+  - node_modules/env-paths/**/*
+  - node_modules/json-schema-typed/**/*
+  - node_modules/ajv/**/*
+  - node_modules/ajv-formats/**/*
+  - node_modules/fast-deep-equal/**/*
+  - node_modules/json-schema-traverse/**/*
+  - node_modules/require-from-string/**/*
+  - node_modules/uri-js/**/*
+  - node_modules/punycode/**/*
+  - node_modules/semver/**/*
+  - node_modules/uuid/**/*
+  - node_modules/v8-compile-cache-lib/**/*
+  - node_modules/rimraf/**/*
+  - node_modules/which/**/*
+  - node_modules/isexe/**/*
+  - node_modules/shellwords/**/*
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  artifactName: ${productName}-Setup-${version}.${ext}
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Soostori POS
+  artifactName: ${productName}-Setup-${version}.${ext}

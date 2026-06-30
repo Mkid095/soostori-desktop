@@ -1,0 +1,6 @@
+allowBuilds:
+  '@serialport/bindings-cpp': false
+  better-sqlite3: false
+  electron: false
+  esbuild: false
+  lzma-native: false
