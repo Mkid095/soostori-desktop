@@ -51,6 +51,7 @@ export interface ElectronAPI {
     createDebt: (data: any) => Promise<any>
     recordDebtPayment: (debtId: string, amount: number, paymentMethod: string, reference: string) => Promise<any>
     getDebtSummary: () => Promise<{ total: number; count: number }>
+    getTotalDebtCollected: () => Promise<{ totalCollected: number }>
   }
 
   // Hardware operations
@@ -88,6 +89,7 @@ export interface ElectronAPI {
     showOpenDialog: (options: any) => Promise<string[] | null>
     exportDatabase: (filePath: string) => Promise<void>
     importDatabase: (filePath: string) => Promise<void>
+    writeFile: (filePath: string, content: string) => Promise<void>
   }
 
   // Auto-updater operations

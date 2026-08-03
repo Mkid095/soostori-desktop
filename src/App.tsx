@@ -9,6 +9,7 @@ import { type ToastVariant } from './components/Toast'
 import OfflineBanner from './components/OfflineBanner'
 import { NetworkStatusProvider } from './lib/network-status'
 import { ThemeProvider } from './lib/theme-context'
+import { LanguageProvider } from './lib/i18n-context'
 import { dispatchHeaderAction } from './lib/header-controls-bus'
 import Settings from './pages/settings/Settings'
 import POS from './pages/pos/POS'
@@ -143,47 +144,49 @@ const App: React.FC = () => {
 
   return (
     <ThemeProvider>
-      <NetworkStatusProvider>
-        <ToastContext.Provider value={{ showToast }}>
-          <div className="flex flex-col h-screen bg-bg-primary font-['Fredoka'] overflow-hidden transition-colors duration-200">
-            {/* Offline banner */}
-            <OfflineBanner />
+      <LanguageProvider>
+        <NetworkStatusProvider>
+          <ToastContext.Provider value={{ showToast }}>
+            <div className="flex flex-col h-screen bg-bg-primary font-['Fredoka'] overflow-hidden transition-colors duration-200">
+              {/* Offline banner */}
+              <OfflineBanner />
 
-            {/* Custom title bar with window controls, notifications, settings */}
-            <TitleBar onSettingsClick={handleOpenSettings} />
+              {/* Custom title bar with window controls, notifications, settings */}
+              <TitleBar onSettingsClick={handleOpenSettings} />
 
-            {/* Body: sidebar + content */}
-            <div className="flex flex-1 min-h-0">
-              {/* Sidebar */}
-              <SoostoriSidebar
-                currentPage={currentPage}
-                onNavigate={handleNavigate}
-                isCollapsed={sidebarCollapsed}
-                onToggleCollapse={handleToggleSidebar}
-              />
-
-              {/* Main area — sidebar is fixed, so offset content with marginLeft */}
-              <div
-                className="flex-1 flex flex-col min-w-0 transition-[margin] duration-300"
-                style={{ marginLeft: sidebarWidth }}
-              >
-                {/* Page header */}
-                <SoostoriHeader
-                  title={pageConfig[currentPage].title}
-                  subtitle={pageConfig[currentPage].subtitle}
-                  controls={<HeaderControls slot={headerControls(currentPage)} />}
+              {/* Body: sidebar + content */}
+              <div className="flex flex-1 min-h-0">
+                {/* Sidebar */}
+                <SoostoriSidebar
+                  currentPage={currentPage}
+                  onNavigate={handleNavigate}
+                  isCollapsed={sidebarCollapsed}
+                  onToggleCollapse={handleToggleSidebar}
                 />
 
-                {/* Page content */}
-                <main className="flex-1 overflow-hidden bg-bg-primary dark:bg-bg-primary transition-colors duration-200">
-                  {renderPage()}
-                </main>
+                {/* Main area — sidebar is fixed, so offset content with marginLeft */}
+                <div
+                  className="flex-1 flex flex-col min-w-0 transition-[margin] duration-300"
+                  style={{ marginLeft: sidebarWidth }}
+                >
+                  {/* Page header */}
+                  <SoostoriHeader
+                    title={pageConfig[currentPage].title}
+                    subtitle={pageConfig[currentPage].subtitle}
+                    controls={<HeaderControls slot={headerControls(currentPage)} />}
+                  />
+
+                  {/* Page content */}
+                  <main className="flex-1 overflow-hidden bg-bg-primary dark:bg-bg-primary transition-colors duration-200">
+                    {renderPage()}
+                  </main>
+                </div>
               </div>
             </div>
-          </div>
-          <ToastContainer toasts={toasts} onDismiss={dismissToast} />
-        </ToastContext.Provider>
-      </NetworkStatusProvider>
+            <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+          </ToastContext.Provider>
+        </NetworkStatusProvider>
+      </LanguageProvider>
     </ThemeProvider>
   )
 }

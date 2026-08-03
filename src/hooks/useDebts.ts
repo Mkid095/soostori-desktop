@@ -68,6 +68,13 @@ export function useCreateDebt() {
   })
 }
 
+export function useTotalDebtCollected() {
+  return useQuery<{ totalCollected: number }>({
+    queryKey: ['totalDebtCollected'],
+    queryFn: () => api.getTotalDebtCollected() as Promise<{ totalCollected: number }>,
+  })
+}
+
 export function useRecordDebtPayment() {
   const queryClient = useQueryClient()
   return useMutation({

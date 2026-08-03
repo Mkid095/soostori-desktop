@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import { AlertCircle, Banknote, BarChart3, CreditCard, Download, RefreshCw, Search, Smartphone } from 'lucide-react'
-import { useSales } from '../../hooks/useDatabase'
+import { useSales, useTotalDebtCollected } from '../../hooks/useDatabase'
 import { formatCurrency } from '../../lib/formatting-currency'
 import { DateFilter, PaymentFilter, useReportsState } from './hooks/useReportsState'
 import SaleDetailModal from './components/SaleDetailModal'
 import ExportModal from './components/ExportModal'
+import ReportsCharts from './components/ReportsCharts'
 
 const dateFilters: { value: DateFilter; label: string }[] = [{ value: 'today', label: 'Today' }, { value: 'week', label: 'This Week' }, { value: 'month', label: 'This Month' }, { value: 'all', label: 'All Time' }]
 const paymentFilters: { value: PaymentFilter; label: string }[] = [{ value: 'all', label: 'All' }, { value: 'cash', label: 'Cash' }, { value: 'mpesa', label: 'M-Pesa' }, { value: 'debt', label: 'Debt' }]
@@ -18,10 +19,29 @@ const Reports: React.FC = () => {
   const [selectedSale, setSelectedSale] = useState<string | null>(null)
   const [isExportOpen, setIsExportOpen] = useState(false)
   const { filteredSales, stats } = useReportsState(allSales, dateFilter, paymentFilter, search)
+  const { data: debtCollected } = useTotalDebtCollected()
   useEffect(() => { window.dispatchEvent(new CustomEvent('soostori:app:reportsDate', { detail: { value: dateFilter } })) }, [dateFilter])
   return <div className="flex h-full flex-col overflow-hidden bg-bg-primary transition-colors duration-200">
     <header className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-bg-secondary px-4 py-2.5 dark:border-slate-700"><div className="flex items-center gap-2"><div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-orange text-white"><BarChart3 size={14} /></div><div><h1 className="text-sm font-bold text-slate-800 dark:text-slate-100">Sales Reports</h1><p className="text-[10px] text-slate-400">{stats.count} sales</p></div></div><button onClick={() => setIsExportOpen(true)} className="flex items-center gap-1.5 rounded-lg bg-brand-orange px-3 py-2 text-xs font-bold text-white hover:bg-orange-600"><Download size={14} />Export</button></header>
-    <section className="shrink-0 border-b border-slate-100 bg-bg-secondary px-4 py-3 dark:border-slate-700"><div className="grid grid-cols-2 gap-2"><div className="rounded-xl bg-brand-orange p-3 text-white"><p className="text-[10px] font-bold uppercase opacity-80">Total Revenue</p><p className="text-lg font-black tabular-nums">{formatCurrency(stats.total)}</p></div>{[['Cash', stats.cashTotal, 'emerald'], ['M-Pesa', stats.mpesaTotal, 'green'], ['Debt', stats.debtTotal, 'amber']].map(([label, amount, color]) => <div key={String(label)} className={`rounded-xl bg-${color}-50 p-3 dark:bg-${color}-950/40`}><p className={`text-[10px] font-bold uppercase text-${color}-600 dark:text-${color}-400`}>{String(label)}</p><p className={`text-lg font-black tabular-nums text-${color}-700 dark:text-${color}-300`}>{formatCurrency(Number(amount))}</p></div>)}</div></section>
+    <section className="shrink-0 border-b border-slate-100 bg-bg-secondary px-4 py-3 dark:border-slate-700">
+      <ReportsCharts stats={stats} filteredSales={filteredSales} />
+      <div className="mt-3 grid grid-cols-5 gap-2">
+        <div className="rounded-lg bg-brand-orange/10 p-2 text-center dark:bg-brand-orange/20">
+          <p className="text-[9px] font-bold uppercase text-brand-orange">Total</p>
+          <p className="text-sm font-black tabular-nums text-brand-orange">{formatCurrency(stats.total)}</p>
+        </div>
+        {([['Cash', stats.cashTotal, 'emerald'], ['M-Pesa', stats.mpesaTotal, 'green'], ['Debt Sales', stats.debtTotal, 'amber']] as [string, number, string][]).map(([label, amount, color]) => (
+          <div key={label} className={`rounded-lg bg-${color}-50 p-2 text-center dark:bg-${color}-950/40`}>
+            <p className={`text-[9px] font-bold uppercase text-${color}-600 dark:text-${color}-400`}>{label}</p>
+            <p className={`text-sm font-black tabular-nums text-${color}-700 dark:text-${color}-300`}>{formatCurrency(Number(amount))}</p>
+          </div>
+        ))}
+        <div className="rounded-lg bg-violet-50 p-2 text-center dark:bg-violet-950/40">
+          <p className="text-[9px] font-bold uppercase text-violet-600 dark:text-violet-400">Debt Collected</p>
+          <p className="text-sm font-black tabular-nums text-violet-700 dark:text-violet-300">{formatCurrency(debtCollected?.totalCollected || 0)}</p>
+        </div>
+      </div>
+    </section>
     <div className="flex shrink-0 items-center gap-2 border-b border-slate-100 bg-bg-secondary px-4 py-2 dark:border-slate-700"><div className="relative flex-1"><Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} /><input placeholder="Search sales..." value={search} onChange={(event) => setSearch(event.target.value)} className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-8 pr-3 text-xs font-semibold text-slate-800 outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100" /></div></div>
     <div className="flex shrink-0 gap-1.5 overflow-x-auto border-b border-slate-100 bg-bg-secondary px-4 py-2 dark:border-slate-700">{dateFilters.map((filter) => <button key={filter.value} onClick={() => setDateFilter(filter.value)} className={`whitespace-nowrap rounded-full px-3 py-1.5 text-[10px] font-bold ${dateFilter === filter.value ? 'bg-brand-orange text-white' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'}`}>{filter.label}</button>)}</div>
     <div className="flex shrink-0 gap-1.5 overflow-x-auto border-b border-slate-100 bg-bg-secondary px-4 py-2 dark:border-slate-700">{paymentFilters.map((filter) => <button key={filter.value} onClick={() => setPaymentFilter(filter.value)} className={`whitespace-nowrap rounded-full px-3 py-1.5 text-[10px] font-bold ${paymentFilter === filter.value ? 'bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-800' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'}`}>{filter.label}</button>)}</div>

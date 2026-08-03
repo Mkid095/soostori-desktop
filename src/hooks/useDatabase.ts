@@ -49,6 +49,7 @@ export {
 export {
   useDebts,
   useDebtSummary,
+  useTotalDebtCollected,
   useCreateDebt,
   useRecordDebtPayment,
 } from './useDebts'

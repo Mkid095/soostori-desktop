@@ -89,5 +89,11 @@ export function registerDebtHandlers(): void {
     return { total: total?.val || 0, count: count?.val || 0 }
   })
 
+  ipcMain.handle('db:debts:totalCollected', () => {
+    const db = getDatabase()
+    const collected = db.prepare("SELECT COALESCE(SUM(amount_paid), 0) as val FROM debts WHERE status IN ('paid', 'partial')").get() as SummaryRow | undefined
+    return { totalCollected: collected?.val || 0 }
+  })
+
   log.info('Debt IPC handlers registered')
 }

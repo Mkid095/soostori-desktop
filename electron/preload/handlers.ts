@@ -58,6 +58,7 @@ export function exposeElectronAPI(): void {
       recordDebtPayment: (debtId: string, amount: number, paymentMethod: string, reference: string) =>
         ipcRenderer.invoke('db:debts:recordPayment', debtId, amount, paymentMethod, reference),
       getDebtSummary: () => ipcRenderer.invoke('db:debts:summary'),
+      getTotalDebtCollected: () => ipcRenderer.invoke('db:debts:totalCollected'),
     },
 
     // Hardware
@@ -103,6 +104,7 @@ export function exposeElectronAPI(): void {
       showOpenDialog: (options: any) => ipcRenderer.invoke('app:dialog:open', options),
       exportDatabase: (filePath: string) => ipcRenderer.invoke('app:db:export', filePath),
       importDatabase: (filePath: string) => ipcRenderer.invoke('app:db:import', filePath),
+      writeFile: (filePath: string, content: string) => ipcRenderer.invoke('app:file:write', filePath, content),
     },
 
     // Auto-updater

@@ -48,26 +48,35 @@ const ExportModal: React.FC<ExportModalProps> = ({ sales, onClose }) => {
     })
   }, [from, period, sales, to])
 
-  const downloadCsv = () => {
+  const downloadCsv = async () => {
     const rows = filteredSales.map((sale) => {
       const date = new Date(sale.createdAt)
       return [date.toLocaleDateString(), date.toLocaleTimeString(), sale.items_summary ?? '', sale.subtotal, sale.discountAmount, sale.totalAmount, sale.paymentMethod, sale.note ?? ''].map(escapeCsv).join(',')
     })
     const csv = ['Date,Time,Items,Subtotal,Discount,Total,Payment,Note', ...rows].join('\n')
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `sales-report-${dateKey(new Date().toISOString())}.csv`
-    link.click()
-    URL.revokeObjectURL(url)
+    const defaultName = `sales-report-${dateKey(new Date().toISOString())}.csv`
+    const filePath = await window.electronAPI?.app.showSaveDialog({
+      title: 'Save CSV Report',
+      defaultPath: defaultName,
+      filters: [{ name: 'CSV Files', extensions: ['csv'] }],
+    })
+    if (!filePath) return
+    await window.electronAPI?.app.writeFile(filePath, csv)
     onClose()
   }
 
-  const printPdf = async () => {
+  const downloadPdf = async () => {
     const total = filteredSales.reduce((sum, sale) => sum + sale.totalAmount, 0)
     const rows = filteredSales.map((sale) => `<tr><td>${escapeHtml(new Date(sale.createdAt).toLocaleString())}</td><td>${escapeHtml(sale.items_summary ?? 'No items')}</td><td>${escapeHtml(sale.paymentMethod)}</td><td>${formatCurrency(sale.totalAmount)}</td></tr>`).join('')
     const html = `<html><head><title>Sales Report</title><style>body{font:14px Arial;color:#172033;padding:28px}h1{margin:0 0 4px;color:#ea580c}p{color:#64748b}table{width:100%;border-collapse:collapse;margin-top:22px}th,td{text-align:left;padding:9px 6px;border-bottom:1px solid #e2e8f0}th{font-size:11px;text-transform:uppercase;color:#64748b}.total{text-align:right;font-size:18px;font-weight:bold;margin-top:18px}</style></head><body><h1>Sales Report</h1><p>${period === 'custom' ? `${from || 'Start'} to ${to || 'End'}` : periods.find((item) => item.value === period)?.label} · ${filteredSales.length} sales</p><table><thead><tr><th>Date</th><th>Items</th><th>Payment</th><th>Total</th></tr></thead><tbody>${rows}</tbody></table><div class="total">Total Revenue: ${formatCurrency(total)}</div></body></html>`
-    await window.electronAPI?.hw.printViaSystemDialog(html)
+    const defaultName = `sales-report-${dateKey(new Date().toISOString())}.html`
+    const filePath = await window.electronAPI?.app.showSaveDialog({
+      title: 'Save PDF Report (print from browser)',
+      defaultPath: defaultName,
+      filters: [{ name: 'HTML Files', extensions: ['html'] }],
+    })
+    if (!filePath) return
+    await window.electronAPI?.app.writeFile(filePath, html)
     onClose()
   }
 
@@ -78,7 +87,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ sales, onClose }) => {
         <div className="space-y-4 p-5"><div className="flex rounded-full bg-slate-100 p-1 dark:bg-slate-800">{(['pdf', 'csv'] as ExportFormat[]).map((item) => <button key={item} onClick={() => setFormat(item)} className={`flex-1 rounded-full py-2 text-xs font-bold uppercase ${format === item ? 'bg-white text-brand-orange shadow-sm dark:bg-slate-700' : 'text-slate-500 dark:text-slate-400'}`}>{item}</button>)}</div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{periods.map((item) => <button key={item.value} onClick={() => setPeriod(item.value)} className={`rounded-xl border p-3 text-left transition-colors ${period === item.value ? 'border-brand-orange bg-orange-50 dark:bg-orange-950/30' : 'border-slate-200 bg-slate-50 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600'}`}><Calendar size={17} className={item.color} /><span className="mt-2 block text-xs font-bold text-slate-700 dark:text-slate-200">{item.label}</span></button>)}</div>
           {period === 'custom' && <div className="grid grid-cols-2 gap-3"><label className="text-xs font-bold text-slate-500 dark:text-slate-400">From<input type="date" value={from} max={to || undefined} onChange={(event) => setFrom(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100" /></label><label className="text-xs font-bold text-slate-500 dark:text-slate-400">To<input type="date" value={to} min={from || undefined} onChange={(event) => setTo(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100" /></label></div>}
-          <p className="text-center text-xs text-slate-500 dark:text-slate-400">{filteredSales.length} sales in selected range</p><button onClick={() => { if (format === 'csv') downloadCsv(); else void printPdf() }} disabled={period === 'custom' && from > to && Boolean(from && to)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-orange py-3 text-sm font-bold text-white shadow-sm hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"><Download size={17} />Download {format.toUpperCase()}</button>
+          <p className="text-center text-xs text-slate-500 dark:text-slate-400">{filteredSales.length} sales in selected range</p><button onClick={() => { if (format === 'csv') void downloadCsv(); else void downloadPdf() }} disabled={period === 'custom' && from > to && Boolean(from && to)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-orange py-3 text-sm font-bold text-white shadow-sm hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"><Download size={17} />Download {format.toUpperCase()}</button>
         </div>
       </div>
     </div>
