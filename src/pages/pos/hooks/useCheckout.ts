@@ -76,7 +76,11 @@ export function useCheckout(cart: CartItem[], shopSettings: ShopSettings | null 
     if (!canConfirm) return
     if (method === 'debt' && showNewCustomer && debtCustomerName && debtCustomerPhone && debtCustomerIdNumber) {
       createCustomer.mutateAsync({ name: debtCustomerName.trim(), phone: debtCustomerPhone.trim(), idNumber: debtCustomerIdNumber.trim() })
-        .then((c: Customer) => onPay({ method: 'debt', customerId: c?.id || debtCustomerName, customerName: debtCustomerName.trim(), customerPhone: debtCustomerPhone.trim(), customerIdNumber: debtCustomerIdNumber.trim(), note: note.trim() }))
+        .then((c) => {
+          const created = c as Customer | null | undefined
+          const id = created?.id
+          onPay({ method: 'debt', customerId: id || debtCustomerName, customerName: debtCustomerName.trim(), customerPhone: debtCustomerPhone.trim(), customerIdNumber: debtCustomerIdNumber.trim(), note: note.trim() })
+        })
       return
     }
     const coreMethod: 'cash' | 'mpesa' | 'debt' = method === 'debt' ? 'debt' : method === 'cash' ? 'cash' : 'mpesa'

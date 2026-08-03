@@ -9,28 +9,28 @@ export function exposeElectronAPI(): void {
       getProducts: (shopId?: string) => ipcRenderer.invoke('db:products:list', shopId),
       getProductById: (id: string) => ipcRenderer.invoke('db:products:get', id),
       getProductByBarcode: (barcode: string) => ipcRenderer.invoke('db:products:getByBarcode', barcode),
-      createProduct: (product: any) => ipcRenderer.invoke('db:products:create', product),
-      updateProduct: (id: string, data: any) => ipcRenderer.invoke('db:products:update', id, data),
+      createProduct: (product: unknown) => ipcRenderer.invoke('db:products:create', product),
+      updateProduct: (id: string, data: unknown) => ipcRenderer.invoke('db:products:update', id, data),
       deleteProduct: (id: string) => ipcRenderer.invoke('db:products:delete', id),
       searchProducts: (query: string, shopId?: string) => ipcRenderer.invoke('db:products:search', query, shopId),
       lookupBarcode: (barcode: string) => ipcRenderer.invoke('db:products:lookupBarcode', barcode),
 
       // Categories
       getCategories: (shopId?: string) => ipcRenderer.invoke('db:categories:list', shopId),
-      createCategory: (category: any) => ipcRenderer.invoke('db:categories:create', category),
-      updateCategory: (id: string, data: any) => ipcRenderer.invoke('db:categories:update', id, data),
+      createCategory: (category: unknown) => ipcRenderer.invoke('db:categories:create', category),
+      updateCategory: (id: string, data: unknown) => ipcRenderer.invoke('db:categories:update', id, data),
       deleteCategory: (id: string) => ipcRenderer.invoke('db:categories:delete', id),
 
       // Sales
       getSales: (shopId?: string, limit?: number, offset?: number) => ipcRenderer.invoke('db:sales:list', shopId, limit, offset),
       getSaleById: (id: string) => ipcRenderer.invoke('db:sales:get', id),
-      createSale: (sale: any) => ipcRenderer.invoke('db:sales:create', sale),
+      createSale: (sale: unknown) => ipcRenderer.invoke('db:sales:create', sale),
       getSalesByDateRange: (startDate: string, endDate: string, shopId?: string) =>
         ipcRenderer.invoke('db:sales:listByDateRange', startDate, endDate, shopId),
 
       // Held Sales
       getHeldSales: (shopId?: string) => ipcRenderer.invoke('db:held-sales:list', shopId),
-      createHeldSale: (sale: any) => ipcRenderer.invoke('db:held-sales:create', sale),
+      createHeldSale: (sale: unknown) => ipcRenderer.invoke('db:held-sales:create', sale),
       deleteHeldSale: (id: string) => ipcRenderer.invoke('db:held-sales:delete', id),
       restoreHeldSale: (id: string) => ipcRenderer.invoke('db:held-sales:restore', id),
 
@@ -42,7 +42,7 @@ export function exposeElectronAPI(): void {
 
       // Shop Settings
       getShopSettings: () => ipcRenderer.invoke('db:shop-settings:get'),
-      updateShopSettings: (settings: any) => ipcRenderer.invoke('db:shop-settings:update', settings),
+      updateShopSettings: (settings: unknown) => ipcRenderer.invoke('db:shop-settings:update', settings),
 
       // App Settings
       getAppSettingsDefaults: () => ipcRenderer.invoke('app:settings:getDefaults'),
@@ -55,14 +55,14 @@ export function exposeElectronAPI(): void {
       // Customers
       getCustomers: () => ipcRenderer.invoke('db:customers:list'),
       getCustomer: (id: string) => ipcRenderer.invoke('db:customers:get', id),
-      createCustomer: (data: any) => ipcRenderer.invoke('db:customers:create', data),
-      updateCustomer: (id: string, data: any) => ipcRenderer.invoke('db:customers:update', id, data),
+      createCustomer: (data: unknown) => ipcRenderer.invoke('db:customers:create', data),
+      updateCustomer: (id: string, data: unknown) => ipcRenderer.invoke('db:customers:update', id, data),
       deleteCustomer: (id: string) => ipcRenderer.invoke('db:customers:delete', id),
 
       // Debts
       getDebts: () => ipcRenderer.invoke('db:debts:list'),
       getDebt: (id: string) => ipcRenderer.invoke('db:debts:get', id),
-      createDebt: (data: any) => ipcRenderer.invoke('db:debts:create', data),
+      createDebt: (data: unknown) => ipcRenderer.invoke('db:debts:create', data),
       recordDebtPayment: (debtId: string, amount: number, paymentMethod: string, reference: string) =>
         ipcRenderer.invoke('db:debts:recordPayment', debtId, amount, paymentMethod, reference),
       getDebtSummary: () => ipcRenderer.invoke('db:debts:summary'),
@@ -72,7 +72,7 @@ export function exposeElectronAPI(): void {
     // Hardware
     hw: {
       onBarcodeScanned: (callback: (barcode: string) => void) => {
-        const handler = (_event: any, barcode: string) => callback(barcode)
+        const handler = (_event: Electron.IpcRendererEvent, barcode: string) => callback(barcode)
         ipcRenderer.on('hw:scanner:barcode', handler)
         return () => ipcRenderer.removeListener('hw:scanner:barcode', handler)
       },
@@ -104,12 +104,12 @@ export function exposeElectronAPI(): void {
       close: () => ipcRenderer.send('app:window:close'),
       isMaximized: () => ipcRenderer.invoke('app:window:isMaximized'),
       onMaximizeChange: (callback: (isMaximized: boolean) => void) => {
-        const handler = (_event: any, isMaximized: boolean) => callback(isMaximized)
+        const handler = (_event: Electron.IpcRendererEvent, isMaximized: boolean) => callback(isMaximized)
         ipcRenderer.on('app:window:maximizeChange', handler)
         return () => ipcRenderer.removeListener('app:window:maximizeChange', handler)
       },
-      showSaveDialog: (options: any) => ipcRenderer.invoke('app:dialog:save', options),
-      showOpenDialog: (options: any) => ipcRenderer.invoke('app:dialog:open', options),
+      showSaveDialog: (options: unknown) => ipcRenderer.invoke('app:dialog:save', options),
+      showOpenDialog: (options: unknown) => ipcRenderer.invoke('app:dialog:open', options),
       exportDatabase: (filePath: string) => ipcRenderer.invoke('app:db:export', filePath),
       importDatabase: (filePath: string) => ipcRenderer.invoke('app:db:import', filePath),
       writeFile: (filePath: string, content: string) => ipcRenderer.invoke('app:file:write', filePath, content),
@@ -122,7 +122,7 @@ export function exposeElectronAPI(): void {
       install: () => ipcRenderer.send('updater:install'),
       status: () => ipcRenderer.invoke('updater:status'),
       onStatus: (callback: (data: UpdateStatusData) => void) => {
-        const handler = (_event: any, data: UpdateStatusData) => callback(data)
+        const handler = (_event: Electron.IpcRendererEvent, data: UpdateStatusData) => callback(data)
         ipcRenderer.on('updater:status', handler)
         return () => ipcRenderer.removeListener('updater:status', handler)
       },

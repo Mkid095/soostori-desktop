@@ -1,14 +1,18 @@
 import { useMemo, useCallback } from 'react'
 import type { Customer, Debt } from '../../../lib/types'
 
+type DebtPaymentInput = { debtId: string; amount: number; paymentMethod: string; reference?: string }
+type CustomerInput = { name: string; phone?: string; idNumber?: string; email?: string; address?: string; notes?: string }
+type DebtCreateInput = { customerId?: string; amount: number; saleId?: string; dueDate?: string; notes?: string }
+
 export function useDebtState(
   debts: Debt[],
   customers: Customer[],
   search: string,
   statusFilter: 'all' | 'pending' | 'partial' | 'paid',
-  recordPayment: { mutateAsync: (data: any) => Promise<any> },
-  createCustomer: { mutateAsync: (data: any) => Promise<any> },
-  createDebt: { mutateAsync: (data: any) => Promise<any> },
+  recordPayment: { mutateAsync: (data: DebtPaymentInput) => Promise<unknown> },
+  createCustomer: { mutateAsync: (data: CustomerInput) => Promise<unknown> },
+  createDebt: { mutateAsync: (data: DebtCreateInput) => Promise<unknown> },
 ) {
   const filteredDebts = useMemo(() => {
     return debts.filter(d => {
@@ -34,7 +38,7 @@ export function useDebtState(
     await recordPayment.mutateAsync({ debtId: payingDebt.id, amount, paymentMethod: method })
   }, [recordPayment])
 
-  const handleSaveCustomer = useCallback(async (data: { name: string; phone?: string }) => {
+  const handleSaveCustomer = useCallback(async (data: CustomerInput) => {
     await createCustomer.mutateAsync(data)
   }, [createCustomer])
 

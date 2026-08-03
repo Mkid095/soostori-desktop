@@ -7,7 +7,7 @@ import { translations, type Language, type TranslationKey } from './i18n'
 interface LanguageContextValue {
   language: Language
   setLanguage: (lang: Language) => void
-  t: (key: TranslationKey) => string
+  t: (key: TranslationKey | string, fallback?: string) => string
 }
 
 export const LanguageContext = createContext<LanguageContextValue>({
@@ -49,8 +49,10 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   const setLanguage = (lang: Language) => setLanguageState(lang)
 
-  const t = (key: TranslationKey): string => {
-    return (translations[language] as Record<TranslationKey, string>)[key] ?? (translations['en'] as Record<TranslationKey, string>)[key] ?? key
+  const t = (key: TranslationKey | string, fallback?: string): string => {
+    const dict = translations[language] as Record<string, string>
+    const en = translations['en'] as Record<string, string>
+    return dict[key] ?? en[key] ?? fallback ?? key
   }
 
   return (

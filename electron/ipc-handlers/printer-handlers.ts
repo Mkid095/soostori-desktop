@@ -1,49 +1,41 @@
 import { ipcMain } from 'electron'
 import log from 'electron-log'
-import { printReceipt, testPrintReceipt } from '../hardware/printer'
+import { printReceipt, testPrintReceipt, type ReceiptData } from '../hardware/printer'
+import type { SerialPort, SerialPortInstance } from '../../src/types/serialport.d'
 
-let SerialPort: any = null
-let serialportLoaded = false
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const serialport = require('serialport') as { SerialPort: SerialPort }
+const SerialPortClass = serialport.SerialPort
 
-try {
-  const serialport = require('serialport')
-  SerialPort = serialport.SerialPort
-  serialportLoaded = true
-} catch (err: unknown) {
-  log.warn('SerialPort not available for printer:', (err as Error).message)
-}
-
-let printerPort: any = null
+let printerPort: SerialPortInstance | null = null
 
 export function registerPrinterHandlers(): void {
   ipcMain.handle('hw:printer:connect', (_event, port: string, baudRate: number) => {
-    if (!serialportLoaded || !SerialPort) {
-      throw new Error('SerialPort not available')
-    }
     return new Promise<void>((resolve, reject) => {
       if (printerPort && printerPort.isOpen) {
         printerPort.close()
       }
 
-      printerPort = new SerialPort({
+      const newPort: SerialPortInstance = new SerialPortClass({
         path: port,
         baudRate: baudRate || 9600,
         dataBits: 8,
         parity: 'none',
         stopBits: 1,
       })
+      printerPort = newPort
 
-      printerPort.on('open', () => {
+      newPort.on('open', () => {
         log.info(`Printer connected on ${port} at ${baudRate} baud`)
         resolve()
       })
 
-      printerPort.on('error', (err: Error) => {
+      newPort.on('error', (err: unknown) => {
         log.error('Printer error:', err)
         reject(err)
       })
 
-      printerPort.on('close', () => {
+      newPort.on('close', () => {
         log.info('Printer disconnected')
         printerPort = null
       })
@@ -52,17 +44,18 @@ export function registerPrinterHandlers(): void {
 
   ipcMain.handle('hw:printer:disconnect', async () => {
     if (printerPort && printerPort.isOpen) {
+      const port = printerPort
       await new Promise<void>((resolve) => {
-        printerPort.close(() => resolve())
+        port.close(() => resolve())
       })
       printerPort = null
     }
   })
 
-  ipcMain.handle('hw:printer:print', async (_event, receiptData: any) => {
+  ipcMain.handle('hw:printer:print', async (_event, receiptData: ReceiptData) => {
     try {
       if (printerPort && printerPort.isOpen) {
-        await printReceipt(printerPort, receiptData)
+        await printReceipt(printerPort as unknown as SerialPort, receiptData)
         log.info('Receipt printed via ESC/POS')
       } else {
         log.warn('Printer not connected, cannot print')
@@ -77,7 +70,7 @@ export function registerPrinterHandlers(): void {
   ipcMain.handle('hw:printer:test', async () => {
     try {
       if (printerPort && printerPort.isOpen) {
-        await testPrintReceipt(printerPort)
+        await testPrintReceipt(printerPort as unknown as SerialPort)
         log.info('Test receipt printed')
       } else {
         throw new Error('Printer not connected')

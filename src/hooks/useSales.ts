@@ -98,11 +98,24 @@ export function useSale(id: string) {
   })
 }
 
+export interface CartLineItem {
+  productId: string
+  productName: string
+  quantity: number
+  unitPrice: number
+  totalPrice: number
+  discount: number
+  variationName?: string
+  isCombo?: boolean
+  comboId?: string
+  metadata?: Record<string, unknown>
+}
+
 export function useCreateSale() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (sale: {
-      items: any[]
+      items: CartLineItem[]
       subtotal: number
       discountAmount: number
       totalAmount: number

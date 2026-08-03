@@ -3,40 +3,40 @@ export interface ElectronAPI {
   // Database operations
   db: {
     // Products
-    getProducts: (shopId?: string) => Promise<any[]>
-    getProductById: (id: string) => Promise<any | null>
-    getProductByBarcode: (barcode: string) => Promise<any | null>
-    createProduct: (product: any) => Promise<any>
-    updateProduct: (id: string, data: any) => Promise<any>
+    getProducts: (shopId?: string) => Promise<unknown[]>
+    getProductById: (id: string) => Promise<unknown | null>
+    getProductByBarcode: (barcode: string) => Promise<unknown | null>
+    createProduct: (product: unknown) => Promise<unknown>
+    updateProduct: (id: string, data: unknown) => Promise<unknown>
     deleteProduct: (id: string) => Promise<void>
-    searchProducts: (query: string, shopId?: string) => Promise<any[]>
-    lookupBarcode: (barcode: string) => Promise<any | null>
+    searchProducts: (query: string, shopId?: string) => Promise<unknown[]>
+    lookupBarcode: (barcode: string) => Promise<unknown | null>
 
     // Categories
-    getCategories: (shopId?: string) => Promise<any[]>
-    createCategory: (category: any) => Promise<any>
-    updateCategory: (id: string, data: any) => Promise<any>
+    getCategories: (shopId?: string) => Promise<unknown[]>
+    createCategory: (category: unknown) => Promise<unknown>
+    updateCategory: (id: string, data: unknown) => Promise<unknown>
     deleteCategory: (id: string) => Promise<void>
 
     // Sales
-    getSales: (shopId?: string, limit?: number) => Promise<any[]>
-    getSaleById: (id: string) => Promise<any | null>
-    createSale: (sale: any) => Promise<any>
-    getSalesByDateRange: (startDate: string, endDate: string, shopId?: string) => Promise<any[]>
+    getSales: (shopId?: string, limit?: number) => Promise<unknown[]>
+    getSaleById: (id: string) => Promise<unknown | null>
+    createSale: (sale: unknown) => Promise<unknown>
+    getSalesByDateRange: (startDate: string, endDate: string, shopId?: string) => Promise<unknown[]>
 
     // Cart / Held Sales
-    getHeldSales: (shopId?: string) => Promise<any[]>
-    createHeldSale: (sale: any) => Promise<any>
+    getHeldSales: (shopId?: string) => Promise<unknown[]>
+    createHeldSale: (sale: unknown) => Promise<unknown>
     deleteHeldSale: (id: string) => Promise<void>
-    restoreHeldSale: (id: string) => Promise<any>
+    restoreHeldSale: (id: string) => Promise<unknown>
 
     // Inventory / Stock
-    adjustStock: (productId: string, quantityChange: number, reason: string) => Promise<any>
-    getStockMovements: (productId?: string, limit?: number) => Promise<any[]>
+    adjustStock: (productId: string, quantityChange: number, reason: string) => Promise<unknown>
+    getStockMovements: (productId?: string, limit?: number) => Promise<unknown[]>
 
     // Shop Settings
-    getShopSettings: () => Promise<any | null>
-    updateShopSettings: (settings: any) => Promise<any>
+    getShopSettings: () => Promise<unknown | null>
+    updateShopSettings: (settings: unknown) => Promise<unknown>
 
     // App Settings
     getAppSettingsDefaults: () => Promise<{ defaultTheme: 'light' | 'dark'; defaultLanguage: 'en' | 'sw'; pinSet: number; lastLogin: string | null }>
@@ -47,17 +47,17 @@ export interface ElectronAPI {
     recordLogin: () => Promise<void>
 
     // Customers
-    getCustomers: () => Promise<any[]>
-    getCustomer: (id: string) => Promise<any | null>
-    createCustomer: (data: any) => Promise<any>
-    updateCustomer: (id: string, data: any) => Promise<any>
+    getCustomers: () => Promise<unknown[]>
+    getCustomer: (id: string) => Promise<unknown | null>
+    createCustomer: (data: unknown) => Promise<unknown>
+    updateCustomer: (id: string, data: unknown) => Promise<unknown>
     deleteCustomer: (id: string) => Promise<void>
 
     // Debts
-    getDebts: () => Promise<any[]>
-    getDebt: (id: string) => Promise<any | null>
-    createDebt: (data: any) => Promise<any>
-    recordDebtPayment: (debtId: string, amount: number, paymentMethod: string, reference: string) => Promise<any>
+    getDebts: () => Promise<unknown[]>
+    getDebt: (id: string) => Promise<unknown | null>
+    createDebt: (data: unknown) => Promise<unknown>
+    recordDebtPayment: (debtId: string, amount: number, paymentMethod: string, reference: string) => Promise<unknown>
     getDebtSummary: () => Promise<{ total: number; count: number }>
     getTotalDebtCollected: () => Promise<{ totalCollected: number }>
   }
@@ -93,8 +93,8 @@ export interface ElectronAPI {
     close: () => void
     isMaximized: () => Promise<boolean>
     onMaximizeChange: (callback: (isMaximized: boolean) => void) => () => void
-    showSaveDialog: (options: any) => Promise<string | null>
-    showOpenDialog: (options: any) => Promise<string[] | null>
+    showSaveDialog: (options: unknown) => Promise<string | null>
+    showOpenDialog: (options: unknown) => Promise<string[] | null>
     exportDatabase: (filePath: string) => Promise<void>
     importDatabase: (filePath: string) => Promise<void>
     writeFile: (filePath: string, content: string) => Promise<void>

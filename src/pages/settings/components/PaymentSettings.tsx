@@ -65,7 +65,7 @@ const PaymentSettings: React.FC<PaymentSettingsProps> = ({ onClose }) => {
       <div>
         <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t('pos.paymentMethod')}</label>
         <select value={paymentType} onChange={(e) => handleTypeChange(e.target.value as PaymentType)} className="w-full bg-white border border-slate-200 rounded-xl py-3 px-4 font-semibold text-slate-700 focus:border-brand-orange outline-none">
-          {PAYMENT_TYPES.map((pt) => <option key={pt.value} value={pt.value}>{t(pt.labelKey as any)}</option>)}
+          {PAYMENT_TYPES.map((pt) => <option key={pt.value} value={pt.value}>{t(pt.labelKey)}</option>)}
         </select>
         <p className="text-xs text-slate-400 mt-1">{PAYMENT_TYPES.find((pt) => pt.value === paymentType)?.hint}</p>
       </div>

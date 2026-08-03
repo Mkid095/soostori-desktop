@@ -2,7 +2,7 @@ import React from 'react'
 import { X, Clock, User, Phone, DollarSign } from 'lucide-react'
 import { useSale } from '../../../hooks/useDatabase'
 import { formatCurrency } from '../../../lib/formatting-currency'
-import type { Debt } from '../../../lib/types'
+import type { Debt, SaleItem } from '../../../lib/types'
 
 const DebtDetailModal: React.FC<{
   debt: Debt
@@ -53,7 +53,7 @@ const DebtDetailModal: React.FC<{
             <div>
               <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-2">Items Purchased</p>
               <div className="bg-slate-50 dark:bg-slate-800 rounded-xl divide-y divide-slate-100 dark:divide-slate-700 transition-colors duration-200">
-                {sale.items.map((item: any, i: number) => (
+                {sale.items.map((item: SaleItem, i: number) => (
                   <div key={i} className="flex items-center justify-between px-3 py-2">
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">{item.productName}</p>

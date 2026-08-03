@@ -45,7 +45,7 @@ const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
         <div className="grid grid-cols-2 gap-2">
           {printerTypes.map(({ value, labelKey, icon: Icon }) => (
             <button key={value} onClick={() => setPrinterType(value as 'escpos' | 'system')} className={`p-3 rounded-xl border-2 flex items-center gap-2 ${printerType === value ? 'border-brand-orange bg-orange-50 text-brand-orange' : 'border-slate-200 text-slate-500'}`}>
-              <Icon size={16} /><span className="text-xs font-bold">{t(labelKey as any)}</span>
+              <Icon size={16} /><span className="text-xs font-bold">{t(labelKey)}</span>
             </button>
           ))}
         </div>

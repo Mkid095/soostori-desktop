@@ -7,7 +7,7 @@ import type { TranslationKey } from './i18n'
 export const useTranslation = () => {
   const ctx = useLanguage()
   return {
-    t: (key: TranslationKey): string => ctx.t(key),
+    t: (key: TranslationKey | string, fallback?: string): string => ctx.t(key, fallback),
     language: ctx.language,
     setLanguage: ctx.setLanguage,
   }

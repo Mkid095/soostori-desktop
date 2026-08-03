@@ -24,7 +24,7 @@ const MpesaPaymentView: React.FC<MpesaPaymentViewProps> = ({
 
   return (
     <div className="space-y-4 p-5 bg-green-50 dark:bg-green-950/40 rounded-2xl border border-green-100 dark:border-green-900/50 transition-colors duration-200">
-      <p className="text-sm font-bold text-green-700 dark:text-green-400 text-center">{t(labelKey as any)}</p>
+      <p className="text-sm font-bold text-green-700 dark:text-green-400 text-center">{t(labelKey)}</p>
 
       {method === 'sendMoney' && shopSettings?.mpesaSendMoneyPhone && (
         <div className="bg-white dark:bg-slate-900 rounded-xl p-4 text-center border border-green-200 dark:border-green-800 transition-colors duration-200">

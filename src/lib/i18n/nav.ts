@@ -1,0 +1,25 @@
+// Navigation keys (nav.*)
+export const nav = {
+  en: {
+    'nav.store': 'Store',
+    'nav.pos': 'Point of Sale',
+    'nav.inventory': 'Stock',
+    'nav.catalog': 'Catalog',
+    'nav.reports': 'Reports',
+    'nav.debts': 'Debt',
+    'nav.finance': 'Finance',
+    'nav.settings': 'Settings',
+    'nav.system': 'System',
+  },
+  sw: {
+    'nav.store': 'Duka',
+    'nav.pos': 'Duka la Mauzo',
+    'nav.inventory': 'Hisa za Bidhaa',
+    'nav.catalog': 'Orodha',
+    'nav.reports': 'Ripoti',
+    'nav.debts': 'Deni',
+    'nav.finance': 'Fedha',
+    'nav.settings': 'Mipangilio',
+    'nav.system': 'Mfumo',
+  },
+} as const

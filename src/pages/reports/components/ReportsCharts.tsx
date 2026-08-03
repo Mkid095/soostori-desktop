@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
+import { TrendingUp, PieChart as PieIcon } from 'lucide-react'
 import { formatCurrency } from '../../../lib/formatting-currency'
+import { useTranslation } from '../../../lib/useTranslation'
 import type { Sale } from '../../../lib/types'
 import type { ReportsStats } from '../hooks/useReportsState'
 
@@ -17,6 +19,7 @@ const METHOD_COLORS: Record<string, string> = {
 }
 
 export const ReportsCharts: React.FC<ReportsChartsProps> = ({ stats, filteredSales }) => {
+  const { t } = useTranslation()
   const lineData = useMemo(() => {
     const map: Record<string, number> = {}
     for (const sale of filteredSales) {
@@ -30,44 +33,50 @@ export const ReportsCharts: React.FC<ReportsChartsProps> = ({ stats, filteredSal
 
   const pieData = useMemo(() => {
     const result: { method: string; total: number; color: string }[] = []
-    if (stats.cashTotal > 0) result.push({ method: 'Cash', total: stats.cashTotal, color: METHOD_COLORS.cash })
-    if (stats.mpesaTotal > 0) result.push({ method: 'M-Pesa', total: stats.mpesaTotal, color: METHOD_COLORS.mpesa })
-    if (stats.debtTotal > 0) result.push({ method: 'Debt', total: stats.debtTotal, color: METHOD_COLORS.debt })
+    if (stats.cashTotal > 0) result.push({ method: t('rep.cash'), total: stats.cashTotal, color: METHOD_COLORS.cash })
+    if (stats.mpesaTotal > 0) result.push({ method: t('pos.mpesa'), total: stats.mpesaTotal, color: METHOD_COLORS.mpesa })
+    if (stats.debtTotal > 0) result.push({ method: t('rep.debt'), total: stats.debtTotal, color: METHOD_COLORS.debt })
     return result
-  }, [stats])
+  }, [stats, t])
 
   const currencyTick = (value: number) => `KES ${(value / 1000).toFixed(0)}k`
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-5 lg:gap-6">
       <div className="lg:col-span-3">
-        <h3 className="mb-2 text-xs font-bold uppercase text-text-secondary">Revenue Over Time</h3>
+        <h3 className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <TrendingUp size={12} className="text-brand-orange" />
+          {t('rep.revenueOverTime')}
+        </h3>
         {lineData.length === 0 ? (
-          <div className="flex h-48 items-center justify-center text-xs text-text-muted">No data</div>
+          <div className="flex h-56 items-center justify-center rounded-xl border border-dashed border-slate-200 text-xs text-slate-400 dark:border-slate-700">{t('rep.noData')}</div>
         ) : (
-          <ResponsiveContainer width="100%" height={180}>
-            <LineChart data={lineData} margin={{ top: 4, right: 8, left: -10, bottom: 0 }}>
+          <ResponsiveContainer width="100%" height={240}>
+            <LineChart data={lineData} margin={{ top: 8, right: 12, left: -8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
               <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} tickLine={false} axisLine={false} />
               <YAxis tickFormatter={currencyTick} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} tickLine={false} axisLine={false} width={50} />
               <Tooltip
-                formatter={(value: number) => [formatCurrency(value), 'Revenue']}
+                formatter={(value: number) => [formatCurrency(value), t('rep.revenue')]}
                 contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 8, fontSize: 12, color: 'var(--text-primary)' }}
                 labelStyle={{ color: 'var(--text-secondary)' }}
               />
-              <Line type="monotone" dataKey="amount" stroke="#f97316" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+              <Line type="monotone" dataKey="amount" stroke="#f97316" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
             </LineChart>
           </ResponsiveContainer>
         )}
       </div>
       <div className="lg:col-span-2">
-        <h3 className="mb-2 text-xs font-bold uppercase text-text-secondary">Payment Methods</h3>
+        <h3 className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <PieIcon size={12} className="text-brand-orange" />
+          {t('rep.paymentMethods')}
+        </h3>
         {pieData.length === 0 ? (
-          <div className="flex h-48 items-center justify-center text-xs text-text-muted">No data</div>
+          <div className="flex h-56 items-center justify-center rounded-xl border border-dashed border-slate-200 text-xs text-slate-400 dark:border-slate-700">{t('rep.noData')}</div>
         ) : (
-          <ResponsiveContainer width="100%" height={180}>
+          <ResponsiveContainer width="100%" height={240}>
             <PieChart>
-              <Pie data={pieData} cx="50%" cy="50%" innerRadius={45} outerRadius={75} dataKey="total" paddingAngle={3}>
+              <Pie data={pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={88} dataKey="total" paddingAngle={3}>
                 {pieData.map((entry) => (
                   <Cell key={entry.method} fill={entry.color} />
                 ))}

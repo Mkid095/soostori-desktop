@@ -76,8 +76,8 @@ export function setupAutoUpdater(win: BrowserWindow): void {
     try {
       await autoUpdater.checkForUpdates()
       return { status: 'checking', version: app.getVersion() }
-    } catch (error: any) {
-      return { status: 'error', message: error.message }
+    } catch (error: unknown) {
+      return { status: 'error', message: error instanceof Error ? error.message : String(error) }
     }
   })
 
@@ -88,8 +88,8 @@ export function setupAutoUpdater(win: BrowserWindow): void {
     try {
       await autoUpdater.downloadUpdate()
       return { status: 'downloading' }
-    } catch (error: any) {
-      return { status: 'error', message: error.message }
+    } catch (error: unknown) {
+      return { status: 'error', message: error instanceof Error ? error.message : String(error) }
     }
   })
 

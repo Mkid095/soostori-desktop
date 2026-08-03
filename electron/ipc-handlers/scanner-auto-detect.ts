@@ -1,11 +1,9 @@
 import log from 'electron-log'
+import type { SerialPort, SerialPortInstance } from '../../src/types/serialport.d'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let SerialPort: any = null
-try {
-  const serialport = require('serialport')
-  SerialPort = serialport.SerialPort
-} catch { /* serialport not available */ }
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const serialport = require('serialport') as { SerialPort: SerialPort }
+const SerialPortClass = serialport.SerialPort
 
 export interface AutoDetectResult { port: string; baudRate: number }
 
@@ -13,9 +11,8 @@ const BAUD_RATES = [9600, 19200, 38400, 57600, 115200]
 const TIMEOUT_MS = 1500
 
 export async function autoDetectSerialScanner(): Promise<AutoDetectResult | null> {
-  if (!SerialPort) return null
   try {
-    const ports = await SerialPort.list()
+    const ports = await SerialPortClass.list()
     if (ports.length === 0) return null
     for (const portInfo of ports) {
       const portPath = String(portInfo.path)
@@ -36,17 +33,20 @@ export async function autoDetectSerialScanner(): Promise<AutoDetectResult | null
 
 async function tryPortBaud(portPath: string, baudRate: number): Promise<boolean> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let testPort: any = null
+  const ReadlineParserCtor = (require('serialport') as { ReadlineParser: new (o: { delimiter: string }) => any }).ReadlineParser
+  let testPort: SerialPortInstance | null = null
   try {
-    testPort = new SerialPort({ path: portPath, baudRate, dataBits: 8, parity: 'none', stopBits: 1 })
+    const port: SerialPortInstance = new SerialPortClass({ path: portPath, baudRate, dataBits: 8, parity: 'none', stopBits: 1 })
+    testPort = port
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => reject(new Error('timeout')), TIMEOUT_MS)
-      const parser = testPort.pipe(new (require('serialport').ReadlineParser)({ delimiter: '\r\n' }))
-      const cleanup = () => { clearTimeout(timeout); parser.removeAllListeners('data'); testPort?.removeAllListeners('error') }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const parser: any = port.pipe(new ReadlineParserCtor({ delimiter: '\r\n' }))
+      const cleanup = () => { clearTimeout(timeout); parser.removeAllListeners('data'); port.removeAllListeners('error') }
       parser.on('data', () => { cleanup(); resolve() })
-      testPort.on('error', () => { cleanup(); reject(new Error('port error')) })
+      port.on('error', () => { cleanup(); reject(new Error('port error')) })
     })
-    testPort.close(() => {})
+    port.close(() => {})
     return true
   } catch {
     try { testPort?.close(() => {}) } catch { /* ignore */ }
