@@ -105,7 +105,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                 groupPrices={form.groupPrices}
                 onFieldChange={form.updateField as (field: string, value: string | boolean) => void}
                 onBulkPriceChange={form.handleBulkPriceChange}
-                onAllowSingleUnitSaleToggle={() => form.updateField('allowSingleUnitSale', !form.form.allowSingleUnitSale)}
                 onAddGroupPrice={form.addGroupPrice}
                 onUpdateGroupPrice={form.updateGroupPrice}
                 onRemoveGroupPrice={form.removeGroupPrice}
