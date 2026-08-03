@@ -3,7 +3,6 @@ import { Info, X } from 'lucide-react'
 import { Layers, Box } from 'lucide-react'
 import { FormField } from '../../../components/shared/FormField'
 import { BulkPricingFields } from './BulkPricingFields'
-import { AllowSingleUnitToggle } from './AllowSingleUnitToggle'
 import { GroupPricesEditor } from './GroupPricesEditor'
 import type { ProductFormMode } from '../hooks/useProductForm'
 import type { ProductFormState } from '../hooks/productFormMappers'
@@ -34,6 +33,7 @@ export const PricingStep: React.FC<PricingStepProps> = ({
 }) => {
   const [tab, setTab] = useState<'loose' | 'bulk'>(mode)
   const [showTrackInfo, setShowTrackInfo] = useState(false)
+  const [showSingleInfo, setShowSingleInfo] = useState(false)
   const showLoose = mode === 'loose' || tab === 'loose'
   const showBulk = mode === 'bulk' && tab === 'bulk'
 
@@ -70,6 +70,8 @@ export const PricingStep: React.FC<PricingStepProps> = ({
         <LoosePricingFields
           form={form}
           groupPrices={groupPrices}
+          showSingleInfo={showSingleInfo}
+          onToggleSingleInfo={() => setShowSingleInfo(s => !s)}
           onFieldChange={onFieldChange}
           onAddGroupPrice={onAddGroupPrice}
           onUpdateGroupPrice={onUpdateGroupPrice}
@@ -103,7 +105,6 @@ export const PricingStep: React.FC<PricingStepProps> = ({
                 className={inputClass(!form.trackInventory)}
                 placeholder={form.trackInventory ? "10" : "—"} />
             </FormField>
-            {/* Info icon */}
             <button
               type="button"
               onClick={() => setShowTrackInfo(s => !s)}
@@ -114,52 +115,51 @@ export const PricingStep: React.FC<PricingStepProps> = ({
           </div>
         </div>
 
-        {/* Track inventory toggle */}
-        <div className="relative">
-          <div className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-xl border border-border-color dark:border-slate-700">
-            <button type="button"
-              onClick={() => onFieldChange('trackInventory', !form.trackInventory)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${
-                form.trackInventory ? 'bg-brand-orange' : 'bg-slate-300 dark:bg-slate-600'
-              }`}
-              style={{ minWidth: '44px', minHeight: '24px' }}>
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                form.trackInventory ? 'translate-x-5' : 'translate-x-1'
-              }`} />
-            </button>
-            <div className="flex-1">
-              <p className="font-bold text-sm text-text-primary dark:text-slate-100">Track Inventory / Fuatilia Hisa</p>
-              <p className="text-[10px] text-text-muted dark:text-slate-400">
-                {form.trackInventory ? 'Stock is being monitored' : 'Stock tracking is disabled'}
-              </p>
+        {/* Track inventory info popover */}
+        {showTrackInfo && (
+          <div className="w-full rounded-xl border border-border-color dark:border-slate-600 bg-bg-card dark:bg-slate-800 shadow-xl p-3 text-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="font-bold text-text-primary dark:text-slate-100">Track Inventory</p>
+              <button onClick={() => setShowTrackInfo(false)} className="text-slate-400 hover:text-slate-600">
+                <X size={12} />
+              </button>
             </div>
+            <p className="text-text-muted dark:text-slate-400 leading-relaxed">
+              When <strong>ON</strong>, this product's stock is monitored. You'll receive low-stock alerts when quantity falls below the threshold.
+            </p>
+            <p className="text-text-muted dark:text-slate-400 leading-relaxed">
+              When <strong>OFF</strong>, no stock alerts are triggered for this product — useful for services or non-inventory items.
+            </p>
           </div>
+        )}
 
-          {/* Track inventory info popover */}
-          {showTrackInfo && (
-            <div className="absolute left-0 top-full mt-2 z-50 w-64 rounded-xl border border-border-color dark:border-slate-600 bg-bg-card dark:bg-slate-800 shadow-xl p-3 text-xs space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="font-bold text-text-primary dark:text-slate-100">Track Inventory</p>
-                <button onClick={() => setShowTrackInfo(false)} className="text-slate-400 hover:text-slate-600">
-                  <X size={12} />
-                </button>
-              </div>
-              <p className="text-text-muted dark:text-slate-400 leading-relaxed">
-                When <strong>ON</strong>, this product's stock is monitored. You'll receive low-stock alerts when quantity falls below the threshold.
-              </p>
-              <p className="text-text-muted dark:text-slate-400 leading-relaxed">
-                When <strong>OFF</strong>, no stock alerts are triggered for this product — useful for services or non-inventory items.
-              </p>
-            </div>
-          )}
+        {/* Track inventory toggle */}
+        <div className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-xl border border-border-color dark:border-slate-700">
+          <button type="button"
+            onClick={() => onFieldChange('trackInventory', !form.trackInventory)}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${
+              form.trackInventory ? 'bg-brand-orange' : 'bg-slate-300 dark:bg-slate-600'
+            }`}
+            style={{ minWidth: '44px', minHeight: '24px' }}>
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+              form.trackInventory ? 'translate-x-5' : 'translate-x-1'
+            }`} />
+          </button>
+          <div className="flex-1">
+            <p className="font-bold text-sm text-text-primary dark:text-slate-100">Track Inventory / Fuatilia Hisa</p>
+            <p className="text-[10px] text-text-muted dark:text-slate-400">
+              {form.trackInventory ? 'Stock is being monitored' : 'Stock tracking is disabled'}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowTrackInfo(s => !s)}
+            className="text-slate-400 hover:text-brand-orange transition-colors shrink-0"
+          >
+            <Info size={14} />
+          </button>
         </div>
       </div>
-
-      <AllowSingleUnitToggle
-        form={form}
-        mode={mode}
-        onToggle={onAllowSingleUnitSaleToggle}
-      />
     </div>
   )
 }
@@ -167,11 +167,13 @@ export const PricingStep: React.FC<PricingStepProps> = ({
 const LoosePricingFields: React.FC<{
   form: ProductFormState
   groupPrices: { quantity: number; price: number }[]
+  showSingleInfo: boolean
+  onToggleSingleInfo: () => void
   onFieldChange: (field: string, value: string | boolean) => void
   onAddGroupPrice: () => void
   onUpdateGroupPrice: (i: number, field: 'quantity' | 'price', val: string) => void
   onRemoveGroupPrice: (i: number) => void
-}> = ({ form, groupPrices, onFieldChange, onAddGroupPrice, onUpdateGroupPrice, onRemoveGroupPrice }) => {
+}> = ({ form, groupPrices, showSingleInfo, onToggleSingleInfo, onFieldChange, onAddGroupPrice, onUpdateGroupPrice, onRemoveGroupPrice }) => {
   const allowSingle = form.allowSingleUnitSale
   const sell = parseFloat(form.sellingPrice) || 0
   const cost = parseFloat(form.costPrice) || 0
@@ -180,8 +182,8 @@ const LoosePricingFields: React.FC<{
 
   return (
     <div className="space-y-3">
-      {/* Buying + Selling price row */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Price row: buying | selling | toggle */}
+      <div className="grid grid-cols-[1fr_1fr_44px] gap-2 items-end">
         <FormField label="Buying Price / Bei ya Kununua">
           <input
             type="number" step="0.01"
@@ -189,6 +191,7 @@ const LoosePricingFields: React.FC<{
             onChange={(e) => onFieldChange('costPrice', e.target.value)}
             className={inputClass()} placeholder="0.00" />
         </FormField>
+
         <FormField label="Selling Price / Bei ya Kuuzia" required>
           <input
             type="number" step="0.01"
@@ -197,20 +200,58 @@ const LoosePricingFields: React.FC<{
             onChange={(e) => onFieldChange('sellingPrice', e.target.value)}
             className={inputClass(!allowSingle)} placeholder={allowSingle ? "0.00" : "—"} />
         </FormField>
+
+        {/* Toggle + info — 44px column, vertically centered at bottom */}
+        <div className="flex flex-col items-center justify-end gap-1.5 pb-1">
+          <button
+            type="button"
+            title={allowSingle ? 'Single unit sale: ON' : 'Single unit sale: OFF'}
+            onClick={() => onFieldChange('allowSingleUnitSale', !allowSingle)}
+            className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
+              allowSingle ? 'bg-brand-orange' : 'bg-slate-300 dark:bg-slate-600'
+            }`}
+          >
+            <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+              allowSingle ? 'translate-x-6' : 'translate-x-1'
+            }`} />
+          </button>
+          <button
+            type="button"
+            title="What is single unit sale?"
+            onClick={onToggleSingleInfo}
+            className="text-slate-400 hover:text-brand-orange transition-colors"
+          >
+            <Info size={13} />
+          </button>
+        </div>
       </div>
 
-      {/* Profit margin — shown when toggle is on and both prices are filled */}
+      {/* Single sale info popover */}
+      {showSingleInfo && (
+        <div className="w-full rounded-xl border border-border-color dark:border-slate-600 bg-bg-card dark:bg-slate-800 shadow-xl p-3 text-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="font-bold text-text-primary dark:text-slate-100">Single Unit Sale</p>
+            <button onClick={onToggleSingleInfo} className="text-slate-400 hover:text-slate-600">
+              <X size={12} />
+            </button>
+          </div>
+          <p className="text-text-muted dark:text-slate-400 leading-relaxed">
+            When <strong>ON</strong>, this item can be sold individually at the selling price. In POS, a selection dialog will appear when group prices are also set.
+          </p>
+          <p className="text-text-muted dark:text-slate-400 leading-relaxed">
+            When <strong>OFF</strong>, only group/offer prices apply — the individual selling price is ignored in POS.
+          </p>
+        </div>
+      )}
+
+      {/* Profit margin */}
       {allowSingle && sell > 0 && cost > 0 && (
         <div className="flex items-center gap-3 px-3 py-2 bg-slate-50 dark:bg-slate-700/40 rounded-xl border border-border-color dark:border-slate-600">
           <div className="flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Profit Margin
-            </p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Profit Margin</p>
             <p className="text-sm font-black text-green-600 dark:text-green-400">
               KES {profit.toFixed(2)}
-              <span className="ml-2 text-xs font-semibold text-green-500 dark:text-green-500">
-                (+{margin.toFixed(1)}%)
-              </span>
+              <span className="ml-2 text-xs font-semibold text-green-500 dark:text-green-500">(+{margin.toFixed(1)}%)</span>
             </p>
           </div>
         </div>
