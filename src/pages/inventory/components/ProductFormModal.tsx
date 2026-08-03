@@ -23,7 +23,7 @@ const STEPS = [
   { number: 0, label: 'Type', labelSw: 'Aina' },
   { number: 1, label: 'Details', labelSw: 'Maelezo' },
   { number: 2, label: 'Pricing & Stock', labelSw: 'Bei na Hisa' },
-  { number: 3, label: 'Distributor', labelSw: 'Msambazaji' },
+  { number: 3, label: 'Barcode & Distributor', labelSw: 'Kodi na Msambazaji' },
 ]
 
 export const ProductFormModal: React.FC<ProductFormModalProps> = ({
@@ -85,13 +85,11 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               <DetailsStep
                 form={form.form} categories={categories}
                 imagePreview={form.imagePreview} fileInputRef={form.fileInputRef}
-                barcodeInputRef={form.barcodeInputRef}
                 showAddCategory={form.showAddCategory}
                 newCategoryName={form.newCategoryName} newCategoryColor={form.newCategoryColor}
                 addingCategory={form.addingCategory}
                 onFieldChange={form.updateField}
                 onImageSelect={form.handleImageSelect} onClearImage={form.clearImage}
-                onGenerateBarcode={form.generateBarcode}
                 onShowAddCategory={form.setShowAddCategory}
                 onNewCategoryName={form.setNewCategoryName}
                 onNewCategoryColor={form.setNewCategoryColor}
@@ -112,7 +110,14 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               />
             )}
 
-            {step === 3 && <DistributorStep form={form.form} onFieldChange={form.updateField} />}
+            {step === 3 && (
+              <DistributorStep
+                form={form.form}
+                barcodeInputRef={form.barcodeInputRef}
+                onFieldChange={form.updateField}
+                onGenerateBarcode={form.generateBarcode}
+              />
+            )}
           </div>
 
           <FormNavigationFooter
