@@ -1,0 +1,1 @@
+uid=1_0 RootWebArea "Soostori POS" url="file:///C:/Users/Administrator/Documents/GitHub/soostori-desktop/dist/index.html"

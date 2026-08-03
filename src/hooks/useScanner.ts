@@ -2,31 +2,43 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 
 // ========== BARCODE SCANNER HOOK ==========
 // Handles both hardware serial scanner and keyboard wedge
+//
+// KEY FIX: onScan is stored in a ref so the useEffect dependency array is
+// empty. This prevents duplicate listeners from accumulating when onScan
+// reference changes (which happens every time allProducts or addToCart change).
 export function useScanner(onScan: (barcode: string) => void) {
   const buf = useRef('')
-  const t = useRef<ReturnType<typeof setTimeout>>()
+  const t = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const onScanRef = useRef(onScan)
   const [scannerStatus, setScannerStatus] = useState<'disconnected' | 'connected' | 'error'>('disconnected')
   const [autoDetectedPort, setAutoDetectedPort] = useState<string | null>(null)
 
-  // Keyboard wedge scanner
+  // Keep onScan ref current without re-running the effect
+  useEffect(() => { onScanRef.current = onScan }, [onScan])
+
+  // Keyboard wedge scanner — runs once (no deps), uses ref for stable callback
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
       if (e.key === 'Enter') {
-        if (buf.current.length >= 3) onScan(buf.current)
+        if (buf.current.length >= 3) onScanRef.current(buf.current)
         buf.current = ''
         return
       }
       if (/^[a-zA-Z0-9\-]$/.test(e.key)) {
         buf.current += e.key
         if (t.current) clearTimeout(t.current)
-        t.current = setTimeout(() => { buf.current = '' }, 40)
+        t.current = setTimeout(() => { buf.current = '' }, 100)
       }
     }
     window.addEventListener('keydown', h)
-    return () => window.removeEventListener('keydown', h)
-  }, [onScan])
+    return () => {
+      window.removeEventListener('keydown', h)
+      buf.current = ''
+      if (t.current) clearTimeout(t.current)
+    }
+  }, []) // <-- empty deps, effect runs once
 
   // Hardware serial scanner - only auto-connect if scanner type is 'serial'
   useEffect(() => {
@@ -66,9 +78,9 @@ export function useScanner(onScan: (barcode: string) => void) {
 
     connectScanner()
 
-    // Listen for hardware scanner barcodes
+    // Listen for hardware scanner barcodes — uses ref for stable callback
     const unsubscribe = window.electronAPI.hw.onBarcodeScanned((barcode: string) => {
-      if (barcode.length > 0) onScan(barcode)
+      if (barcode.length > 0) onScanRef.current(barcode)
     })
 
     return () => {
@@ -76,7 +88,7 @@ export function useScanner(onScan: (barcode: string) => void) {
       unsubscribe()
       window.electronAPI.hw?.stopSerialScanner().catch(() => {})
     }
-  }, [onScan])
+  }, []) // <-- empty deps, effect runs once
 
   const connectManual = useCallback(async (port: string, baudRate: number) => {
     if (!window.electronAPI?.hw) return

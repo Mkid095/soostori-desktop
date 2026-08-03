@@ -1,0 +1,7 @@
+export { registerProductHandlers } from './product-handlers'
+export { registerCategoryHandlers } from './category-handlers'
+export { registerSaleHandlers } from './sale-handlers'
+export { registerCustomerHandlers } from './customer-handlers'
+export { registerDebtHandlers } from './debt-handlers'
+export { registerSettingsHandlers } from './settings-handlers'
+export { registerStockHandlers } from './stock-handlers'

@@ -6,6 +6,51 @@
 
 ---
 
+## Platform Architecture — Source of Truth
+
+The complete Soostori platform architecture is documented in `docs/ARCHITECTURE.md`.
+
+**Read this FIRST if you are new to the project.** It covers:
+- All 5 products (Desktop, Mobile, Web, Updates, Backend)
+- Technology stack (Convex/Supabase, Tuma M-Pesa, Cloudinary, Resend)
+- User roles and access matrix
+- Offline-first sync strategy
+- Anti-piracy eligibility system
+- Payment flows
+- Directory structure for all products
+
+**TL;DR of the platform:**
+```
+soostori/
+├── soostori-web/          → Admin dashboards (Super Admin, Shop Owner, Salesperson)
+├── soostori-mobile/       → React Native POS (offline-first)
+├── soostori-desktop/      → THIS APP — Electron POS (offline-first)
+├── soostori-updates/      → Self-hosted update server
+└── soostori-backend/      → Go API on VPS (auth, M-Pesa, sync, Postgres)
+```
+
+**Build sequence (current phase):**
+```
+Phase 1: Desktop (soostori-desktop) ← WE ARE HERE
+  └── Take existing Electron + SQLite app, add sync queue layer
+Phase 2: Mobile (soostori-mobile)
+  └── Scaffold Expo, copy Desktop patterns, same SQLite schema
+Phase 3: Backend (soostori-backend)
+  └── Extend fidscript_api (Go), Postgres schema, auth, M-Pesa
+Phase 4: Connect Desktop + Mobile to Backend
+Phase 5: Web Dashboard (Admin portals)
+```
+
+---
+
+## ANPAS — AI-Native Project Architecture Standard
+
+ANPAS is the coding standard for ALL Soostori software — Desktop, Mobile, Web, Backend, and Updates. Every line of code must comply.
+
+> **ANPAS is non-negotiable. No exceptions.**
+
+---
+
 ## Non-Negotiable Development Rules
 
 These rules are enforced on every task. No exceptions without documented approval.

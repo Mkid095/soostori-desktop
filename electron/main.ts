@@ -2,9 +2,18 @@ import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
 import path from 'path'
 import log from 'electron-log'
 import { initDatabase, getDatabase } from './database'
-import { registerDatabaseHandlers } from './ipc-handlers/database-handlers'
+import {
+  registerProductHandlers,
+  registerCategoryHandlers,
+  registerSaleHandlers,
+  registerCustomerHandlers,
+  registerDebtHandlers,
+  registerSettingsHandlers,
+  registerStockHandlers,
+} from './ipc-handlers'
 import { registerHardwareHandlers } from './ipc-handlers/hardware-handlers'
 import { registerAppHandlers } from './ipc-handlers/app-handlers'
+import { setupAutoUpdater } from './updater'
 
 // Configure logging
 log.transports.file.level = 'info'
@@ -31,6 +40,8 @@ function createWindow(): void {
     minWidth: 1024,
     minHeight: 700,
     title: 'Soostori POS',
+    frame: false, // Custom title bar via renderer
+    titleBarStyle: 'hidden',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -38,6 +49,14 @@ function createWindow(): void {
       sandbox: false, // Required for better-sqlite3
     },
     show: false,
+  })
+
+  // Double-click title bar region to maximize/restore
+  mainWindow.on('maximize', () => {
+    mainWindow?.webContents.send('app:window:maximizeChange', true)
+  })
+  mainWindow.on('unmaximize', () => {
+    mainWindow?.webContents.send('app:window:maximizeChange', false)
   })
 
   mainWindow.once('ready-to-show', () => {
@@ -67,12 +86,22 @@ app.whenReady().then(async () => {
     log.info('Database initialized')
 
     // Register IPC handlers
-    registerDatabaseHandlers()
+    registerProductHandlers()
+    registerCategoryHandlers()
+    registerSaleHandlers()
+    registerCustomerHandlers()
+    registerDebtHandlers()
+    registerSettingsHandlers()
+    registerStockHandlers()
     registerHardwareHandlers()
     registerAppHandlers()
     log.info('IPC handlers registered')
 
     createWindow()
+
+    // Set up auto-updater after window is created
+    // Configure your update server URL in electron-builder.yml publish field
+    setupAutoUpdater(mainWindow!)
   } catch (error) {
     log.error('Failed to initialize app:', error)
     dialog.showErrorBox('Initialization Error', `Failed to start: ${error}`)

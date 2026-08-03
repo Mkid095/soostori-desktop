@@ -1,211 +1,190 @@
-import React, { useState } from 'react'
-import {
-  ShoppingCart,
-  Package,
-  Settings as SettingsIcon,
-  Store,
-  History,
-  Users,
-  DollarSign,
-  Receipt,
-  Wallet,
-  BarChart3,
-  Bell,
-  ChevronLeft,
-  ChevronRight,
-  LayoutDashboard,
-} from 'lucide-react'
-import { useDebtSummary } from './hooks/useDatabase'
-import POS from './pages/POS'
-import Inventory from './pages/Inventory'
-import Settings from './pages/Settings'
-import DebtManagement from './pages/DebtManagement'
-import SalesReports from './pages/SalesReports'
-import { useShopSettings } from './hooks/useDatabase'
+import React, { useState, useCallback, createContext, useContext, useEffect } from 'react'
+import TitleBar from './components/TitleBar'
+import SoostoriSidebar, { type Page } from './components/sidebar/Sidebar'
+import SoostoriHeader from './components/sidebar/Header'
+import HeaderControls from './components/sidebar/HeaderControls'
+import type { HeaderControlSlot } from './components/sidebar/HeaderControls'
+import ToastContainer, { type ToastItem } from './components/ToastContainer'
+import { type ToastVariant } from './components/Toast'
+import OfflineBanner from './components/OfflineBanner'
+import { NetworkStatusProvider } from './lib/network-status'
+import { ThemeProvider } from './lib/theme-context'
+import { dispatchHeaderAction } from './lib/header-controls-bus'
+import Settings from './pages/settings/Settings'
+import POS from './pages/pos/POS'
+import Inventory from './pages/inventory/Inventory'
+import Reports from './pages/reports/Reports'
+import DebtManagement from './pages/debt/DebtManagement'
 
-// Menu items matching soostori exactly
-const menuItems = [
-  { id: 'pos', label: 'Point of Sale', icon: ShoppingCart },
-  { id: 'inventory', label: 'Stock', icon: Package },
-  { id: 'reports', label: 'Reports', icon: BarChart3 },
-  { id: 'debts', label: 'Debt', icon: DollarSign },
-  { id: 'settings', label: 'Settings', icon: SettingsIcon },
-]
-
-type Page = 'pos' | 'inventory' | 'reports' | 'debts' | 'settings'
-
-// Soostori Sidebar - exact match
-const SoostoriSidebar: React.FC<{
-  currentPage: Page
-  onNavigate: (page: Page) => void
-  isCollapsed: boolean
-  onToggleCollapse: () => void
-}> = ({ currentPage, onNavigate, isCollapsed, onToggleCollapse }) => {
-  return (
-    <aside
-      className={`fixed inset-y-0 left-0 bg-white border-r border-orange-50 
-        ${isCollapsed ? 'w-20' : 'w-60'} 
-        transition-all duration-300 z-[200] flex flex-col shadow-xl`}
-    >
-      {/* Logo area */}
-      <div className="flex items-center gap-3 p-4 border-b border-orange-50">
-        <div className="w-9 h-9 bg-brand-orange rounded-xl flex items-center justify-center text-white shadow-lg shadow-orange-200 shrink-0">
-          <Store size={20} />
-        </div>
-        {!isCollapsed && (
-          <span className="text-xl font-bold text-slate-800 tracking-tight">SOOSTORI</span>
-        )}
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 py-4 overflow-y-auto">
-        {menuItems.map((item) => {
-          const Icon = item.icon
-          const isActive = currentPage === item.id
-          return (
-            <button
-              key={item.id}
-              onClick={() => onNavigate(item.id as Page)}
-              className={`w-full flex items-center gap-3 px-4 py-3 mx-2 my-0.5 rounded-xl transition-all group
-                ${isActive
-                  ? 'bg-brand-orange text-white shadow-md shadow-orange-200'
-                  : 'text-slate-500 hover:bg-orange-50 hover:text-brand-orange'
-                }`}
-            >
-              <Icon size={20} className="shrink-0" />
-              {!isCollapsed && (
-                <span className="font-semibold text-sm">{item.label}</span>
-              )}
-              {/* Tooltip when collapsed */}
-              {isCollapsed && (
-                <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[300]">
-                  {item.label}
-                </div>
-              )}
-            </button>
-          )
-        })}
-      </nav>
-
-      {/* Collapse toggle */}
-      <div className="p-4 border-t border-orange-50">
-        <button
-          onClick={onToggleCollapse}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-orange-50 rounded-xl text-brand-orange hover:bg-orange-100 transition-colors"
-        >
-          {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-          {!isCollapsed && <span className="text-sm font-semibold">Collapse</span>}
-        </button>
-      </div>
-
-      {/* Support section */}
-      {!isCollapsed && (
-        <div className="p-4 border-t border-orange-50">
-          <div className="p-2 bg-orange-50 rounded-xl">
-            <p className="text-[9px] font-bold uppercase text-brand-orange tracking-wide">Support</p>
-            <p className="text-xs font-semibold text-slate-600">+254 746 269 657</p>
-          </div>
-        </div>
-      )}
-    </aside>
-  )
+// Toast context
+interface ToastContextValue {
+  showToast: (message: string, variant?: ToastVariant) => void
 }
+export const ToastContext = createContext<ToastContextValue | null>(null)
 
-// Soostori Header - exact match
-const SoostoriHeader: React.FC<{
+// ============================================================
+// PAGE CONFIG
+// ============================================================
+type PageConfig = {
   title: string
-  icon: React.ReactNode
   subtitle?: string
-}> = ({ title, icon, subtitle }) => {
-  const { data: shopSettings } = useShopSettings()
-
-  return (
-    <header className="h-16 bg-white border-b border-slate-200 px-4 md:px-6 flex items-center justify-between shrink-0 z-[150]">
-      {/* Left: Logo + title */}
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 md:w-10 md:h-10 bg-brand-orange rounded-xl shadow-md shadow-orange-200 flex items-center justify-center text-white">
-          {icon}
-        </div>
-        <div>
-          <h1 className="text-sm md:text-base font-black text-slate-800">{title}</h1>
-          {subtitle && <p className="text-xs text-slate-400">{subtitle}</p>}
-        </div>
-      </div>
-
-      {/* Right: Shop name + notification */}
-      <div className="flex items-center gap-3">
-        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-orange-50 rounded-full border border-orange-100">
-          <Store size={12} className="text-brand-orange" />
-          <span className="text-xs font-semibold text-slate-600">
-            {shopSettings?.name || 'My Shop'}
-          </span>
-        </div>
-        <button className="w-10 h-10 rounded-full bg-orange-50 border border-orange-100 flex items-center justify-center hover:bg-orange-100 transition-colors">
-          <Bell size={18} className="text-brand-orange" />
-        </button>
-      </div>
-    </header>
-  )
 }
 
+const pageConfig: Record<Page, PageConfig> = {
+  pos: { title: 'Point of Sale', subtitle: 'POS' },
+  inventory: { title: 'Stock', subtitle: 'Inventory' },
+  reports: { title: 'Reports', subtitle: 'Analytics' },
+  debts: { title: 'Debt', subtitle: 'Collections' },
+  settings: { title: 'Settings', subtitle: 'Configure' },
+}
+
+// Sidebar widths
+const SIDEBAR_EXPANDED = 180
+const SIDEBAR_COLLAPSED = 56
+
+// ============================================================
+// APP
+// ============================================================
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('pos')
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try { return localStorage.getItem('sidebarCollapsed') === 'true' } catch { return false }
+  })
+  const [toasts, setToasts] = useState<ToastItem[]>([])
+  const [heldSalesCount, setHeldSalesCount] = useState(0)
+  const [inventorySearch, setInventorySearch] = useState('')
+  const [debtSearch, setDebtSearch] = useState('')
+  const [reportsDateFilter, setReportsDateFilter] = useState('today')
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<number>).detail
+      if (typeof detail === 'number') setHeldSalesCount(detail)
+    }
+    window.addEventListener('soostori:pos:held-count', handler)
+    return () => window.removeEventListener('soostori:pos:held-count', handler)
+  }, [])
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ value: string }>).detail
+      if (detail) setInventorySearch(detail.value)
+    }
+    window.addEventListener('soostori:app:inventorySearch', handler)
+    return () => window.removeEventListener('soostori:app:inventorySearch', handler)
+  }, [])
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ value: string }>).detail
+      if (detail) setDebtSearch(detail.value)
+    }
+    window.addEventListener('soostori:app:debtSearch', handler)
+    return () => window.removeEventListener('soostori:app:debtSearch', handler)
+  }, [])
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ value: string }>).detail
+      if (detail) setReportsDateFilter(detail.value)
+    }
+    window.addEventListener('soostori:app:reportsDate', handler)
+    return () => window.removeEventListener('soostori:app:reportsDate', handler)
+  }, [])
+
+  const showToast = useCallback((message: string, variant: ToastVariant = 'info') => {
+    const id = `toast-${Date.now()}-${Math.random()}`
+    setToasts(prev => [...prev, { id, message, variant }])
+  }, [])
+
+  const dismissToast = useCallback((id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id))
+  }, [])
+
+  const handleToggleSidebar = useCallback(() => {
+    setSidebarCollapsed(prev => {
+      const next = !prev
+      try { localStorage.setItem('sidebarCollapsed', String(next)) } catch {}
+      return next
+    })
+  }, [])
+
+  const handleNavigate = useCallback((page: Page) => {
+    setCurrentPage(page)
+  }, [])
+
+  const handleOpenSettings = useCallback(() => {
+    setCurrentPage('settings')
+  }, [])
+
+  // Page-specific header controls rendered through the shared HeaderControls component
+  const headerControls = useCallback((page: Page): HeaderControlSlot => {
+    switch (page) {
+      case 'pos': return { kind: 'pos', count: heldSalesCount }
+      case 'inventory': return { kind: 'inventory', search: inventorySearch }
+      case 'reports': return { kind: 'reports', dateFilter: reportsDateFilter }
+      case 'debts': return { kind: 'debts', search: debtSearch }
+      default: return null
+    }
+  }, [heldSalesCount, inventorySearch, debtSearch, reportsDateFilter])
 
   const renderPage = () => {
     switch (currentPage) {
-      case 'pos':
-        return <POS />
-      case 'inventory':
-        return <Inventory />
-      case 'reports':
-        return <SalesReports />
-      case 'debts':
-        return <DebtManagement />
-      case 'settings':
-        return <Settings />
-      default:
-        return <POS />
+      case 'pos': return <POS />
+      case 'inventory': return <Inventory />
+      case 'reports': return <Reports />
+      case 'debts': return <DebtManagement />
+      case 'settings': return <Settings />
+      default: return null
     }
   }
 
-  const pageConfig = {
-    pos: { title: 'Point of Sale', icon: <ShoppingCart size={20} /> },
-    inventory: { title: 'Stock', icon: <Package size={18} />, subtitle: 'Inventory Management' },
-    reports: { title: 'Reports', icon: <BarChart3 size={18} />, subtitle: 'Sales History & Analytics' },
-    debts: { title: 'Debt Management', icon: <DollarSign size={18} />, subtitle: 'Track customer debts' },
-    settings: { title: 'Settings', icon: <SettingsIcon size={18} />, subtitle: 'Configure your shop' },
-  }
+  const sidebarWidth = sidebarCollapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED
 
   return (
-    <div className="flex min-h-screen bg-soft-yellow font-['Fredoka']">
-      {/* Sidebar */}
-      <SoostoriSidebar
-        currentPage={currentPage}
-        onNavigate={setCurrentPage}
-        isCollapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-      />
+    <ThemeProvider>
+      <NetworkStatusProvider>
+        <ToastContext.Provider value={{ showToast }}>
+          <div className="flex flex-col h-screen bg-bg-primary font-['Fredoka'] overflow-hidden transition-colors duration-200">
+            {/* Offline banner */}
+            <OfflineBanner />
 
-      {/* Main content area */}
-      <div
-        className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${
-          sidebarCollapsed ? 'md:ml-20' : 'md:ml-60'
-        }`}
-      >
-        {/* Header */}
-        <SoostoriHeader
-          title={pageConfig[currentPage].title}
-          icon={pageConfig[currentPage].icon}
-          subtitle={pageConfig[currentPage].subtitle}
-        />
+            {/* Custom title bar with window controls, notifications, settings */}
+            <TitleBar onSettingsClick={handleOpenSettings} />
 
-        {/* Page content */}
-        <main className="flex-1 overflow-hidden bg-slate-50/30">
-          {renderPage()}
-        </main>
-      </div>
-    </div>
+            {/* Body: sidebar + content */}
+            <div className="flex flex-1 min-h-0">
+              {/* Sidebar */}
+              <SoostoriSidebar
+                currentPage={currentPage}
+                onNavigate={handleNavigate}
+                isCollapsed={sidebarCollapsed}
+                onToggleCollapse={handleToggleSidebar}
+              />
+
+              {/* Main area — sidebar is fixed, so offset content with marginLeft */}
+              <div
+                className="flex-1 flex flex-col min-w-0 transition-[margin] duration-300"
+                style={{ marginLeft: sidebarWidth }}
+              >
+                {/* Page header */}
+                <SoostoriHeader
+                  title={pageConfig[currentPage].title}
+                  subtitle={pageConfig[currentPage].subtitle}
+                  controls={<HeaderControls slot={headerControls(currentPage)} />}
+                />
+
+                {/* Page content */}
+                <main className="flex-1 overflow-hidden bg-bg-primary dark:bg-bg-primary transition-colors duration-200">
+                  {renderPage()}
+                </main>
+              </div>
+            </div>
+          </div>
+          <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+        </ToastContext.Provider>
+      </NetworkStatusProvider>
+    </ThemeProvider>
   )
 }
 

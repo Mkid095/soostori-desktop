@@ -5,9 +5,9 @@
   "private": true,
   "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "electron-vite dev --config electron-vite.config.js",
-    "build": "electron-vite build",
-    "preview": "electron-vite preview",
+    "dev": "node node_modules/electron-vite/bin/electron-vite.js dev --config electron-vite.config.mjs",
+    "build": "node node_modules/electron-vite/bin/electron-vite.js build --config electron-vite.config.mjs",
+    "preview": "node node_modules/electron-vite/bin/electron-vite.js preview --config electron-vite.config.mjs",
     "postinstall": "electron-builder install-app-deps",
     "package": "electron-builder --win --config electron-builder.yml",
     "package:dir": "electron-builder --win --dir --config electron-builder.yml"
@@ -19,6 +19,7 @@
     "clsx": "^2.1.1",
     "electron-log": "^5.2.4",
     "electron-store": "^10.0.0",
+    "electron-updater": "^6.8.9",
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

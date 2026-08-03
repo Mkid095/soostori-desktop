@@ -1,7 +1,7 @@
 // API layer that bridges to Electron's IPC
 // This replaces soostori's fetch-based api client
 
-import type { ElectronAPI } from '../../electron/preload'
+import type { ElectronAPI } from '../../electron/preload/types'
 
 declare global {
   interface Window {

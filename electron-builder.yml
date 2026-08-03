@@ -43,6 +43,8 @@ files:
   - node_modules/which/**/*
   - node_modules/isexe/**/*
   - node_modules/shellwords/**/*
+  # electron-updater
+  - node_modules/electron-updater/**/*
 
 win:
   target:
@@ -59,3 +61,11 @@ nsis:
   createStartMenuShortcut: true
   shortcutName: Soostori POS
   artifactName: ${productName}-Setup-${version}.${ext}
+
+# Auto-update configuration
+# Replace 'owner/repo' with your actual GitHub repository (e.g. 'soostori/soostori-desktop')
+# Or change to a generic provider pointing to your update server:
+#   url: "https://updates.yourdomain.com/"
+publish:
+  provider: generic
+  url: "https://updates.example.com/"

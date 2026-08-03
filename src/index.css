@@ -8,12 +8,44 @@
   --brand-orange: #F97316;
   --brand-yellow: #FACC15;
   --soft-yellow: #FFFBEB;
+  /* Light mode backgrounds */
+  --bg-primary: #FFFBEB;
+  --bg-secondary: #FFFFFF;
+  --bg-tertiary: #F8FAFC;
+  --bg-card: #FFFFFF;
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #94A3B8;
+  --border-color: #E2E8F0;
+  --shadow-color: rgba(0, 0, 0, 0.06);
+}
+
+.dark {
+  --bg-primary: #0F172A;
+  --bg-secondary: #1E293B;
+  --bg-tertiary: #334155;
+  --bg-card: #1E293B;
+  --text-primary: #F8FAFC;
+  --text-secondary: #CBD5E1;
+  --text-muted: #64748B;
+  --border-color: #334155;
+  --shadow-color: rgba(0, 0, 0, 0.3);
 }
 
 body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
   font-family: 'Fredoka', sans-serif;
-  background-color: #FFFBEB;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
   -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+html {
+  overflow: hidden;
+  height: 100%;
 }
 
 ::selection {
@@ -43,12 +75,13 @@ input, textarea, select {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: var(--border-color);
   border-radius: 3px;
+  transition: background 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: var(--text-muted);
 }
 
 /* Print styles */
