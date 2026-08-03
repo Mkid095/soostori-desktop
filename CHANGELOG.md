@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 
+- **i18n Translation Coverage (i18n)**: Extended translation coverage to all UI components. Added ~100+ new translation keys to `src/lib/i18n.ts` covering: sidebar controls (HeaderControls, SidebarBottom), titlebar (UpdateIndicator, SyncIndicator, OfflineBanner, NotificationsDropdown, LanguageSwitcher), settings page (Settings, ShopSettingsForm, PaymentSettings, ScannerSettings, PrinterSettings, DataManagement, About), POS components (CheckoutSheet, CashPaymentView, MpesaPaymentView, DebtPaymentView), and DebtManagement page. All hardcoded English strings are now wrapped in `t('key')` calls using the `useTranslation()` hook. New keys include: `app.*` keys for app-level messages, `pos.*` keys for additional POS strings, `set.*` keys for settings sections, `deb.*` keys for debt page strings. TypeScript `tsc --noEmit` passes with no errors.
+
 - **Reports pagination**: `useSales()` now fetches all records (no 500 limit). Reports page shows 50 per page with "Load More" button. Displays "Showing X of Y transactions" text. Sort by newest first. Note preview shown in sale list item.
 
 - **POS sale notes**: Added "Note / Memo" textarea in checkout sheet for Cash, M-Pesa, and Debt payment views. Note saved to `sales.note` column and shown in Reports sale list and SaleDetailModal.
