@@ -3,6 +3,7 @@ import { Layers, Box } from 'lucide-react'
 import { FormField } from '../../../components/shared/FormField'
 import { BulkPricingFields } from './BulkPricingFields'
 import { AllowSingleUnitToggle } from './AllowSingleUnitToggle'
+import { GroupPricesEditor } from './GroupPricesEditor'
 import type { ProductFormMode } from '../hooks/useProductForm'
 import type { ProductFormState } from '../hooks/productFormMappers'
 
@@ -19,6 +20,8 @@ interface PricingStepProps {
   onRemoveGroupPrice: (i: number) => void
 }
 
+const inputClass = "w-full bg-white dark:bg-slate-800 border border-border-color dark:border-slate-600 rounded-xl py-2.5 px-3.5 font-semibold text-text-primary dark:text-slate-100 focus:border-brand-orange focus:ring-2 focus:ring-orange-100 dark:focus:ring-orange-900/30 outline-none"
+
 export const PricingStep: React.FC<PricingStepProps> = ({
   mode, form, costPerUnit, groupPrices,
   onFieldChange, onBulkPriceChange, onAllowSingleUnitSaleToggle,
@@ -26,13 +29,16 @@ export const PricingStep: React.FC<PricingStepProps> = ({
 }) => {
   const [tab, setTab] = useState<'loose' | 'bulk'>(mode)
 
+  const showLoose = mode === 'loose' || tab === 'loose'
+  const showBulk = mode === 'bulk' && tab === 'bulk'
+
   return (
     <div className="pt-2 pb-2 space-y-4">
       <div className="text-center pb-1">
         <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
-          Pricing / Bei
+          Pricing & Stock / Bei na Hisa
         </h3>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Set buying and selling prices</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Set prices and stock levels</p>
       </div>
 
       {mode === 'bulk' && (
@@ -55,48 +61,66 @@ export const PricingStep: React.FC<PricingStepProps> = ({
         </div>
       )}
 
-      {(mode === 'loose' || tab === 'loose') && (
-        <LoosePricingFields form={form} onFieldChange={onFieldChange} />
+      {showLoose && (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Buying Price / Bei ya Kununua">
+              <input type="number" step="0.01" value={form.costPrice}
+                onChange={(e) => onFieldChange('costPrice', e.target.value)}
+                className={inputClass} placeholder="0.00" />
+            </FormField>
+            <FormField label="Selling Price / Bei ya Kuuzia" required>
+              <input type="number" step="0.01" value={form.sellingPrice}
+                onChange={(e) => onFieldChange('sellingPrice', e.target.value)}
+                className={inputClass} placeholder="0.00" />
+            </FormField>
+          </div>
+          <GroupPricesEditor groupPrices={groupPrices}
+            onAdd={onAddGroupPrice} onUpdate={onUpdateGroupPrice}
+            onRemove={onRemoveGroupPrice} />
+        </div>
       )}
 
-      {(mode === 'bulk' && tab === 'bulk') && (
+      {showBulk && (
         <BulkPricingFields form={form} costPerUnit={costPerUnit} groupPrices={groupPrices}
           onFieldChange={onFieldChange} onBulkPriceChange={onBulkPriceChange}
           onAddGroupPrice={onAddGroupPrice} onUpdateGroupPrice={onUpdateGroupPrice}
           onRemoveGroupPrice={onRemoveGroupPrice} />
       )}
 
-      {mode === 'bulk' && (
-        <AllowSingleUnitToggle form={form} onToggle={onAllowSingleUnitSaleToggle} />
-      )}
+      {/* Stock fields — shown in both loose and bulk modes */}
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <FormField label="Opening Stock / Kiasi cha Hisa">
+            <input type="number" min="0" value={form.stockQuantity}
+              onChange={(e) => onFieldChange('stockQuantity', e.target.value)}
+              className={inputClass} placeholder="0" />
+          </FormField>
+          <FormField label="Low Stock Alert / Tahadhari">
+            <input type="number" min="0" value={form.lowStockThreshold}
+              onChange={(e) => onFieldChange('lowStockThreshold', e.target.value)}
+              className={inputClass} placeholder="10" />
+          </FormField>
+        </div>
+        <div className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-xl border border-border-color dark:border-slate-700">
+          <button type="button"
+            onClick={() => onFieldChange('trackInventory', !form.trackInventory as any)}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${
+              form.trackInventory ? 'bg-brand-orange' : 'bg-slate-300 dark:bg-slate-600'
+            }`}
+            style={{ minWidth: '44px', minHeight: '24px' }}>
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+              form.trackInventory ? 'translate-x-5' : 'translate-x-1'
+            }`} />
+          </button>
+          <div>
+            <p className="font-bold text-sm text-text-primary dark:text-slate-100">Track Inventory / Fuatilia Hisa</p>
+            <p className="text-[10px] text-text-muted dark:text-slate-400">Monitor stock and get low-stock alerts</p>
+          </div>
+        </div>
+      </div>
+
+      <AllowSingleUnitToggle form={form} onToggle={onAllowSingleUnitSaleToggle} />
     </div>
   )
 }
-
-const LoosePricingFields: React.FC<{
-  form: ProductFormState
-  onFieldChange: (field: string, value: string) => void
-}> = ({ form, onFieldChange }) => (
-  <div className="space-y-3">
-    <div className="grid grid-cols-2 gap-3">
-      <FormField label="Buying Price / Bei ya Kununua">
-        <input type="number" step="0.01" value={form.costPrice}
-          onChange={(e) => onFieldChange('costPrice', e.target.value)}
-          className="w-full bg-white dark:bg-slate-800 border border-border-color
-            dark:border-slate-600 rounded-xl py-2.5 px-3.5 font-semibold
-            text-text-primary dark:text-slate-100 focus:border-brand-orange
-            focus:ring-2 focus:ring-orange-100 dark:focus:ring-orange-900/30 outline-none"
-          placeholder="0.00" />
-      </FormField>
-      <FormField label="Selling Price / Bei ya Kuuzia" required>
-        <input type="number" step="0.01" value={form.sellingPrice}
-          onChange={(e) => onFieldChange('sellingPrice', e.target.value)}
-          className="w-full bg-white dark:bg-slate-800 border border-border-color
-            dark:border-slate-600 rounded-xl py-2.5 px-3.5 font-semibold
-            text-text-primary dark:text-slate-100 focus:border-brand-orange
-            focus:ring-2 focus:ring-orange-100 dark:focus:ring-orange-900/30 outline-none"
-          placeholder="0.00" />
-      </FormField>
-    </div>
-  </div>
-)

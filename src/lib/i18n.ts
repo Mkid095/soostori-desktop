@@ -35,6 +35,8 @@ export const translations = {
     'pos.heldOrders': 'Held Orders', 'pos.order': 'order', 'pos.ordersPaused': 'orders paused',
     'pos.tapHoldToSave': 'Tap Hold on a cart to save it here for later',
     'pos.heldOrder': 'Held Order', 'pos.inStock': 'in stock', 'pos.left': 'left',
+    'pos.selectPrice': 'Select Price', 'pos.sellIndividually': 'Sell Individually',
+    'pos.buyNForKES': 'Buy {n} for KES {price}',
     // Inventory
     'inv.title': 'Stock', 'inv.subtitle': 'Inventory', 'inv.addProduct': 'Add Product',
     'inv.editProduct': 'Edit Product', 'inv.deleteProduct': 'Delete Product',
@@ -81,6 +83,8 @@ export const translations = {
     'inv.allowSingleUnitSaleDesc': 'Allow single unit sale / Ruhusu uuzaji wa uniti moja',
     'inv.pricingBei': 'Pricing / Bei', 'inv.setBuyingSellingPrices': 'Set buying and selling prices',
     'inv.typeAinaYaBidhaa': 'Product Type / Aina ya Bidhaa',
+    'inv.pricingAndStock': 'Pricing & Stock', 'inv.pricingAndStockSw': 'Bei na Hisa',
+    'inv.distributorStep': 'Distributor', 'inv.distributorStepSw': 'Msambazaji',
     // Reports
     'rep.title': 'Reports', 'rep.subtitle': 'Analytics', 'rep.today': 'Today',
     'rep.thisWeek': 'This Week', 'rep.thisMonth': 'This Month', 'rep.allTime': 'All Time',
@@ -254,6 +258,8 @@ export const translations = {
     'pos.order': 'Order', 'pos.ordersPaused': 'Oda zimezuiliwa',
     'pos.tapHoldToSave': 'Gusa Hold kwenye cart kuhifadhi hapa',
     'pos.heldOrder': 'Oda Iliyowekwa Pando', 'pos.inStock': 'hisa', 'pos.left': 'baki',
+    'pos.selectPrice': 'Chagua Bei', 'pos.sellIndividually': 'Uza Kwa Kila Moja',
+    'pos.buyNForKES': 'Nunua {n} kwa KES {price}',
     // Inventory
     'inv.title': 'Hisa za Bidhaa', 'inv.subtitle': 'Hisa', 'inv.addProduct': 'Ongeza Bidhaa',
     'inv.editProduct': 'Hariri Bidhaa', 'inv.deleteProduct': 'Futa Bidhaa',
@@ -302,6 +308,8 @@ export const translations = {
     'inv.allowSingleUnitSaleDesc': 'Ruhusu uuzaji wa uniti moja / Ruhusu uuzaji wa uniti moja',
     'inv.pricingBei': 'Pricing / Bei', 'inv.setBuyingSellingPrices': 'Weka bei ya kununua na kuuza',
     'inv.typeAinaYaBidhaa': 'Aina ya Bidhaa / Aina ya Bidhaa',
+    'inv.pricingAndStock': 'Pricing & Stock', 'inv.pricingAndStockSw': 'Bei na Hisa',
+    'inv.distributorStep': 'Distributor', 'inv.distributorStepSw': 'Msambazaji',
     // Reports
     'rep.title': 'Ripoti', 'rep.subtitle': 'Uchambuzi', 'rep.today': 'Leo',
     'rep.thisWeek': 'Wiki Hii', 'rep.thisMonth': 'Mwezi Huu', 'rep.allTime': 'Muda Wote',

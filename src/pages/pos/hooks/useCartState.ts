@@ -28,6 +28,7 @@ export function useCartState() {
   const [lastSaleAmount, setLastSaleAmount] = useState(0)
   const [scanFlash, setScanFlash] = useState(false)
   const [scanError, setScanError] = useState<string | null>(null)
+  const [priceSelectionProduct, setPriceSelectionProduct] = useState<Product | null>(null)
 
   useEffect(() => { saveCart(cart) }, [cart])
 
@@ -43,6 +44,10 @@ export function useCartState() {
   const itemCount = cart.reduce((s, i) => s + i.quantity, 0)
 
   const addToCart = useCallback((product: Product) => {
+    if (product.groupPrices?.length && product.allowSingleUnitSale) {
+      setPriceSelectionProduct(product)
+      return
+    }
     setCart(prev => {
       const ex = prev.find(i => i.productId === product.id && !i.isCombo)
       if (ex) return prev.map(i => i.productId === product.id
@@ -51,6 +56,19 @@ export function useCartState() {
         unitPrice: product.sellingPrice, discount: 0, totalPrice: product.sellingPrice }]
     })
   }, [])
+
+  const addToCartWithPrice = useCallback((product: Product, unitPrice: number, quantity: number) => {
+    setCart(prev => {
+      const ex = prev.find(i => i.productId === product.id && !i.isCombo)
+      if (ex) return prev.map(i => i.productId === product.id
+        ? { ...i, quantity: i.quantity + quantity, totalPrice: (i.quantity + quantity) * unitPrice } : i)
+      return [...prev, { productId: product.id, productName: product.name, quantity,
+        unitPrice, discount: 0, totalPrice: quantity * unitPrice }]
+    })
+    setPriceSelectionProduct(null)
+  }, [])
+
+  const cancelPriceSelection = useCallback(() => setPriceSelectionProduct(null), [])
 
   const inc = useCallback((id: string) => setCart(prev => prev.map(i =>
     i.productId === id ? { ...i, quantity: i.quantity + 1, totalPrice: (i.quantity + 1) * i.unitPrice } : i)), [])
@@ -107,6 +125,7 @@ export function useCartState() {
 
   return { cart, allProducts, products, subtotal, itemCount, selectedCategory, setSelectedCategory, search, setSearch,
     showCheckout, showHeld, setShowHeld, isProcessing, lastSaleAmount, scanFlash, scanError, heldSales,
-    addToCart, inc, dec, rm, clearCart, handleScan, handlePay,
+    priceSelectionProduct,
+    addToCart, addToCartWithPrice, cancelPriceSelection, inc, dec, rm, clearCart, handleScan, handlePay,
     handleCheckoutOpen, handleHold, handleCheckoutClose, handleRecall, handleDeleteHeldSale }
 }

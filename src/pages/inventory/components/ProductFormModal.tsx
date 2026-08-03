@@ -4,7 +4,7 @@ import { useProductForm } from '../hooks/useProductForm'
 import { TypeStep } from './TypeStep'
 import { DetailsStep } from './DetailsStep'
 import { PricingStep } from './PricingStep'
-import { StockStep } from './StockStep'
+import { DistributorStep } from './DistributorStep'
 import { StepIndicator } from '../../../components/shared/StepIndicator'
 import { FormNavigationFooter } from './FormNavigationFooter'
 import type { Product, Category } from '../../../lib/types'
@@ -22,8 +22,8 @@ interface ProductFormModalProps {
 const STEPS = [
   { number: 0, label: 'Type', labelSw: 'Aina' },
   { number: 1, label: 'Details', labelSw: 'Maelezo' },
-  { number: 2, label: 'Pricing', labelSw: 'Bei' },
-  { number: 3, label: 'Stock', labelSw: 'Hisa' },
+  { number: 2, label: 'Pricing & Stock', labelSw: 'Bei na Hisa' },
+  { number: 3, label: 'Distributor', labelSw: 'Msambazaji' },
 ]
 
 export const ProductFormModal: React.FC<ProductFormModalProps> = ({
@@ -112,7 +112,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               />
             )}
 
-            {step === 3 && <StockStep form={form.form} onFieldChange={form.updateField} />}
+            {step === 3 && <DistributorStep form={form.form} onFieldChange={form.updateField} />}
           </div>
 
           <FormNavigationFooter

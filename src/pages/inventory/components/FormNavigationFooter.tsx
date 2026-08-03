@@ -18,7 +18,7 @@ export const FormNavigationFooter: React.FC<FormNavigationFooterProps> = ({
   const isLastStep = step === totalSteps - 1
 
   return (
-    <div className="flex gap-3 mt-5 pt-4 border-t border-slate-100 dark:border-slate-700">
+    <div className="flex gap-3 mt-5 pt-4 pb-4 border-t border-slate-100 dark:border-slate-700">
       {step > 0 ? (
         <button type="button" onClick={onBack}
           className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">

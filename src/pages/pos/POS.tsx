@@ -10,6 +10,7 @@ import CheckoutSheet from './components/CheckoutSheet'
 import HeldSalesSheet from './components/HeldSalesSheet'
 import POSCategories from './components/POSCategories'
 import POSCart from './components/POSCart'
+import PriceSelectionDialog from './components/PriceSelectionDialog'
 import type { TranslationKey } from '../../lib/i18n'
 
 const POS: React.FC = () => {
@@ -22,7 +23,8 @@ const POS: React.FC = () => {
     selectedCategory, setSelectedCategory, search, setSearch,
     showCheckout, showHeld, setShowHeld, isProcessing,
     lastSaleAmount, scanFlash, scanError, heldSales,
-    addToCart, inc, dec, rm, clearCart, handleScan, handlePay,
+    priceSelectionProduct,
+    addToCart, addToCartWithPrice, cancelPriceSelection, inc, dec, rm, clearCart, handleScan, handlePay,
     handleCheckoutOpen, handleHold, handleCheckoutClose, handleRecall,
     handleDeleteHeldSale,
   } = useCartState()
@@ -99,6 +101,13 @@ const POS: React.FC = () => {
       {showHeld && (
         <HeldSalesSheet heldSales={heldSales} onRecall={handleRecall}
           onDelete={handleDeleteHeldSale} onClose={() => setShowHeld(false)} />
+      )}
+      {priceSelectionProduct && (
+        <PriceSelectionDialog
+          product={priceSelectionProduct}
+          onSelect={(unitPrice) => addToCartWithPrice(priceSelectionProduct, unitPrice, 1)}
+          onCancel={cancelPriceSelection}
+        />
       )}
     </div>
   )

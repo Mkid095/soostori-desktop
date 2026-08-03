@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+
+- **POS price selection dialog**: When a product has group/offer prices AND `allowSingleUnitSale === true`, tapping the product now shows a modal dialog letting the user choose between individual sale (sellingPrice) or a group price. Implemented via `priceSelectionProduct` state in `useCartState`, new `addToCartWithPrice(product, unitPrice, quantity)` and `cancelPriceSelection()` helpers, and new `PriceSelectionDialog.tsx` component. Existing POS flow (products without groupPrices or with `allowSingleUnitSale === false`) is unchanged. Added i18n keys `pos.selectPrice`, `pos.sellIndividually`, `pos.buyNForKES`.
+
 ### Changed
 
 - **i18n Translation Coverage (i18n)**: Extended translation coverage to all UI components. Added ~100+ new translation keys to `src/lib/i18n.ts` covering: sidebar controls (HeaderControls, SidebarBottom), titlebar (UpdateIndicator, SyncIndicator, OfflineBanner, NotificationsDropdown, LanguageSwitcher), settings page (Settings, ShopSettingsForm, PaymentSettings, ScannerSettings, PrinterSettings, DataManagement, About), POS components (CheckoutSheet, CashPaymentView, MpesaPaymentView, DebtPaymentView), and DebtManagement page. All hardcoded English strings are now wrapped in `t('key')` calls using the `useTranslation()` hook. New keys include: `app.*` keys for app-level messages, `pos.*` keys for additional POS strings, `set.*` keys for settings sections, `deb.*` keys for debt page strings. TypeScript `tsc --noEmit` passes with no errors.
@@ -17,6 +21,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - **POS debt customer ID**: `DebtPaymentView` now requires national ID number for new debt customers (alongside name and phone). ID number stored in `customers.id_number` and `sales.customer_id_number` columns. Customer schema, create handler, and sale insert all updated.
 
 - **Inventory form dedup (inventory-dedup)**: Created `src/components/shared/FormField.tsx` wrapping label + input/textarea with consistent styling and dark mode. Replaced all inline form fields across ProductFormBody, ProductFormStock, ProductFormSkuBarcode, ProductFormDistributor, CategoryAddPanel with FormField. Merged PricingLoose and PricingBulk into single `PricingTab.tsx` with "Unit Price" and "Bulk/Box" tabs — GroupPricesEditor embedded in Bulk tab. Deleted PricingLoose.tsx and PricingBulk.tsx. All inventory form components now use semantic CSS variables with dark: variants throughout.
+
+- **Add Product wizard restructure**: Restructured 4-step wizard to: (1) Type — unchanged; (2) Details — name, image (opt), SKU (opt), barcode with 300ms auto-focus, category dropdown with inline "+ Add New Category" option replacing the old slide-down panel; (3) Pricing & Stock — merged step with cost/selling price, group/offer prices (now works in both loose and bulk modes), AllowSingleUnitToggle (both modes), opening stock, low stock alert, track inventory toggle; (4) Distributor — supplier name and phone only (both optional). Footer `pb-4` padding added. Files: `CategoryInlineAdd.tsx` (new), `DistributorStep.tsx` (renamed from StockStep), `DetailsStep.tsx`, `PricingStep.tsx`, `ProductFormModal.tsx`, `FormNavigationFooter.tsx`. Deleted `CategoryAddPanel.tsx`, `ProductFormBody.tsx`, `StockStep.tsx`.
 
 ### Added
 

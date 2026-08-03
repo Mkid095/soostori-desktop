@@ -1,11 +1,11 @@
-import { Plus } from 'lucide-react'
 import { FormField } from '../../../components/shared/FormField'
 import { ProductFormImage } from './ProductFormImage'
 import { ProductFormSkuBarcode } from './ProductFormSkuBarcode'
-import { CategoryAddPanel } from './CategoryAddPanel'
+import { CategoryInlineAdd } from './CategoryInlineAdd'
 import { UNITS } from '../constants'
 import type { Category } from '../../../lib/types'
 import type { ProductFormState } from '../hooks/productFormMappers'
+import { useEffect } from 'react'
 
 interface DetailsStepProps {
   form: ProductFormState
@@ -33,6 +33,23 @@ export const DetailsStep: React.FC<DetailsStepProps> = ({
   onFieldChange, onImageSelect, onClearImage, onGenerateBarcode,
   onShowAddCategory, onNewCategoryName, onNewCategoryColor, onAddCategory,
 }) => {
+  // Barcode auto-focus with 300ms delay
+  useEffect(() => {
+    if (barcodeInputRef.current && form.barcode === '' && !showAddCategory) {
+      const timer = setTimeout(() => barcodeInputRef.current?.focus(), 300)
+      return () => clearTimeout(timer)
+    }
+  }, [barcodeInputRef, form.barcode, showAddCategory])
+
+  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value
+    if (val === '__add_new__') {
+      onShowAddCategory(true)
+    } else {
+      onFieldChange('categoryId', val)
+    }
+  }
+
   return (
     <div className="pt-2 pb-2 space-y-4">
       <FormField
@@ -70,42 +87,34 @@ export const DetailsStep: React.FC<DetailsStepProps> = ({
       />
 
       <div className="grid grid-cols-2 gap-3">
-        <FormField label="Category /Kategoria" hint="Optional grouping">
-          <div className="flex gap-2">
+        <FormField label="Category / Kategoria" hint="Optional grouping">
+          <div className="space-y-2">
             <select
               value={form.categoryId}
-              onChange={(e) => onFieldChange('categoryId', e.target.value)}
-              className="flex-1 bg-white dark:bg-slate-800 border border-border-color
+              onChange={handleCategoryChange}
+              className="w-full bg-white dark:bg-slate-800 border border-border-color
                 dark:border-slate-600 rounded-xl py-2.5 px-3 font-semibold
                 text-text-primary dark:text-slate-100 focus:border-brand-orange
-                outline-none text-sm min-w-0"
+                outline-none text-sm"
             >
               <option value="">No category</option>
               {categories.map((cat) => (
                 <option key={cat.id} value={cat.id}>{cat.name}</option>
               ))}
+              <option value="__add_new__">+ Add New Category</option>
             </select>
-            <button
-              type="button"
-              onClick={() => onShowAddCategory(!showAddCategory)}
-              className="w-10 h-10 bg-slate-100 dark:bg-slate-700 text-slate-500
-                dark:text-slate-300 rounded-xl flex items-center justify-center
-                hover:bg-slate-200 dark:hover:bg-slate-600 flex-shrink-0 transition-colors"
-            >
-              <Plus size={16} />
-            </button>
+            {showAddCategory && (
+              <CategoryInlineAdd
+                name={newCategoryName}
+                color={newCategoryColor}
+                addingCategory={addingCategory}
+                onNameChange={onNewCategoryName}
+                onColorChange={onNewCategoryColor}
+                onAdd={onAddCategory}
+                onCancel={() => onShowAddCategory(false)}
+              />
+            )}
           </div>
-          {showAddCategory && (
-            <CategoryAddPanel
-              name={newCategoryName}
-              color={newCategoryColor}
-              addingCategory={addingCategory}
-              onNameChange={onNewCategoryName}
-              onColorChange={onNewCategoryColor}
-              onAdd={onAddCategory}
-              onCancel={() => onShowAddCategory(false)}
-            />
-          )}
         </FormField>
 
         <FormField label="Unit / Uniti">
