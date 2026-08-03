@@ -103,7 +103,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               <PricingStep
                 mode={form.mode} form={form.form} costPerUnit={form.costPerUnit}
                 groupPrices={form.groupPrices}
-                onFieldChange={form.updateField as (field: string, value: string) => void}
+                onFieldChange={form.updateField as (field: string, value: string | boolean) => void}
                 onBulkPriceChange={form.handleBulkPriceChange}
                 onAllowSingleUnitSaleToggle={() => form.updateField('allowSingleUnitSale', !form.form.allowSingleUnitSale)}
                 onAddGroupPrice={form.addGroupPrice}

@@ -12,7 +12,7 @@ interface PricingStepProps {
   form: ProductFormState
   costPerUnit: number | null
   groupPrices: { quantity: number; price: number }[]
-  onFieldChange: (field: string, value: string) => void
+  onFieldChange: (field: string, value: string | boolean) => void
   onBulkPriceChange: (field: 'unitsPerPackage' | 'boxBuyingPrice', value: string) => void
   onAllowSingleUnitSaleToggle: () => void
   onAddGroupPrice: () => void
@@ -20,7 +20,11 @@ interface PricingStepProps {
   onRemoveGroupPrice: (i: number) => void
 }
 
-const inputClass = "w-full bg-white dark:bg-slate-800 border border-border-color dark:border-slate-600 rounded-xl py-2.5 px-3.5 font-semibold text-text-primary dark:text-slate-100 focus:border-brand-orange focus:ring-2 focus:ring-orange-100 dark:focus:ring-orange-900/30 outline-none"
+const inputClass = (disabled = false) =>
+  `w-full bg-white dark:bg-slate-800 border border-border-color dark:border-slate-600
+   rounded-xl py-2.5 px-3.5 font-semibold text-text-primary dark:text-slate-100
+   focus:border-brand-orange focus:ring-2 focus:ring-orange-100 dark:focus:ring-orange-900/30
+   outline-none transition-colors ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`
 
 export const PricingStep: React.FC<PricingStepProps> = ({
   mode, form, costPerUnit, groupPrices,
@@ -28,9 +32,13 @@ export const PricingStep: React.FC<PricingStepProps> = ({
   onAddGroupPrice, onUpdateGroupPrice, onRemoveGroupPrice,
 }) => {
   const [tab, setTab] = useState<'loose' | 'bulk'>(mode)
-
   const showLoose = mode === 'loose' || tab === 'loose'
   const showBulk = mode === 'bulk' && tab === 'bulk'
+
+  const cost = parseFloat(form.costPrice) || 0
+  const sell = parseFloat(form.sellingPrice) || 0
+  const profit = sell - cost
+  const margin = cost > 0 ? (profit / cost) * 100 : 0
 
   return (
     <div className="pt-2 pb-2 space-y-4">
@@ -62,23 +70,16 @@ export const PricingStep: React.FC<PricingStepProps> = ({
       )}
 
       {showLoose && (
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <FormField label="Buying Price / Bei ya Kununua">
-              <input type="number" step="0.01" value={form.costPrice}
-                onChange={(e) => onFieldChange('costPrice', e.target.value)}
-                className={inputClass} placeholder="0.00" />
-            </FormField>
-            <FormField label="Selling Price / Bei ya Kuuzia" required>
-              <input type="number" step="0.01" value={form.sellingPrice}
-                onChange={(e) => onFieldChange('sellingPrice', e.target.value)}
-                className={inputClass} placeholder="0.00" />
-            </FormField>
-          </div>
-          <GroupPricesEditor groupPrices={groupPrices}
-            onAdd={onAddGroupPrice} onUpdate={onUpdateGroupPrice}
-            onRemove={onRemoveGroupPrice} />
-        </div>
+        <LoosePricingFields
+          form={form}
+          profit={profit}
+          margin={margin}
+          groupPrices={groupPrices}
+          onFieldChange={onFieldChange}
+          onAddGroupPrice={onAddGroupPrice}
+          onUpdateGroupPrice={onUpdateGroupPrice}
+          onRemoveGroupPrice={onRemoveGroupPrice}
+        />
       )}
 
       {showBulk && (
@@ -88,23 +89,23 @@ export const PricingStep: React.FC<PricingStepProps> = ({
           onRemoveGroupPrice={onRemoveGroupPrice} />
       )}
 
-      {/* Stock fields — shown in both loose and bulk modes */}
+      {/* Stock fields */}
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Opening Stock / Kiasi cha Hisa">
             <input type="number" min="0" value={form.stockQuantity}
               onChange={(e) => onFieldChange('stockQuantity', e.target.value)}
-              className={inputClass} placeholder="0" />
+              className={inputClass()} placeholder="0" />
           </FormField>
           <FormField label="Low Stock Alert / Tahadhari">
             <input type="number" min="0" value={form.lowStockThreshold}
               onChange={(e) => onFieldChange('lowStockThreshold', e.target.value)}
-              className={inputClass} placeholder="10" />
+              className={inputClass()} placeholder="10" />
           </FormField>
         </div>
         <div className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-xl border border-border-color dark:border-slate-700">
           <button type="button"
-            onClick={() => onFieldChange('trackInventory', !form.trackInventory as any)}
+            onClick={() => onFieldChange('trackInventory', !form.trackInventory)}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${
               form.trackInventory ? 'bg-brand-orange' : 'bg-slate-300 dark:bg-slate-600'
             }`}
@@ -121,6 +122,69 @@ export const PricingStep: React.FC<PricingStepProps> = ({
       </div>
 
       <AllowSingleUnitToggle form={form} onToggle={onAllowSingleUnitSaleToggle} />
+    </div>
+  )
+}
+
+const LoosePricingFields: React.FC<{
+  form: ProductFormState
+  profit: number
+  margin: number
+  groupPrices: { quantity: number; price: number }[]
+  onFieldChange: (field: string, value: string | boolean) => void
+  onAddGroupPrice: () => void
+  onUpdateGroupPrice: (i: number, field: 'quantity' | 'price', val: string) => void
+  onRemoveGroupPrice: (i: number) => void
+}> = ({ form, groupPrices, onFieldChange, onAddGroupPrice, onUpdateGroupPrice, onRemoveGroupPrice }) => {
+  const allowSingle = form.allowSingleUnitSale
+  const sell = parseFloat(form.sellingPrice) || 0
+  const cost = parseFloat(form.costPrice) || 0
+  const computedProfit = sell - cost
+  const computedMargin = cost > 0 ? (computedProfit / cost) * 100 : 0
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <FormField label="Buying Price / Bei ya Kununua">
+          <input
+            type="number" step="0.01"
+            value={form.costPrice}
+            onChange={(e) => onFieldChange('costPrice', e.target.value)}
+            className={inputClass()} placeholder="0.00" />
+        </FormField>
+        <FormField label="Selling Price / Bei ya Kuuzia" required>
+          <input
+            type="number" step="0.01"
+            value={form.sellingPrice}
+            disabled={!allowSingle}
+            onChange={(e) => onFieldChange('sellingPrice', e.target.value)}
+            className={inputClass(!allowSingle)} placeholder={allowSingle ? "0.00" : "Disabled"} />
+        </FormField>
+      </div>
+
+      {/* Profit margin — shown when single unit sale is allowed, both prices filled */}
+      {allowSingle && sell > 0 && cost > 0 && (
+        <div className="flex items-center gap-3 px-3 py-2 bg-slate-50 dark:bg-slate-700/40 rounded-xl border border-border-color dark:border-slate-600">
+          <div className="flex-1">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              Profit Margin
+            </p>
+            <p className="text-sm font-black text-green-600 dark:text-green-400">
+              KES {computedProfit.toFixed(2)}
+              <span className="ml-2 text-xs font-semibold text-green-500 dark:text-green-500">
+                ({computedMargin.toFixed(1)}%)
+              </span>
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Group prices — always shown so offer prices can be set */}
+      <GroupPricesEditor
+        groupPrices={groupPrices}
+        onAdd={onAddGroupPrice}
+        onUpdate={onUpdateGroupPrice}
+        onRemove={onRemoveGroupPrice} />
     </div>
   )
 }
