@@ -1,8 +1,8 @@
 import { useState } from 'react'
+import { Info, X } from 'lucide-react'
 import { Layers, Box } from 'lucide-react'
 import { FormField } from '../../../components/shared/FormField'
 import { BulkPricingFields } from './BulkPricingFields'
-import { AllowSingleUnitToggle } from './AllowSingleUnitToggle'
 import { GroupPricesEditor } from './GroupPricesEditor'
 import type { ProductFormMode } from '../hooks/useProductForm'
 import type { ProductFormState } from '../hooks/productFormMappers'
@@ -32,13 +32,9 @@ export const PricingStep: React.FC<PricingStepProps> = ({
   onAddGroupPrice, onUpdateGroupPrice, onRemoveGroupPrice,
 }) => {
   const [tab, setTab] = useState<'loose' | 'bulk'>(mode)
+  const [showInfo, setShowInfo] = useState(false)
   const showLoose = mode === 'loose' || tab === 'loose'
   const showBulk = mode === 'bulk' && tab === 'bulk'
-
-  const cost = parseFloat(form.costPrice) || 0
-  const sell = parseFloat(form.sellingPrice) || 0
-  const profit = sell - cost
-  const margin = cost > 0 ? (profit / cost) * 100 : 0
 
   return (
     <div className="pt-2 pb-2 space-y-4">
@@ -72,9 +68,10 @@ export const PricingStep: React.FC<PricingStepProps> = ({
       {showLoose && (
         <LoosePricingFields
           form={form}
-          profit={profit}
-          margin={margin}
           groupPrices={groupPrices}
+          showInfo={showInfo}
+          onToggleInfo={() => setShowInfo(s => !s)}
+          onCloseInfo={() => setShowInfo(false)}
           onFieldChange={onFieldChange}
           onAddGroupPrice={onAddGroupPrice}
           onUpdateGroupPrice={onUpdateGroupPrice}
@@ -120,31 +117,31 @@ export const PricingStep: React.FC<PricingStepProps> = ({
           </div>
         </div>
       </div>
-
-      <AllowSingleUnitToggle form={form} onToggle={onAllowSingleUnitSaleToggle} />
     </div>
   )
 }
 
 const LoosePricingFields: React.FC<{
   form: ProductFormState
-  profit: number
-  margin: number
   groupPrices: { quantity: number; price: number }[]
+  showInfo: boolean
+  onToggleInfo: () => void
+  onCloseInfo: () => void
   onFieldChange: (field: string, value: string | boolean) => void
   onAddGroupPrice: () => void
   onUpdateGroupPrice: (i: number, field: 'quantity' | 'price', val: string) => void
   onRemoveGroupPrice: (i: number) => void
-}> = ({ form, groupPrices, onFieldChange, onAddGroupPrice, onUpdateGroupPrice, onRemoveGroupPrice }) => {
+}> = ({ form, groupPrices, showInfo, onToggleInfo, onCloseInfo, onFieldChange, onAddGroupPrice, onUpdateGroupPrice, onRemoveGroupPrice }) => {
   const allowSingle = form.allowSingleUnitSale
   const sell = parseFloat(form.sellingPrice) || 0
   const cost = parseFloat(form.costPrice) || 0
-  const computedProfit = sell - cost
-  const computedMargin = cost > 0 ? (computedProfit / cost) * 100 : 0
+  const profit = sell - cost
+  const margin = cost > 0 ? (profit / cost) * 100 : 0
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
+      {/* Buying + Selling price row */}
+      <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
         <FormField label="Buying Price / Bei ya Kununua">
           <input
             type="number" step="0.01"
@@ -152,17 +149,65 @@ const LoosePricingFields: React.FC<{
             onChange={(e) => onFieldChange('costPrice', e.target.value)}
             className={inputClass()} placeholder="0.00" />
         </FormField>
-        <FormField label="Selling Price / Bei ya Kuuzia" required>
-          <input
-            type="number" step="0.01"
-            value={form.sellingPrice}
-            disabled={!allowSingle}
-            onChange={(e) => onFieldChange('sellingPrice', e.target.value)}
-            className={inputClass(!allowSingle)} placeholder={allowSingle ? "0.00" : "Disabled"} />
-        </FormField>
+
+        <div className="relative">
+          <FormField label="Selling Price / Bei ya Kuuzia" required>
+            <input
+              type="number" step="0.01"
+              value={form.sellingPrice}
+              disabled={!allowSingle}
+              onChange={(e) => onFieldChange('sellingPrice', e.target.value)}
+              className={inputClass(!allowSingle)} placeholder={allowSingle ? "0.00" : "—"} />
+          </FormField>
+        </div>
+
+        {/* Single unit toggle + info icon */}
+        <div className="flex flex-col items-center gap-1 pb-1">
+          <button
+            type="button"
+            onClick={onFieldChange.bind(null, 'allowSingleUnitSale', !allowSingle)}
+            title="Toggle single unit sale"
+            className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors shrink-0 ${
+              allowSingle ? 'bg-brand-orange' : 'bg-slate-300 dark:bg-slate-600'
+            }`}
+          >
+            <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+              allowSingle ? 'translate-x-6' : 'translate-x-1'
+            }`} />
+          </button>
+          <button
+            type="button"
+            onClick={onToggleInfo}
+            className="text-slate-400 hover:text-brand-orange transition-colors"
+          >
+            <Info size={14} />
+          </button>
+        </div>
       </div>
 
-      {/* Profit margin — shown when single unit sale is allowed, both prices filled */}
+      {/* Info popover */}
+      {showInfo && (
+        <div className="relative">
+          <div className="absolute right-0 top-0 z-50 w-64 rounded-xl border border-border-color dark:border-slate-600 bg-bg-card dark:bg-slate-800 shadow-xl p-3 text-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="font-bold text-text-primary dark:text-slate-100">
+                Allow Single Unit Sale
+              </p>
+              <button onClick={onCloseInfo} className="text-slate-400 hover:text-slate-600">
+                <X size={12} />
+              </button>
+            </div>
+            <p className="text-text-muted dark:text-slate-400 leading-relaxed">
+              When <strong>ON</strong>, this item can be sold individually at the selling price above. A price selection dialog will appear in POS when group prices are also set.
+            </p>
+            <p className="text-text-muted dark:text-slate-400 leading-relaxed">
+              When <strong>OFF</strong>, the item is sold using bulk/group prices only — the individual selling price is ignored.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Profit margin — shown when toggle is on and both prices are filled */}
       {allowSingle && sell > 0 && cost > 0 && (
         <div className="flex items-center gap-3 px-3 py-2 bg-slate-50 dark:bg-slate-700/40 rounded-xl border border-border-color dark:border-slate-600">
           <div className="flex-1">
@@ -170,9 +215,9 @@ const LoosePricingFields: React.FC<{
               Profit Margin
             </p>
             <p className="text-sm font-black text-green-600 dark:text-green-400">
-              KES {computedProfit.toFixed(2)}
+              KES {profit.toFixed(2)}
               <span className="ml-2 text-xs font-semibold text-green-500 dark:text-green-500">
-                ({computedMargin.toFixed(1)}%)
+                (+{margin.toFixed(1)}%)
               </span>
             </p>
           </div>
