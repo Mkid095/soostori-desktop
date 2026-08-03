@@ -68,7 +68,7 @@ export function buildProductData(
     stockQuantity: parseInt(form.stockQuantity) || 0,
     lowStockThreshold: parseInt(form.lowStockThreshold) || 10,
     trackInventory: form.trackInventory,
-    allowSingleUnitSale: mode === 'loose' ? form.allowSingleUnitSale : false,
+    allowSingleUnitSale: form.allowSingleUnitSale,
     unitsPerPackage: mode === 'bulk' && form.unitsPerPackage ? parseInt(form.unitsPerPackage) : undefined,
     boxBuyingPrice: mode === 'bulk' && form.boxBuyingPrice ? parseFloat(form.boxBuyingPrice) : undefined,
     bulkSellingPrice: mode === 'bulk' && form.bulkSellingPrice ? parseFloat(form.bulkSellingPrice) : undefined,
