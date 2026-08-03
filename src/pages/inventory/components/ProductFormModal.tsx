@@ -49,7 +49,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-800 w-full max-w-xl rounded-2xl shadow-xl max-h-[90vh] flex flex-col">
+      <div className="bg-white dark:bg-slate-800 w-full max-w-xl rounded-2xl shadow-xl max-h-[90vh] flex flex-col px-4">
 
         {/* Header */}
         <div className="shrink-0 px-5 py-3.5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
