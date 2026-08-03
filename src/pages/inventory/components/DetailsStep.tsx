@@ -1,11 +1,11 @@
+import { Zap } from 'lucide-react'
 import { FormField } from '../../../components/shared/FormField'
 import { ProductFormImage } from './ProductFormImage'
-import { ProductFormSkuBarcode } from './ProductFormSkuBarcode'
 import { CategoryInlineAdd } from './CategoryInlineAdd'
 import { UNITS } from '../constants'
+import { useEffect } from 'react'
 import type { Category } from '../../../lib/types'
 import type { ProductFormState } from '../hooks/productFormMappers'
-import { useEffect } from 'react'
 
 interface DetailsStepProps {
   form: ProductFormState
@@ -33,7 +33,7 @@ export const DetailsStep: React.FC<DetailsStepProps> = ({
   onFieldChange, onImageSelect, onClearImage, onGenerateBarcode,
   onShowAddCategory, onNewCategoryName, onNewCategoryColor, onAddCategory,
 }) => {
-  // Barcode auto-focus with 300ms delay
+  // Barcode auto-focus with 300ms delay — scanner input time
   useEffect(() => {
     if (barcodeInputRef.current && form.barcode === '' && !showAddCategory) {
       const timer = setTimeout(() => barcodeInputRef.current?.focus(), 300)
@@ -47,6 +47,14 @@ export const DetailsStep: React.FC<DetailsStepProps> = ({
       onShowAddCategory(true)
     } else {
       onFieldChange('categoryId', val)
+    }
+  }
+
+  // Prevent Enter on barcode from submitting the form
+  const handleBarcodeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      e.currentTarget.blur()
     }
   }
 
@@ -77,16 +85,16 @@ export const DetailsStep: React.FC<DetailsStepProps> = ({
         onClear={onClearImage}
       />
 
-      <ProductFormSkuBarcode
-        sku={form.sku}
-        barcode={form.barcode}
-        barcodeInputRef={barcodeInputRef}
-        onSkuChange={(v) => onFieldChange('sku', v)}
-        onBarcodeChange={(v) => onFieldChange('barcode', v)}
-        onGenerate={onGenerateBarcode}
-      />
-
       <div className="grid grid-cols-2 gap-3">
+        <FormField label="SKU">
+          <input type="text" value={form.sku}
+            onChange={(e) => onFieldChange('sku', e.target.value.toUpperCase())}
+            className="w-full bg-white dark:bg-slate-800 border border-border-color
+              dark:border-slate-600 rounded-xl py-2.5 px-3.5 font-semibold
+              text-text-primary dark:text-slate-100 focus:border-brand-orange
+              focus:ring-2 focus:ring-orange-100 dark:focus:ring-orange-900/30 outline-none"
+            placeholder="SKU-001" />
+        </FormField>
         <FormField label="Category / Kategoria" hint="Optional grouping">
           <div className="space-y-2">
             <select
@@ -116,7 +124,9 @@ export const DetailsStep: React.FC<DetailsStepProps> = ({
             )}
           </div>
         </FormField>
+      </div>
 
+      <div className="grid grid-cols-2 gap-3">
         <FormField label="Unit / Uniti">
           <select
             value={form.unit}
@@ -131,6 +141,35 @@ export const DetailsStep: React.FC<DetailsStepProps> = ({
           </select>
         </FormField>
       </div>
+
+      {/* Barcode — last field, auto-focus for scanner, Enter does NOT submit */}
+      <FormField label="Barcode / Kodi ya Bar" hint="Scan barcode or tap the zap button to auto-generate">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={form.barcode}
+            ref={barcodeInputRef}
+            onChange={(e) => onFieldChange('barcode', e.target.value.toUpperCase())}
+            onKeyDown={handleBarcodeKeyDown}
+            className="flex-1 bg-white dark:bg-slate-800 border border-border-color
+              dark:border-slate-600 rounded-xl py-2.5 px-3.5 font-semibold text-xs
+              text-text-primary dark:text-slate-100 focus:border-brand-orange
+              focus:ring-2 focus:ring-orange-100 dark:focus:ring-orange-900/30 outline-none
+              min-w-0"
+            placeholder="Scan or type..."
+          />
+          <button
+            type="button"
+            onClick={onGenerateBarcode}
+            className="w-10 h-10 bg-orange-50 dark:bg-orange-900/30 text-brand-orange
+              rounded-xl flex items-center justify-center hover:bg-orange-100
+              dark:hover:bg-orange-900/50 flex-shrink-0 transition-colors"
+            title="Auto-generate barcode"
+          >
+            <Zap size={16} />
+          </button>
+        </div>
+      </FormField>
     </div>
   )
 }

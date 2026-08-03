@@ -78,7 +78,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
         {/* Form body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
-          <div className="px-5 py-4">
+          <div className="py-4">
             {step === 0 && <TypeStep mode={form.mode} onModeChange={form.setMode} />}
 
             {step === 1 && (
