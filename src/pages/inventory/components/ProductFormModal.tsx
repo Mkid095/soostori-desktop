@@ -76,9 +76,9 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
         {/* Step indicator */}
         {!isEditing && <StepIndicator steps={STEPS} currentStep={step} />}
 
-        {/* Form body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
-          <div className="py-4">
+        {/* Form body — scrolls, footer stays fixed */}
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <form onSubmit={handleSubmit} className="py-4">
             {step === 0 && <TypeStep mode={form.mode} onModeChange={form.setMode} />}
 
             {step === 1 && (
@@ -118,15 +118,15 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                 onGenerateBarcode={form.generateBarcode}
               />
             )}
-          </div>
+          </form>
+        </div>
 
-          <FormNavigationFooter
+        <FormNavigationFooter
             step={step} totalSteps={STEPS.length}
             isSaving={isSaving} isValid={form.isValid()}
             isEditing={isEditing} canGoNext={canGoNext()}
             onBack={handleBack} onCancel={onClose} onNext={handleNext}
           />
-        </form>
       </div>
     </div>
   )
