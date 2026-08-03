@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { Store } from 'lucide-react'
+import { useTranslation } from '../../../lib/useTranslation'
 
 const About: React.FC = () => {
+  const { t } = useTranslation()
   const [version, setVersion] = useState('')
   const platform = window.electronAPI.app.getPlatform()
 
@@ -17,33 +19,33 @@ const About: React.FC = () => {
         </div>
         <div>
           <h2 className="text-xl font-black text-slate-800">Soostori POS</h2>
-          <p className="text-sm text-slate-400">Point of Sale Desktop App</p>
+          <p className="text-sm text-slate-400">{t('set.posDesktopApp')}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="p-4 bg-slate-50 rounded-xl">
-          <p className="text-xs text-slate-400 uppercase font-bold tracking-wider">Version</p>
+          <p className="text-xs text-slate-400 uppercase font-bold tracking-wider">{t('set.version')}</p>
           <p className="text-lg font-black text-slate-700 mt-1">{version || '1.0.0'}</p>
         </div>
         <div className="p-4 bg-slate-50 rounded-xl">
-          <p className="text-xs text-slate-400 uppercase font-bold tracking-wider">Platform</p>
+          <p className="text-xs text-slate-400 uppercase font-bold tracking-wider">{t('set.platform')}</p>
           <p className="text-lg font-black text-slate-700 mt-1 capitalize">{platform}</p>
         </div>
       </div>
 
       <div className="p-4 bg-orange-50 rounded-xl">
         <p className="text-sm font-semibold text-brand-orange">
-          Built with Electron + React
+          {t('set.builtWithElectron')}
         </p>
         <p className="text-xs text-slate-500 mt-1">
-          Offline-first SQLite database
+          {t('set.offlineFirstSQLite')}
         </p>
       </div>
 
       <div className="text-xs text-slate-400 space-y-1">
-        <p>© 2024 Soostori. All rights reserved.</p>
-        <p>Powered by Soostori Technologies</p>
+        <p>{t('set.copyrightSoostori')}</p>
+        <p>{t('set.poweredBySoostori')}</p>
       </div>
     </div>
   )

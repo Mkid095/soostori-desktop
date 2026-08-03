@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import { Usb } from 'lucide-react'
 import { ConnectionStatus, ActionButton, PortSelect, BaudRateSelect } from './SharedButtons'
+import { useTranslation } from '../../../lib/useTranslation'
 
 interface ScannerSettingsProps {
   onClose: () => void
 }
 
 const ScannerSettings: React.FC<ScannerSettingsProps> = ({ onClose }) => {
+  const { t } = useTranslation()
   const [scannerType, setScannerType] = useState<'keyboard' | 'serial'>('keyboard')
   const [selectedPort, setSelectedPort] = useState('')
   const [baudRate, setBaudRate] = useState(9600)
@@ -75,30 +77,30 @@ const ScannerSettings: React.FC<ScannerSettingsProps> = ({ onClose }) => {
       <ConnectionStatus status={connectionStatus} port={autoDetectedPort || undefined} onDisconnect={handleDisconnect} />
 
       <div className="p-4 bg-slate-50 rounded-xl">
-        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Scanner Mode</label>
+        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">{t('set.scannerMode')}</label>
         <div className="grid grid-cols-2 gap-2">
           <button onClick={handleKeyboardMode} className={`p-3 rounded-xl border-2 flex flex-col items-center gap-1 ${scannerType === 'keyboard' ? 'border-brand-orange bg-orange-50 text-brand-orange' : 'border-slate-200 text-slate-500'}`}>
-            <span className="text-xs font-bold">Keyboard Wedge</span><span className="text-[10px] text-slate-400">Always active</span>
+            <span className="text-xs font-bold">{t('set.keyboardWedge')}</span><span className="text-[10px] text-slate-400">{t('set.alwaysActive')}</span>
           </button>
           <button className={`p-3 rounded-xl border-2 flex flex-col items-center gap-1 ${scannerType === 'serial' ? 'border-brand-orange bg-orange-50 text-brand-orange' : 'border-slate-200 text-slate-500'}`}>
-            <span className="text-xs font-bold">Serial Port</span><span className="text-[10px] text-slate-400">RS232 / USB</span>
+            <span className="text-xs font-bold">{t('set.serialPort')}</span><span className="text-[10px] text-slate-400">{t('set.rs232USB')}</span>
           </button>
         </div>
-        {scannerType === 'keyboard' && <p className="text-xs text-slate-500 mt-2 text-center">Keyboard wedge is always on. No setup needed.</p>}
+        {scannerType === 'keyboard' && <p className="text-xs text-slate-500 mt-2 text-center">{t('set.keyboardWedgeAlwaysOn')}</p>}
       </div>
 
-      <ActionButton onClick={handleAutoDetect} disabled={isAutoDetecting} loading={isAutoDetecting} icon={<Usb size={16} />} label={isAutoDetecting ? 'Detecting...' : 'Auto-Detect Scanner'} />
+      <ActionButton onClick={handleAutoDetect} disabled={isAutoDetecting} loading={isAutoDetecting} icon={<Usb size={16} />} label={isAutoDetecting ? t('set.detecting') : t('set.autoDetectScanner')} />
 
-      <div className="relative"><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200" /></div><div className="relative flex justify-center"><span className="bg-white px-3 text-xs text-slate-400 font-bold">OR MANUAL SETUP</span></div></div>
+      <div className="relative"><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200" /></div><div className="relative flex justify-center"><span className="bg-white px-3 text-xs text-slate-400 font-bold">{t('set.orManualSetup')}</span></div></div>
 
       <PortSelect ports={ports} selectedPort={selectedPort} onPortChange={setSelectedPort} onRefresh={loadPorts} />
       <BaudRateSelect value={baudRate} onChange={setBaudRate} />
-      <ActionButton onClick={handleConnect} disabled={!selectedPort || isConnecting || connectionStatus === 'connected'} loading={isConnecting} icon={<Usb size={16} />} label={isConnecting ? 'Connecting...' : 'Connect Scanner'} />
+      <ActionButton onClick={handleConnect} disabled={!selectedPort || isConnecting || connectionStatus === 'connected'} loading={isConnecting} icon={<Usb size={16} />} label={isConnecting ? t('set.connecting') : t('set.connectScanner')} />
 
       <div className="p-4 bg-slate-50 rounded-xl">
-        <p className="text-xs text-slate-500"><strong>Tip:</strong> Most USB barcode scanners work as keyboard wedge. For RS232/serial scanners, use auto-detect or manual setup.</p>
+        <p className="text-xs text-slate-500"><strong>{t('set.tip')}</strong> {t('set.mostUSBScaners')}</p>
       </div>
-      <ActionButton onClick={onClose} icon={<></>} label="Close" variant="secondary" />
+      <ActionButton onClick={onClose} icon={<></>} label={t('action.close')} variant="secondary" />
     </div>
   )
 }

@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import { Printer, Monitor, Usb } from 'lucide-react'
 import { ConnectionStatus, ActionButton, PortSelect, BaudRateSelect } from './SharedButtons'
+import { useTranslation } from '../../../lib/useTranslation'
 
 interface PrinterSettingsProps {
   onClose: () => void
 }
 
 const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
+  const { t } = useTranslation()
   const [printerType, setPrinterType] = useState<'escpos' | 'system'>('escpos')
   const [selectedPort, setSelectedPort] = useState('')
   const [baudRate, setBaudRate] = useState(9600)
@@ -30,8 +32,8 @@ const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
   const handleTestPrint = async () => { setIsTesting(true); try { await window.electronAPI.hw.testPrint() } finally { setIsTesting(false) } }
 
   const printerTypes = [
-    { value: 'escpos', label: 'Thermal (ESC/POS)', icon: Printer },
-    { value: 'system', label: 'System Print', icon: Monitor },
+    { value: 'escpos', labelKey: 'set.thermalEscPos', icon: Printer },
+    { value: 'system', labelKey: 'set.systemPrint', icon: Monitor },
   ]
 
   return (
@@ -39,11 +41,11 @@ const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
       <ConnectionStatus status={connectionStatus} port={selectedPort ? `${selectedPort} @ ${baudRate} baud` : undefined} onDisconnect={handleDisconnect} />
 
       <div>
-        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Printer Type</label>
+        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t('set.printerType')}</label>
         <div className="grid grid-cols-2 gap-2">
-          {printerTypes.map(({ value, label, icon: Icon }) => (
+          {printerTypes.map(({ value, labelKey, icon: Icon }) => (
             <button key={value} onClick={() => setPrinterType(value as 'escpos' | 'system')} className={`p-3 rounded-xl border-2 flex items-center gap-2 ${printerType === value ? 'border-brand-orange bg-orange-50 text-brand-orange' : 'border-slate-200 text-slate-500'}`}>
-              <Icon size={16} /><span className="text-xs font-bold">{label}</span>
+              <Icon size={16} /><span className="text-xs font-bold">{t(labelKey as any)}</span>
             </button>
           ))}
         </div>
@@ -53,20 +55,20 @@ const PrinterSettings: React.FC<PrinterSettingsProps> = ({ onClose }) => {
         <>
           <PortSelect ports={ports} selectedPort={selectedPort} onPortChange={setSelectedPort} onRefresh={loadPorts} />
           <BaudRateSelect value={baudRate} onChange={setBaudRate} />
-          <ActionButton onClick={handleConnect} disabled={!selectedPort || isConnecting || connectionStatus === 'connected'} loading={isConnecting} icon={<Usb size={16} />} label={isConnecting ? 'Connecting...' : 'Connect Printer'} />
+          <ActionButton onClick={handleConnect} disabled={!selectedPort || isConnecting || connectionStatus === 'connected'} loading={isConnecting} icon={<Usb size={16} />} label={isConnecting ? t('set.connecting') : t('set.connectPrinter')} />
           {connectionStatus === 'connected' && (
-            <ActionButton onClick={handleTestPrint} disabled={isTesting} loading={isTesting} icon={<Printer size={14} />} label={isTesting ? 'Printing...' : 'Test Print'} variant="secondary" />
+            <ActionButton onClick={handleTestPrint} disabled={isTesting} loading={isTesting} icon={<Printer size={14} />} label={isTesting ? t('set.printing') : t('set.testPrint')} variant="secondary" />
           )}
         </>
       )}
 
       {printerType === 'system' && (
         <div className="p-4 bg-slate-50 rounded-xl">
-          <p className="text-sm font-semibold text-slate-600">System print dialog will open when you print a receipt.</p>
+          <p className="text-sm font-semibold text-slate-600">{t('set.systemPrintDialog')}</p>
         </div>
       )}
 
-      <ActionButton onClick={onClose} icon={<></>} label="Close" variant="secondary" />
+      <ActionButton onClick={onClose} icon={<></>} label={t('action.close')} variant="secondary" />
     </div>
   )
 }
