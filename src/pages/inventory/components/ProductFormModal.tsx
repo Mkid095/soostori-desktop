@@ -5,6 +5,7 @@ import { TypeStep } from './TypeStep'
 import { DetailsStep } from './DetailsStep'
 import { PricingStep } from './PricingStep'
 import { DistributorStep } from './DistributorStep'
+import { BarcodeStep } from './BarcodeStep'
 import { StepIndicator } from '../../../components/shared/StepIndicator'
 import { FormNavigationFooter } from './FormNavigationFooter'
 import type { Product, Category } from '../../../lib/types'
@@ -23,7 +24,8 @@ const STEPS = [
   { number: 0, label: 'Type', labelSw: 'Aina' },
   { number: 1, label: 'Details', labelSw: 'Maelezo' },
   { number: 2, label: 'Pricing & Stock', labelSw: 'Bei na Hisa' },
-  { number: 3, label: 'Barcode & Distributor', labelSw: 'Kodi na Msambazaji' },
+  { number: 3, label: 'Barcode', labelSw: 'Kodi' },
+  { number: 4, label: 'Distributor', labelSw: 'Msambazaji' },
 ]
 
 export const ProductFormModal: React.FC<ProductFormModalProps> = ({
@@ -111,11 +113,18 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             )}
 
             {step === 3 && (
-              <DistributorStep
+              <BarcodeStep
                 form={form.form}
                 barcodeInputRef={form.barcodeInputRef}
                 onFieldChange={form.updateField}
                 onGenerateBarcode={form.generateBarcode}
+              />
+            )}
+
+            {step === 4 && (
+              <DistributorStep
+                form={form.form}
+                onFieldChange={form.updateField}
               />
             )}
           </form>
