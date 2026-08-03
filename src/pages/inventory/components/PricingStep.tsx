@@ -27,12 +27,12 @@ export const PricingStep: React.FC<PricingStepProps> = ({
   const [tab, setTab] = useState<'loose' | 'bulk'>(mode)
 
   return (
-    <div className="space-y-4">
-      <div className="text-center mb-4">
-        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-1">
+    <div className="pt-2 pb-2 space-y-4">
+      <div className="text-center pb-1">
+        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
           Pricing / Bei
         </h3>
-        <p className="text-xs text-slate-500 dark:text-slate-400">Set buying and selling prices</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Set buying and selling prices</p>
       </div>
 
       {mode === 'bulk' && (
@@ -40,7 +40,7 @@ export const PricingStep: React.FC<PricingStepProps> = ({
           {([
             { value: 'loose' as const, label: 'Unit Price', icon: Layers },
             { value: 'bulk' as const, label: 'Bulk / Box', icon: Box },
-          ]).map(({ value, label, icon: Icon }) => (
+          ] as const).map(({ value, label, icon: Icon }) => (
             <button key={value} type="button" onClick={() => setTab(value)}
               className={`flex-1 py-2 rounded-lg font-bold text-xs flex items-center
                 justify-center gap-1.5 transition-all ${
@@ -90,7 +90,7 @@ const LoosePricingFields: React.FC<{
       </FormField>
       <FormField label="Selling Price / Bei ya Kuuzia" required>
         <input type="number" step="0.01" value={form.sellingPrice}
-          onChange={(e) => onFieldChange('sellingPrice', e.target.value)} required
+          onChange={(e) => onFieldChange('sellingPrice', e.target.value)}
           className="w-full bg-white dark:bg-slate-800 border border-border-color
             dark:border-slate-600 rounded-xl py-2.5 px-3.5 font-semibold
             text-text-primary dark:text-slate-100 focus:border-brand-orange

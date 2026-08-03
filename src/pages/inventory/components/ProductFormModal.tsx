@@ -49,68 +49,71 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-800 w-full max-w-2xl rounded-2xl shadow-xl max-h-[90vh] flex flex-col">
+      <div className="bg-white dark:bg-slate-800 w-full max-w-xl rounded-2xl shadow-xl max-h-[90vh] flex flex-col">
 
         {/* Header */}
-        <div className="shrink-0 px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center
-              ${isEditing ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-500' : 'bg-brand-orange text-white'}`}>
-              {isEditing ? <Edit size={18} /> : <Plus size={18} />}
+        <div className="shrink-0 px-5 py-3.5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+              isEditing ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-500' : 'bg-brand-orange text-white'
+            }`}>
+              {isEditing ? <Edit size={16} /> : <Plus size={16} />}
             </div>
             <div>
-              <h2 className="font-bold text-slate-800 dark:text-slate-100">
+              <h2 className="font-bold text-sm text-slate-800 dark:text-slate-100">
                 {isEditing ? 'Edit Product' : 'Register New Product'}
               </h2>
-              <p className="text-xs text-slate-400 dark:text-slate-500">
+              <p className="text-[10px] text-slate-400 dark:text-slate-500">
                 {isEditing ? 'Update details' : 'Fill in the details'}
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full">
-            <X size={20} className="text-slate-400 dark:text-slate-500" />
+          <button onClick={onClose} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
+            <X size={16} className="text-slate-400 dark:text-slate-500" />
           </button>
         </div>
 
         {/* Step indicator */}
         {!isEditing && <StepIndicator steps={STEPS} currentStep={step} />}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5">
-          {step === 0 && <TypeStep mode={form.mode} onModeChange={form.setMode} />}
+        {/* Form body */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+          <div className="px-5 py-4">
+            {step === 0 && <TypeStep mode={form.mode} onModeChange={form.setMode} />}
 
-          {step === 1 && (
-            <DetailsStep
-              form={form.form} categories={categories}
-              imagePreview={form.imagePreview} fileInputRef={form.fileInputRef}
-              barcodeInputRef={form.barcodeInputRef}
-              showAddCategory={form.showAddCategory}
-              newCategoryName={form.newCategoryName} newCategoryColor={form.newCategoryColor}
-              addingCategory={form.addingCategory}
-              onFieldChange={form.updateField}
-              onImageSelect={form.handleImageSelect} onClearImage={form.clearImage}
-              onGenerateBarcode={form.generateBarcode}
-              onShowAddCategory={form.setShowAddCategory}
-              onNewCategoryName={form.setNewCategoryName}
-              onNewCategoryColor={form.setNewCategoryColor}
-              onAddCategory={() => form.handleAddCategory(onAddCategory)}
-            />
-          )}
+            {step === 1 && (
+              <DetailsStep
+                form={form.form} categories={categories}
+                imagePreview={form.imagePreview} fileInputRef={form.fileInputRef}
+                barcodeInputRef={form.barcodeInputRef}
+                showAddCategory={form.showAddCategory}
+                newCategoryName={form.newCategoryName} newCategoryColor={form.newCategoryColor}
+                addingCategory={form.addingCategory}
+                onFieldChange={form.updateField}
+                onImageSelect={form.handleImageSelect} onClearImage={form.clearImage}
+                onGenerateBarcode={form.generateBarcode}
+                onShowAddCategory={form.setShowAddCategory}
+                onNewCategoryName={form.setNewCategoryName}
+                onNewCategoryColor={form.setNewCategoryColor}
+                onAddCategory={() => form.handleAddCategory(onAddCategory)}
+              />
+            )}
 
-          {step === 2 && (
-            <PricingStep
-              mode={form.mode} form={form.form} costPerUnit={form.costPerUnit}
-              groupPrices={form.groupPrices}
-              onFieldChange={form.updateField as (field: string, value: string) => void}
-              onBulkPriceChange={form.handleBulkPriceChange}
-              onAllowSingleUnitSaleToggle={() => form.updateField('allowSingleUnitSale', !form.form.allowSingleUnitSale)}
-              onAddGroupPrice={form.addGroupPrice}
-              onUpdateGroupPrice={form.updateGroupPrice}
-              onRemoveGroupPrice={form.removeGroupPrice}
-            />
-          )}
+            {step === 2 && (
+              <PricingStep
+                mode={form.mode} form={form.form} costPerUnit={form.costPerUnit}
+                groupPrices={form.groupPrices}
+                onFieldChange={form.updateField as (field: string, value: string) => void}
+                onBulkPriceChange={form.handleBulkPriceChange}
+                onAllowSingleUnitSaleToggle={() => form.updateField('allowSingleUnitSale', !form.form.allowSingleUnitSale)}
+                onAddGroupPrice={form.addGroupPrice}
+                onUpdateGroupPrice={form.updateGroupPrice}
+                onRemoveGroupPrice={form.removeGroupPrice}
+              />
+            )}
 
-          {step === 3 && <StockStep form={form.form} onFieldChange={form.updateField} />}
+            {step === 3 && <StockStep form={form.form} onFieldChange={form.updateField} />}
+          </div>
 
           <FormNavigationFooter
             step={step} totalSteps={STEPS.length}

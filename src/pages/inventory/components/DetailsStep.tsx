@@ -34,7 +34,7 @@ export const DetailsStep: React.FC<DetailsStepProps> = ({
   onShowAddCategory, onNewCategoryName, onNewCategoryColor, onAddCategory,
 }) => {
   return (
-    <div className="space-y-4">
+    <div className="pt-2 pb-2 space-y-4">
       <FormField
         label="Product Name / Jina la Bidhaa"
         required
@@ -71,12 +71,12 @@ export const DetailsStep: React.FC<DetailsStepProps> = ({
 
       <div className="grid grid-cols-2 gap-3">
         <FormField label="Category /Kategoria" hint="Optional grouping">
-          <div className="flex gap-1">
+          <div className="flex gap-2">
             <select
               value={form.categoryId}
               onChange={(e) => onFieldChange('categoryId', e.target.value)}
               className="flex-1 bg-white dark:bg-slate-800 border border-border-color
-                dark:border-slate-600 rounded-xl py-2.5 px-3.5 font-semibold
+                dark:border-slate-600 rounded-xl py-2.5 px-3 font-semibold
                 text-text-primary dark:text-slate-100 focus:border-brand-orange
                 outline-none text-sm min-w-0"
             >
@@ -90,7 +90,7 @@ export const DetailsStep: React.FC<DetailsStepProps> = ({
               onClick={() => onShowAddCategory(!showAddCategory)}
               className="w-10 h-10 bg-slate-100 dark:bg-slate-700 text-slate-500
                 dark:text-slate-300 rounded-xl flex items-center justify-center
-                hover:bg-slate-200 dark:hover:bg-slate-600 flex-shrink-0"
+                hover:bg-slate-200 dark:hover:bg-slate-600 flex-shrink-0 transition-colors"
             >
               <Plus size={16} />
             </button>
@@ -113,7 +113,7 @@ export const DetailsStep: React.FC<DetailsStepProps> = ({
             value={form.unit}
             onChange={(e) => onFieldChange('unit', e.target.value)}
             className="w-full bg-white dark:bg-slate-800 border border-border-color
-              dark:border-slate-600 rounded-xl py-2.5 px-3.5 font-semibold
+              dark:border-slate-600 rounded-xl py-2.5 px-3 font-semibold
               text-text-primary dark:text-slate-100 focus:border-brand-orange outline-none text-sm"
           >
             {UNITS.map(u => (
