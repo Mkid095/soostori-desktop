@@ -102,6 +102,7 @@ export interface Customer {
   email?: string
   address?: string
   notes?: string
+  idNumber?: string
   isActive: boolean
   createdAt: string
   updatedAt: string

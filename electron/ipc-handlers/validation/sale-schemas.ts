@@ -23,6 +23,7 @@ export const saleCreateSchema = z.object({
   customerId: z.string().optional(),
   customerName: z.string().optional(),
   customerPhone: z.string().optional(),
+  customerIdNumber: z.string().optional(),
   items: z.array(saleItemSchema).min(1, 'At least one item is required'),
 })
 

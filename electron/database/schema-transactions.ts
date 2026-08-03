@@ -31,6 +31,7 @@ export function createTransactionTables(): void {
       discount_amount REAL DEFAULT 0, tax_amount REAL DEFAULT 0,
       total_amount REAL NOT NULL, paid_amount REAL NOT NULL,
       payment_method TEXT DEFAULT 'cash', note TEXT,
+      customer_id_number TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     )

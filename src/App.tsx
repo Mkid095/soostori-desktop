@@ -11,6 +11,7 @@ import { NetworkStatusProvider } from './lib/network-status'
 import { ThemeProvider } from './lib/theme-context'
 import { LanguageProvider } from './lib/i18n-context'
 import { dispatchHeaderAction } from './lib/header-controls-bus'
+import LoginScreen from './components/LoginScreen'
 import Settings from './pages/settings/Settings'
 import POS from './pages/pos/POS'
 import Inventory from './pages/inventory/Inventory'
@@ -56,6 +57,24 @@ const App: React.FC = () => {
   const [inventorySearch, setInventorySearch] = useState('')
   const [debtSearch, setDebtSearch] = useState('')
   const [reportsDateFilter, setReportsDateFilter] = useState('today')
+  const [showLogin, setShowLogin] = useState(true)
+  const [loginResolved, setLoginResolved] = useState(false)
+
+  // Check PIN requirement on mount
+  useEffect(() => {
+    const checkLoginRequired = async () => {
+      try {
+        const defaults = await window.electronAPI.db.getAppSettingsDefaults()
+        if (defaults.pinSet !== 1) { setShowLogin(false); setLoginResolved(true); return }
+        const today = new Date().toDateString()
+        const lastLogin = localStorage.getItem('lastLoginDate')
+        if (lastLogin !== today) { setShowLogin(true) }
+        else { setShowLogin(false) }
+      } catch { setShowLogin(false) }
+      setLoginResolved(true)
+    }
+    checkLoginRequired()
+  }, [])
 
   useEffect(() => {
     const handler = (event: Event) => {
@@ -116,6 +135,10 @@ const App: React.FC = () => {
 
   const handleOpenSettings = useCallback(() => {
     setCurrentPage('settings')
+  }, [])
+
+  const handleLogin = useCallback(() => {
+    setShowLogin(false)
   }, [])
 
   // Page-specific header controls rendered through the shared HeaderControls component
@@ -184,6 +207,7 @@ const App: React.FC = () => {
               </div>
             </div>
             <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+            {loginResolved && showLogin && <LoginScreen onLogin={handleLogin} />}
           </ToastContext.Provider>
         </NetworkStatusProvider>
       </LanguageProvider>

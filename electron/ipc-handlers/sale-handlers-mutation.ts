@@ -8,11 +8,14 @@ interface ProductStockRow { stock_quantity: number | null }
 interface HeldSaleRow { id: string; name: string | null; cart_items: string; payment_method: string | null; created_at: string }
 
 export function registerSaleMutationHandlers(): void {
-  // Ensure items_summary column exists for older DBs
+  // Ensure items_summary and customer_id_number columns exist for older DBs
   const db = getDatabase()
-  const summaryCol = db.prepare(`PRAGMA table_info(sales)`).all() as Array<{ name: string }>
-  if (!summaryCol.some(c => c.name === 'items_summary')) {
+  const tableInfo = db.prepare(`PRAGMA table_info(sales)`).all() as Array<{ name: string }>
+  if (!tableInfo.some(c => c.name === 'items_summary')) {
     db.exec(`ALTER TABLE sales ADD COLUMN items_summary TEXT`)
+  }
+  if (!tableInfo.some(c => c.name === 'customer_id_number')) {
+    db.exec(`ALTER TABLE sales ADD COLUMN customer_id_number TEXT`)
   }
 
   ipcMain.handle('db:sales:create', (_event, rawSaleData: unknown) => {
@@ -28,12 +31,12 @@ export function registerSaleMutationHandlers(): void {
     const itemsSummary = `${itemsCount} item${itemsCount === 1 ? '' : 's'}`
 
     database.prepare(`
-      INSERT INTO sales (id, type, status, subtotal, discount_amount, tax_amount, total_amount, paid_amount, payment_method, note, items_summary, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO sales (id, type, status, subtotal, discount_amount, tax_amount, total_amount, paid_amount, payment_method, note, items_summary, customer_id_number, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(saleId, saleData.type || 'retail', saleStatus, saleData.subtotal || 0, saleData.discountAmount || 0,
       saleData.taxAmount || 0, saleData.totalAmount || 0,
       saleData.paymentMethod === 'cash' ? (saleData.paidAmount || saleData.totalAmount || 0) : 0,
-      dbPaymentMethod, saleData.note || null, itemsSummary, now, now)
+      dbPaymentMethod, saleData.note || null, itemsSummary, saleData.customerIdNumber || null, now, now)
 
     const insertItem = database.prepare(`
       INSERT INTO sale_items (id, sale_id, product_id, variation_name, product_name, quantity, unit_price, discount, total_price, created_at)

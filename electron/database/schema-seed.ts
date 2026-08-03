@@ -10,6 +10,12 @@ export function seedDefaultData(): void {
     log.info('Default shop settings created')
   }
 
+  const existingAppSettings = database.prepare('SELECT id FROM app_settings WHERE id = ?').get('default')
+  if (!existingAppSettings) {
+    database.prepare(`INSERT INTO app_settings (id, default_theme, default_language, login_pin, pin_set) VALUES ('default', 'light', 'en', '0000', 0)`).run()
+    log.info('Default app settings created')
+  }
+
   const categoryCount = database.prepare('SELECT COUNT(*) as count FROM categories').get() as { count: number }
   if (categoryCount.count === 0) {
     const defaultCategories = [

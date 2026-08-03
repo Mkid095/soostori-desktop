@@ -8,9 +8,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 
+- **Reports pagination**: `useSales()` now fetches all records (no 500 limit). Reports page shows 50 per page with "Load More" button. Displays "Showing X of Y transactions" text. Sort by newest first. Note preview shown in sale list item.
+
+- **POS sale notes**: Added "Note / Memo" textarea in checkout sheet for Cash, M-Pesa, and Debt payment views. Note saved to `sales.note` column and shown in Reports sale list and SaleDetailModal.
+
+- **POS debt customer ID**: `DebtPaymentView` now requires national ID number for new debt customers (alongside name and phone). ID number stored in `customers.id_number` and `sales.customer_id_number` columns. Customer schema, create handler, and sale insert all updated.
+
 - **Inventory form dedup (inventory-dedup)**: Created `src/components/shared/FormField.tsx` wrapping label + input/textarea with consistent styling and dark mode. Replaced all inline form fields across ProductFormBody, ProductFormStock, ProductFormSkuBarcode, ProductFormDistributor, CategoryAddPanel with FormField. Merged PricingLoose and PricingBulk into single `PricingTab.tsx` with "Unit Price" and "Bulk/Box" tabs — GroupPricesEditor embedded in Bulk tab. Deleted PricingLoose.tsx and PricingBulk.tsx. All inventory form components now use semantic CSS variables with dark: variants throughout.
 
 ### Added
+
+- **PIN Login System**: Full PIN-based login with 4-digit keypad. `app_settings` table added with `default_theme`, `default_language`, `login_pin`, `pin_set` columns. When `pin_set=1`, app shows `LoginScreen` overlay on launch (app content renders blurred behind it). Same-day skip if `lastLoginDate` matches today in localStorage. Wrong PIN triggers shake animation; 3 failed attempts shows "Call admin" message. Admin reset via 6-digit key `849562` reveals new PIN setup. PIN stored in SQLite, verified via `app:settings:verifyPin` IPC. `LoginScreen.tsx` component (111 lines). Admin can set new PIN from login screen. Settings page now includes Appearance section for Default Theme (Light/Dark) and Default Language (English/Kiswahili) with live preview. IPC handlers: `app:settings:getDefaults`, `app:settings:setDefaultTheme`, `app:settings:setDefaultLanguage`, `app:settings:setPin`, `app:settings:verifyPin`, `app:settings:recordLogin`.
+
+- **i18n Translation System**: Full English/Swahili translation support via `src/lib/i18n.ts` dictionary (160 lines, ~170 translation keys covering nav, POS, inventory, reports, debt, settings, common actions/labels/errors). `LanguageProvider` in `src/lib/i18n-context.tsx` stores language in localStorage, sets `lang` attribute on document root. `useTranslation()` hook in `src/lib/useTranslation.ts`. Language toggle (Globe icon + EN/SW chip) added to `TitleBar.tsx`. Sidebar navigation (`SidebarNav.tsx`), POS page (`POS.tsx`), and POS cart (`POSCart.tsx`) all use `useTranslation()`. Real Swahili retail/POS terms (e.g., "Duka la Mauzo" for Point of Sale, "Weka Pando" for Hold).
+
+- **Language Switcher Dropdown**: Created `src/components/shared/LanguageSwitcher.tsx` (≤100 lines) replacing the separate Globe button + EN/SW chip in `TitleBar.tsx`. Shows a single pill button with Globe icon + current language code. On click, displays a dropdown with "English" and "Kiswahili" options with radio-style orange dot selection. Dropdown appears below button with proper z-index (10000), closes on outside click or Escape. Dark mode fully supported.
 
 - **Multi-step Product Form Wizard**: Transformed `ProductFormModal.tsx` into a 4-step wizard with clear step labels and progress indicator. Step 1: Type selection with large cards explaining Loose Item vs Bulk/Box in English and Swahili. Step 2: Details (name, SKU, barcode, category, image). Step 3: Pricing (buying/selling price for loose, or box quantity + prices + bulk discounts for bulk). Step 4: Stock quantity, low stock alert, track inventory toggle, and distributor info. Each step has Back/Next navigation and progress bar. Created `TypeStep.tsx`, `DetailsStep.tsx`, `PricingStep.tsx`, `StockStep.tsx`, `StepIndicator.tsx` components. All labels include Swahili translations inline (e.g., "Product Name / Jina la Bidhaa"). FormField hint prop shows Swahili translations. Full dark mode support on all components.
 

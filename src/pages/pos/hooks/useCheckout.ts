@@ -10,6 +10,7 @@ export interface CheckoutPayload {
   customerId?: string
   customerName?: string
   customerPhone?: string
+  customerIdNumber?: string
   note?: string
 }
 
@@ -25,6 +26,7 @@ export function useCheckout(cart: CartItem[], shopSettings: ShopSettings | null 
   const [debtCustomerId, setDebtCustomerId] = useState('')
   const [debtCustomerName, setDebtCustomerName] = useState('')
   const [debtCustomerPhone, setDebtCustomerPhone] = useState('')
+  const [debtCustomerIdNumber, setDebtCustomerIdNumber] = useState('')
   const [showNewCustomer, setShowNewCustomer] = useState(false)
   const paidRef = { current: false }
 
@@ -41,8 +43,6 @@ export function useCheckout(cart: CartItem[], shopSettings: ShopSettings | null 
     return m
   }, [shopSettings])
 
-  // Default to the first non-cash/debt method when M-Pesa is configured.
-  // Side effect in render (useMemo) is forbidden — do it in an effect.
   useEffect(() => {
     if (paymentMethods.length > 2) {
       const preferred = paymentMethods[2]?.v
@@ -56,27 +56,32 @@ export function useCheckout(cart: CartItem[], shopSettings: ShopSettings | null 
     if (isProcessing) return false
     if (method === 'cash') return givenAmt >= total
     if (['sendMoney', 'mpesaPaybill', 'bankPaybill', 'pochi'].includes(method)) return mpesaConfirmed
-    if (method === 'debt') return showNewCustomer ? debtCustomerName.trim().length > 0 && debtCustomerPhone.trim().length > 0 : debtCustomerId.length > 0 || (debtCustomerName.trim().length > 0 && debtCustomerPhone.trim().length > 0)
+    if (method === 'debt') {
+      if (showNewCustomer) {
+        return debtCustomerName.trim().length > 0 && debtCustomerPhone.trim().length > 0 && debtCustomerIdNumber.trim().length > 0
+      }
+      return debtCustomerId.length > 0 || (debtCustomerName.trim().length > 0 && debtCustomerPhone.trim().length > 0)
+    }
     return true
-  }, [method, givenAmt, total, mpesaConfirmed, debtCustomerId, debtCustomerName, debtCustomerPhone, showNewCustomer, isProcessing])
+  }, [method, givenAmt, total, mpesaConfirmed, debtCustomerId, debtCustomerName, debtCustomerPhone, debtCustomerIdNumber, showNewCustomer, isProcessing])
 
   const handleDebtCustomerSelect = useCallback((id: string) => {
     setDebtCustomerId(id)
     const cust = customers.find(c => c.id === id)
-    if (cust) { setDebtCustomerName(cust.name); setDebtCustomerPhone(cust.phone || '') }
+    if (cust) { setDebtCustomerName(cust.name); setDebtCustomerPhone(cust.phone || ''); setDebtCustomerIdNumber('') }
     setShowNewCustomer(false)
   }, [customers])
 
   const handleConfirm = useCallback(() => {
     if (!canConfirm) return
-    if (method === 'debt' && showNewCustomer && debtCustomerName && debtCustomerPhone) {
-      createCustomer.mutateAsync({ name: debtCustomerName.trim(), phone: debtCustomerPhone.trim() })
-        .then((c: Customer) => onPay({ method: 'debt', customerId: c?.id || debtCustomerName, customerName: debtCustomerName.trim(), customerPhone: debtCustomerPhone.trim(), note: note.trim() }))
+    if (method === 'debt' && showNewCustomer && debtCustomerName && debtCustomerPhone && debtCustomerIdNumber) {
+      createCustomer.mutateAsync({ name: debtCustomerName.trim(), phone: debtCustomerPhone.trim(), idNumber: debtCustomerIdNumber.trim() })
+        .then((c: Customer) => onPay({ method: 'debt', customerId: c?.id || debtCustomerName, customerName: debtCustomerName.trim(), customerPhone: debtCustomerPhone.trim(), customerIdNumber: debtCustomerIdNumber.trim(), note: note.trim() }))
       return
     }
     const coreMethod: 'cash' | 'mpesa' | 'debt' = method === 'debt' ? 'debt' : method === 'cash' ? 'cash' : 'mpesa'
-    onPay({ method: coreMethod, paidAmount: method === 'cash' ? givenAmt : total, customerId: debtCustomerId || undefined, customerName: debtCustomerName || undefined, customerPhone: debtCustomerPhone || undefined, note: note.trim() || undefined })
-  }, [canConfirm, method, givenAmt, total, debtCustomerId, debtCustomerName, debtCustomerPhone, note, showNewCustomer, createCustomer, onPay])
+    onPay({ method: coreMethod, paidAmount: method === 'cash' ? givenAmt : total, customerId: debtCustomerId || undefined, customerName: debtCustomerName || undefined, customerPhone: debtCustomerPhone || undefined, customerIdNumber: debtCustomerIdNumber || undefined, note: note.trim() || undefined })
+  }, [canConfirm, method, givenAmt, total, debtCustomerId, debtCustomerName, debtCustomerPhone, debtCustomerIdNumber, note, showNewCustomer, createCustomer, onPay])
 
   useEffect(() => {
     if (!isProcessing && cart.length === 0 && paidRef.current) setShowThankYou(true)
@@ -87,7 +92,7 @@ export function useCheckout(cart: CartItem[], shopSettings: ShopSettings | null 
     setMethod(m)
   }, [])
 
-  return { method, given, note, mpesaConfirmed, showThankYou, debtCustomerId, debtCustomerName, debtCustomerPhone, showNewCustomer,
+  return { method, given, note, mpesaConfirmed, showThankYou, debtCustomerId, debtCustomerName, debtCustomerPhone, debtCustomerIdNumber, showNewCustomer,
     total, givenAmt, quickAmounts, canConfirm, paymentMethods, setGiven, setNote, setMpesaConfirmed,
-    setDebtCustomerId, setDebtCustomerName, setDebtCustomerPhone, setShowNewCustomer, handleDebtCustomerSelect, handleConfirm, setMethod, onMethodChange }
+    setDebtCustomerId, setDebtCustomerName, setDebtCustomerPhone, setDebtCustomerIdNumber, setShowNewCustomer, handleDebtCustomerSelect, handleConfirm, setMethod, onMethodChange }
 }

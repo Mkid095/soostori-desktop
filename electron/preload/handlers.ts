@@ -22,7 +22,7 @@ export function exposeElectronAPI(): void {
       deleteCategory: (id: string) => ipcRenderer.invoke('db:categories:delete', id),
 
       // Sales
-      getSales: (shopId?: string, limit?: number) => ipcRenderer.invoke('db:sales:list', shopId, limit),
+      getSales: (shopId?: string, limit?: number, offset?: number) => ipcRenderer.invoke('db:sales:list', shopId, limit, offset),
       getSaleById: (id: string) => ipcRenderer.invoke('db:sales:get', id),
       createSale: (sale: any) => ipcRenderer.invoke('db:sales:create', sale),
       getSalesByDateRange: (startDate: string, endDate: string, shopId?: string) =>
@@ -43,6 +43,14 @@ export function exposeElectronAPI(): void {
       // Shop Settings
       getShopSettings: () => ipcRenderer.invoke('db:shop-settings:get'),
       updateShopSettings: (settings: any) => ipcRenderer.invoke('db:shop-settings:update', settings),
+
+      // App Settings
+      getAppSettingsDefaults: () => ipcRenderer.invoke('app:settings:getDefaults'),
+      setDefaultTheme: (theme: 'light' | 'dark') => ipcRenderer.invoke('app:settings:setDefaultTheme', theme),
+      setDefaultLanguage: (language: 'en' | 'sw') => ipcRenderer.invoke('app:settings:setDefaultLanguage', language),
+      setPin: (pin: string) => ipcRenderer.invoke('app:settings:setPin', pin),
+      verifyPin: (pin: string) => ipcRenderer.invoke('app:settings:verifyPin', pin),
+      recordLogin: () => ipcRenderer.invoke('app:settings:recordLogin'),
 
       // Customers
       getCustomers: () => ipcRenderer.invoke('db:customers:list'),

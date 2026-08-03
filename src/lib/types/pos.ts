@@ -11,6 +11,7 @@ export interface Sale {
   paidAmount: number
   paymentMethod: 'cash' | 'card' | 'transfer' | 'mobile_money' | 'mpesa' | 'debt'
   note?: string
+  customerIdNumber?: string
   createdAt: string
   updatedAt: string
   items?: SaleItem[]

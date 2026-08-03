@@ -25,6 +25,7 @@ interface SaleDbRow {
   paid_amount: number | null
   payment_method: string | null
   note: string | null
+  customer_id_number: string | null
   created_at: string
   updated_at: string
   items_summary?: string | null
@@ -57,6 +58,7 @@ function mapSale(row: SaleDbRow): Sale {
     paidAmount: row.paid_amount ?? 0,
     paymentMethod: (row.payment_method || 'cash') as Sale['paymentMethod'],
     note: row.note ?? undefined,
+    customerIdNumber: row.customer_id_number ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     items_summary: row.items_summary ?? undefined,
@@ -64,13 +66,24 @@ function mapSale(row: SaleDbRow): Sale {
   }
 }
 
-export function useSales(limit: number = 100) {
+export function useSales(limit?: number) {
   return useQuery<Sale[]>({
     queryKey: ['sales', limit],
     queryFn: async () => {
       const rows = await api.getSales(undefined, limit) as SaleDbRow[]
       return rows.map(mapSale)
     },
+  })
+}
+
+export function useSalesTotal() {
+  return useQuery<number>({
+    queryKey: ['sales', 'total'],
+    queryFn: async () => {
+      const rows = await api.getSales(undefined, 0) as SaleDbRow[]
+      return rows.length
+    },
+    staleTime: 30_000,
   })
 }
 
@@ -99,6 +112,7 @@ export function useCreateSale() {
       customerId?: string
       customerName?: string
       customerPhone?: string
+      customerIdNumber?: string
     }) => api.createSale(sale),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales'] })

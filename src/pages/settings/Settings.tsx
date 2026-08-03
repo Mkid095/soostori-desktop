@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Store, Printer, Scan, Database, Info, Shield, ChevronRight, CreditCard } from 'lucide-react'
+import { Store, Printer, Scan, Database, Info, Shield, ChevronRight, CreditCard, Palette, Globe } from 'lucide-react'
 import SettingsModal from './components/SettingsModal'
 import ShopSettingsForm from './components/ShopSettingsForm'
 import ScannerSettings from './components/ScannerSettings'
@@ -7,6 +7,8 @@ import PrinterSettings from './components/PrinterSettings'
 import PaymentSettings from './components/PaymentSettings'
 import DataManagement from './components/DataManagement'
 import About from './components/About'
+import AppearanceSettings from './components/AppearanceSettings'
+import { useTranslation } from '../../lib/useTranslation'
 
 interface SectionCardProps {
   icon: React.ReactNode; title: string; description: string; onClick: () => void
@@ -27,29 +29,34 @@ const SectionCard: React.FC<SectionCardProps> = ({ icon, title, description, onC
   </button>
 )
 
-const sections = [
-  { id: 'shop', icon: <Store size={22} />, title: 'Shop Details', description: 'Name, address, phone, currency', badge: 'Required', badgeColor: 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-300' },
-  { id: 'payment', icon: <CreditCard size={22} />, title: 'Payment Settings', description: 'M-Pesa Till, Paybill, Account' },
-  { id: 'scanner', icon: <Scan size={22} />, title: 'Barcode Scanner', description: 'Keyboard wedge or serial port' },
-  { id: 'printer', icon: <Printer size={22} />, title: 'Printer Setup', description: 'ESC/POS thermal or system print' },
-  { id: 'data', icon: <Database size={22} />, title: 'Data Management', description: 'Export and import your data' },
-  { id: 'about', icon: <Info size={22} />, title: 'About', description: 'App version and information' },
-]
-
-const modalConfigs: Record<string, { title: string; subtitle: string; icon: React.ReactNode }> = {
-  shop: { title: 'Shop Details', subtitle: 'Shop info and receipt config', icon: <Store size={20} /> },
-  payment: { title: 'Payment Settings', subtitle: 'M-Pesa, Paybill, Account', icon: <CreditCard size={20} /> },
-  scanner: { title: 'Barcode Scanner', subtitle: 'Configure scanner', icon: <Scan size={20} /> },
-  printer: { title: 'Printer Setup', subtitle: 'Receipt printer', icon: <Printer size={20} /> },
-  data: { title: 'Data Management', subtitle: 'Backup and restore', icon: <Database size={20} /> },
-  about: { title: 'About', subtitle: 'App info', icon: <Info size={20} /> },
-}
-
 const Settings: React.FC = () => {
+  const { t } = useTranslation()
   const [activeSection, setActiveSection] = useState<string | null>(null)
+
+  const sections = [
+    { id: 'shop', icon: <Store size={22} />, title: t('set.shopDetails'), description: t('set.shopDetailsDesc'), badge: t('set.required'), badgeColor: 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-300' },
+    { id: 'appearance', icon: <Palette size={22} />, title: t('set.appearance'), description: t('set.appearanceDesc') },
+    { id: 'payment', icon: <CreditCard size={22} />, title: t('set.payment'), description: t('set.paymentSettingsDesc') },
+    { id: 'scanner', icon: <Scan size={22} />, title: t('set.scanner'), description: t('set.scannerDesc') },
+    { id: 'printer', icon: <Printer size={22} />, title: t('set.printer'), description: t('set.printerDesc') },
+    { id: 'data', icon: <Database size={22} />, title: t('set.dataManagement'), description: t('set.dataManagementDesc') },
+    { id: 'about', icon: <Info size={22} />, title: t('set.about'), description: t('set.aboutDesc') },
+  ]
+
+  const modalConfigs: Record<string, { title: string; subtitle: string; icon: React.ReactNode }> = {
+    shop: { title: t('set.shopDetails'), subtitle: t('set.shopInfoReceiptConfig'), icon: <Store size={20} /> },
+    appearance: { title: t('set.appearance'), subtitle: t('set.appearanceDesc'), icon: <Palette size={20} /> },
+    payment: { title: t('set.payment'), subtitle: t('set.mpesaPaybillAccount'), icon: <CreditCard size={20} /> },
+    scanner: { title: t('set.scanner'), subtitle: t('set.configureScanner'), icon: <Scan size={20} /> },
+    printer: { title: t('set.printer'), subtitle: t('set.receiptPrinter'), icon: <Printer size={20} /> },
+    data: { title: t('set.dataManagement'), subtitle: t('set.backupRestore'), icon: <Database size={20} /> },
+    about: { title: t('set.about'), subtitle: t('set.appInfo'), icon: <Info size={20} /> },
+  }
+
   const renderModal = () => {
     switch (activeSection) {
       case 'shop': return <ShopSettingsForm onClose={() => setActiveSection(null)} />
+      case 'appearance': return <AppearanceSettings onClose={() => setActiveSection(null)} />
       case 'payment': return <PaymentSettings onClose={() => setActiveSection(null)} />
       case 'scanner': return <ScannerSettings onClose={() => setActiveSection(null)} />
       case 'printer': return <PrinterSettings onClose={() => setActiveSection(null)} />
@@ -63,7 +70,7 @@ const Settings: React.FC = () => {
     <div className="h-full bg-bg-primary dark:bg-bg-primary flex flex-col overflow-hidden transition-colors duration-200">
       <div className="bg-bg-secondary dark:bg-bg-secondary px-4 md:px-5 py-3.5 flex items-center gap-3 border-b border-slate-200 dark:border-slate-700 shrink-0 transition-colors duration-200">
         <div className="w-9 h-9 bg-brand-orange rounded-xl flex items-center justify-center text-white"><Shield size={18} /></div>
-        <div><h1 className="text-base font-bold text-slate-800 dark:text-slate-100">Settings</h1><p className="text-xs text-slate-400 dark:text-slate-500">Configure your shop</p></div>
+        <div><h1 className="text-base font-bold text-slate-800 dark:text-slate-100">{t('set.title')}</h1><p className="text-xs text-slate-400 dark:text-slate-500">{t('set.subtitle')}</p></div>
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {sections.map((s) => <SectionCard key={s.id} icon={s.icon} title={s.title} description={s.description} badge={s.badge} badgeColor={s.badgeColor} onClick={() => setActiveSection(s.id)} />)}

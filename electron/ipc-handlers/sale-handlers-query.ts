@@ -2,7 +2,7 @@ import { ipcMain } from 'electron'
 import { getDatabase } from '../database'
 
 export function registerSaleQueryHandlers(): void {
-  ipcMain.handle('db:sales:list', (_event, _shopId?: string, limit: number = 100) => {
+  ipcMain.handle('db:sales:list', (_event, _shopId?: string, limit?: number) => {
     const db = getDatabase()
     return db.prepare(`
       SELECT s.*, GROUP_CONCAT(si.product_name || ' x' || si.quantity) as items_summary
@@ -11,7 +11,7 @@ export function registerSaleQueryHandlers(): void {
       GROUP BY s.id
       ORDER BY s.created_at DESC
       LIMIT ?
-    `).all(limit)
+    `).all(limit ?? 999999)
   })
 
   ipcMain.handle('db:sales:get', (_event, id: string) => {

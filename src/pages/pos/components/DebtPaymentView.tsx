@@ -1,5 +1,5 @@
 import React from 'react'
-import { User, Phone } from 'lucide-react'
+import { User, Phone, CreditCard } from 'lucide-react'
 import type { Customer } from '../../../lib/types'
 import { formatCurrency } from '../../../lib/formatting-currency'
 
@@ -8,18 +8,20 @@ interface DebtPaymentViewProps {
   debtCustomerId: string
   debtCustomerName: string
   debtCustomerPhone: string
+  debtCustomerIdNumber: string
   showNewCustomer: boolean
   total: number
   onSelect: (id: string) => void
   onNewName: (v: string) => void
   onNewPhone: (v: string) => void
+  onNewIdNumber: (v: string) => void
   onShowNew: () => void
   onShowExisting: () => void
 }
 
 const DebtPaymentView: React.FC<DebtPaymentViewProps> = ({
-  customers, debtCustomerId, debtCustomerName, debtCustomerPhone,
-  showNewCustomer, total, onSelect, onNewName, onNewPhone, onShowNew, onShowExisting,
+  customers, debtCustomerId, debtCustomerName, debtCustomerPhone, debtCustomerIdNumber,
+  showNewCustomer, total, onSelect, onNewName, onNewPhone, onNewIdNumber, onShowNew, onShowExisting,
 }) => (
   <div className="space-y-3 p-5 bg-amber-50 dark:bg-amber-950/40 rounded-2xl border border-amber-100 dark:border-amber-900/50 transition-colors duration-200">
     <p className="text-xs text-amber-700 dark:text-amber-300 font-semibold">
@@ -49,7 +51,7 @@ const DebtPaymentView: React.FC<DebtPaymentViewProps> = ({
       </>
     ) : (
       <div className="space-y-2 p-3 bg-white dark:bg-slate-900 rounded-xl border border-amber-200 dark:border-amber-800 transition-colors duration-200">
-        <p className="text-xs font-bold text-amber-700 dark:text-amber-300">New Customer</p>
+        <p className="text-xs font-bold text-amber-700 dark:text-amber-300">New Customer — All Fields Required</p>
         <div className="flex items-center gap-2">
           <User size={14} className="text-amber-600 shrink-0" />
           <input
@@ -68,6 +70,16 @@ const DebtPaymentView: React.FC<DebtPaymentViewProps> = ({
             placeholder="Phone number *"
             value={debtCustomerPhone}
             onChange={e => onNewPhone(e.target.value)}
+            className="flex-1 bg-slate-50 dark:bg-slate-800 border border-amber-200 dark:border-amber-800 rounded-lg py-2 px-3 text-sm font-semibold text-slate-700 dark:text-slate-100 outline-none focus:border-amber-400 transition-colors duration-200"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <CreditCard size={14} className="text-amber-600 shrink-0" />
+          <input
+            type="text"
+            placeholder="National ID number *"
+            value={debtCustomerIdNumber}
+            onChange={e => onNewIdNumber(e.target.value)}
             className="flex-1 bg-slate-50 dark:bg-slate-800 border border-amber-200 dark:border-amber-800 rounded-lg py-2 px-3 text-sm font-semibold text-slate-700 dark:text-slate-100 outline-none focus:border-amber-400 transition-colors duration-200"
           />
         </div>

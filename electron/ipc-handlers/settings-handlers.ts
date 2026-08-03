@@ -40,5 +40,49 @@ export function registerSettingsHandlers(): void {
     return db.prepare('SELECT * FROM shop_settings WHERE id = ?').get('default')
   })
 
+  // App settings IPC handlers
+  ipcMain.handle('app:settings:getDefaults', () => {
+    const db = getDatabase()
+    const row = db.prepare('SELECT default_theme, default_language, login_pin, pin_set, last_login FROM app_settings WHERE id = ?').get('default') as {
+      default_theme: string; default_language: string; login_pin: string; pin_set: number; last_login: string | null
+    } | undefined
+    if (!row) return { defaultTheme: 'light', defaultLanguage: 'en', pinSet: 0, lastLogin: null }
+    return {
+      defaultTheme: row.default_theme as 'light' | 'dark',
+      defaultLanguage: row.default_language as 'en' | 'sw',
+      pinSet: row.pin_set,
+      lastLogin: row.last_login,
+    }
+  })
+
+  ipcMain.handle('app:settings:setDefaultTheme', (_event, theme: 'light' | 'dark') => {
+    const db = getDatabase()
+    db.prepare('UPDATE app_settings SET default_theme = ?, updated_at = ? WHERE id = ?').run(theme, new Date().toISOString(), 'default')
+    return db.prepare('SELECT default_theme FROM app_settings WHERE id = ?').get('default')
+  })
+
+  ipcMain.handle('app:settings:setDefaultLanguage', (_event, language: 'en' | 'sw') => {
+    const db = getDatabase()
+    db.prepare('UPDATE app_settings SET default_language = ?, updated_at = ? WHERE id = ?').run(language, new Date().toISOString(), 'default')
+    return db.prepare('SELECT default_language FROM app_settings WHERE id = ?').get('default')
+  })
+
+  ipcMain.handle('app:settings:setPin', (_event, pin: string) => {
+    const db = getDatabase()
+    db.prepare('UPDATE app_settings SET login_pin = ?, pin_set = 1, updated_at = ? WHERE id = ?').run(pin, new Date().toISOString(), 'default')
+    return { success: true }
+  })
+
+  ipcMain.handle('app:settings:verifyPin', (_event, pin: string) => {
+    const db = getDatabase()
+    const row = db.prepare('SELECT login_pin FROM app_settings WHERE id = ?').get('default') as { login_pin: string } | undefined
+    return { valid: row?.login_pin === pin }
+  })
+
+  ipcMain.handle('app:settings:recordLogin', () => {
+    const db = getDatabase()
+    db.prepare('UPDATE app_settings SET last_login = ?, updated_at = ? WHERE id = ?').run(new Date().toISOString(), new Date().toISOString(), 'default')
+  })
+
   log.info('Settings IPC handlers registered')
 }

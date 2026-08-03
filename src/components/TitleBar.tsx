@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { Copy, Globe, Minus, Moon, Settings, Square, Sun, X } from 'lucide-react'
+import { Copy, Minus, Moon, Settings, Square, Sun, X } from 'lucide-react'
 import NotificationsDropdown from './shared/NotificationsDropdown'
 import SyncIndicator from './SyncIndicator'
 import UpdateIndicator from './UpdateIndicator'
+import LanguageSwitcher from './shared/LanguageSwitcher'
 import { useTheme } from '../lib/theme-context'
-import { useLanguage } from '../lib/i18n-context'
+import { useTranslation } from '../lib/useTranslation'
 
 interface WindowButtonProps {
   icon: React.ReactNode
@@ -20,13 +21,9 @@ const WindowButton: React.FC<WindowButtonProps> = ({ icon, label, onClick, varia
 )
 
 const TitleBar: React.FC<{ onSettingsClick: () => void }> = ({ onSettingsClick }) => {
+  const { t } = useTranslation()
   const [isMaximized, setIsMaximized] = useState(false)
   const { theme, toggleTheme } = useTheme()
-  const { language, setLanguage } = useLanguage()
-
-  const toggleLanguage = useCallback(() => {
-    setLanguage(language === 'en' ? 'sw' : 'en')
-  }, [language, setLanguage])
 
   useEffect(() => {
     let active = true
@@ -50,16 +47,13 @@ const TitleBar: React.FC<{ onSettingsClick: () => void }> = ({ onSettingsClick }
           <span className="h-4 w-px bg-border-color" aria-hidden="true" />
           <UpdateIndicator />
         </div>
-        <button type="button" onClick={toggleTheme} aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-all duration-200 hover:bg-orange-50 hover:text-brand-orange dark:hover:bg-slate-800">{theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}</button>
-        <button type="button" onClick={toggleLanguage} aria-label={`Switch to ${language === 'en' ? 'Swahili' : 'English'}`} title={`Switch to ${language === 'en' ? 'Swahili' : 'English'}`} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-all duration-200 hover:bg-orange-50 hover:text-brand-orange dark:hover:bg-slate-800">
-          <Globe size={14} />
-        </button>
-        <span className="flex h-6 min-w-[24px] items-center justify-center rounded-full border border-border-color bg-bg-tertiary px-1 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">{language === 'en' ? 'EN' : 'SW'}</span>
-        <button type="button" onClick={onSettingsClick} aria-label="Open settings" title="Settings" className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-all duration-200 hover:bg-orange-50 hover:text-brand-orange dark:hover:bg-slate-800"><Settings size={14} /></button>
+        <button type="button" onClick={toggleTheme} aria-label={theme === 'dark' ? t('app.switchToLightMode') : t('app.switchToDarkMode')} title={theme === 'dark' ? t('app.switchToLightMode') : t('app.switchToDarkMode')} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-all duration-200 hover:bg-orange-50 hover:text-brand-orange dark:hover:bg-slate-800">{theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}</button>
+        <LanguageSwitcher />
+        <button type="button" onClick={onSettingsClick} aria-label={t('app.openSettings')} title={t('set.title')} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-all duration-200 hover:bg-orange-50 hover:text-brand-orange dark:hover:bg-slate-800"><Settings size={14} /></button>
         <span className="mx-1 h-4 w-px bg-border-color" aria-hidden="true" />
-        <WindowButton icon={<Minus size={13} strokeWidth={2.5} />} label="Minimize" onClick={minimize} />
-        <WindowButton icon={isMaximized ? <Copy size={11} strokeWidth={2} /> : <Square size={11} strokeWidth={2} />} label={isMaximized ? 'Restore window' : 'Maximize window'} onClick={maximize} />
-        <WindowButton icon={<X size={13} strokeWidth={2.5} />} label="Close" onClick={close} variant="close" />
+        <WindowButton icon={<Minus size={13} strokeWidth={2.5} />} label={t('app.minimize')} onClick={minimize} />
+        <WindowButton icon={isMaximized ? <Copy size={11} strokeWidth={2} /> : <Square size={11} strokeWidth={2} />} label={isMaximized ? t('app.restoreWindow') : t('app.maximizeWindow')} onClick={maximize} />
+        <WindowButton icon={<X size={13} strokeWidth={2.5} />} label={t('action.close')} onClick={close} variant="close" />
       </div>
     </header>
   )

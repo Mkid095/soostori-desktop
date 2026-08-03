@@ -17,6 +17,7 @@ export function createCommerceTables(): void {
     CREATE TABLE IF NOT EXISTS customers (
       id TEXT PRIMARY KEY, name TEXT NOT NULL, phone TEXT, email TEXT,
       address TEXT, notes TEXT, is_active INTEGER DEFAULT 1,
+      id_number TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     )

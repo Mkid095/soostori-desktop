@@ -1,11 +1,5 @@
 import React from 'react'
-import {
-  ShoppingCart,
-  Package,
-  BarChart3,
-  DollarSign,
-  Settings as SettingsIcon,
-} from 'lucide-react'
+import { ShoppingCart, Package, BarChart3, DollarSign } from 'lucide-react'
 import NavItemButton from './NavItemButton'
 import { useTranslation } from '../../lib/useTranslation'
 import type { TranslationKey } from '../../lib/i18n'
@@ -44,10 +38,6 @@ const navGroups: NavGroup[] = [
       { id: 'reports', labelKey: 'nav.reports', icon: BarChart3 },
       { id: 'debts', labelKey: 'nav.debts', icon: DollarSign },
     ],
-  },
-  {
-    labelKey: 'nav.system',
-    items: [{ id: 'settings', labelKey: 'nav.settings', icon: SettingsIcon }],
   },
 ]
 

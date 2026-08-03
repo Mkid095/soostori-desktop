@@ -6,6 +6,7 @@ export const customerCreateSchema = z.object({
   email: z.string().email('Invalid email').optional().or(z.literal('')),
   address: z.string().optional(),
   notes: z.string().optional(),
+  idNumber: z.string().optional(),
 })
 
 export type CustomerCreateInput = z.infer<typeof customerCreateSchema>

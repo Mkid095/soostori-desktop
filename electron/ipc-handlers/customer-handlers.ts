@@ -5,6 +5,13 @@ import log from 'electron-log'
 import { customerCreateSchema, customerUpdateSchema } from './validation'
 
 export function registerCustomerHandlers(): void {
+  // Ensure id_number column exists for older DBs
+  const db = getDatabase()
+  const custInfo = db.prepare(`PRAGMA table_info(customers)`).all() as Array<{ name: string }>
+  if (!custInfo.some(c => c.name === 'id_number')) {
+    db.exec(`ALTER TABLE customers ADD COLUMN id_number TEXT`)
+  }
+
   ipcMain.handle('db:customers:list', () => {
     const db = getDatabase()
     return db.prepare('SELECT * FROM customers WHERE is_active = 1 ORDER BY name ASC').all()
@@ -21,9 +28,9 @@ export function registerCustomerHandlers(): void {
     const id = uuidv4()
     const now = new Date().toISOString()
     db.prepare(`
-      INSERT INTO customers (id, name, phone, email, address, notes, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(id, data.name, data.phone || null, data.email || null, data.address || null, data.notes || null, now, now)
+      INSERT INTO customers (id, name, phone, email, address, notes, id_number, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, data.name, data.phone || null, data.email || null, data.address || null, data.notes || null, data.idNumber || null, now, now)
     return db.prepare('SELECT * FROM customers WHERE id = ?').get(id)
   })
 
@@ -38,6 +45,7 @@ export function registerCustomerHandlers(): void {
     if (data.email !== undefined) { fields.push('email = ?'); values.push(data.email || null) }
     if (data.address !== undefined) { fields.push('address = ?'); values.push(data.address || null) }
     if (data.notes !== undefined) { fields.push('notes = ?'); values.push(data.notes || null) }
+    if (data.idNumber !== undefined) { fields.push('id_number = ?'); values.push(data.idNumber || null) }
     fields.push('updated_at = ?'); values.push(now); values.push(id)
     db.prepare(`UPDATE customers SET ${fields.join(', ')} WHERE id = ?`).run(...values)
     return db.prepare('SELECT * FROM customers WHERE id = ?').get(id)

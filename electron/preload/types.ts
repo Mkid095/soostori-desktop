@@ -38,6 +38,14 @@ export interface ElectronAPI {
     getShopSettings: () => Promise<any | null>
     updateShopSettings: (settings: any) => Promise<any>
 
+    // App Settings
+    getAppSettingsDefaults: () => Promise<{ defaultTheme: 'light' | 'dark'; defaultLanguage: 'en' | 'sw'; pinSet: number; lastLogin: string | null }>
+    setDefaultTheme: (theme: 'light' | 'dark') => Promise<{ default_theme: string }>
+    setDefaultLanguage: (language: 'en' | 'sw') => Promise<{ default_language: string }>
+    setPin: (pin: string) => Promise<{ success: boolean }>
+    verifyPin: (pin: string) => Promise<{ valid: boolean }>
+    recordLogin: () => Promise<void>
+
     // Customers
     getCustomers: () => Promise<any[]>
     getCustomer: (id: string) => Promise<any | null>

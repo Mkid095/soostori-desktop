@@ -130,7 +130,12 @@ const SaleDetailModal: React.FC<{ saleId: string; onClose: () => void }> = ({ sa
           {sale.note && (
             <div className="p-3 bg-amber-50 dark:bg-amber-950/40 rounded-xl transition-colors duration-200">
               <p className="text-xs font-bold text-amber-700 dark:text-amber-300 uppercase mb-1">Note</p>
-              <p className="text-sm text-amber-800 dark:text-amber-200">{sale.note}</p>
+              <p className="text-sm italic text-amber-800 dark:text-amber-200">{sale.note}</p>
+            </div>)}
+          {sale.customerIdNumber && (
+            <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl transition-colors duration-200">
+              <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Customer ID</p>
+              <p className="text-sm text-slate-700 dark:text-slate-200">{sale.customerIdNumber}</p>
             </div>
           )}
         </div>

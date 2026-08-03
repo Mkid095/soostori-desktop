@@ -26,10 +26,10 @@ const CheckoutSheet: React.FC<CheckoutSheetProps> = ({
   const { data: customers = [] } = useCustomers()
 
   const { method, given, note, mpesaConfirmed, showThankYou,
-    debtCustomerId, debtCustomerName, debtCustomerPhone, showNewCustomer,
+    debtCustomerId, debtCustomerName, debtCustomerPhone, debtCustomerIdNumber, showNewCustomer,
     total, givenAmt, quickAmounts, canConfirm, paymentMethods,
     setGiven, setNote, setMpesaConfirmed, setDebtCustomerId,
-    setDebtCustomerName, setDebtCustomerPhone, setShowNewCustomer,
+    setDebtCustomerName, setDebtCustomerPhone, setDebtCustomerIdNumber, setShowNewCustomer,
     handleDebtCustomerSelect, handleConfirm, onMethodChange } = useCheckout(cart, shopSettings, isProcessing, onPay)
 
   // Escape closes the checkout — on the thank-you screen, it returns to the cart.
@@ -90,7 +90,7 @@ const CheckoutSheet: React.FC<CheckoutSheetProps> = ({
             <PaymentMethodButtons paymentMethods={paymentMethods} method={method} onMethodChange={onMethodChange} />
             {method === 'cash' && <CashPaymentView given={given} setGiven={setGiven} total={total} givenAmt={givenAmt} change={givenAmt - total} quickAmounts={quickAmounts} />}
             {['sendMoney', 'mpesaPaybill', 'bankPaybill', 'pochi'].includes(method) && <MpesaPaymentView method={method} shopSettings={shopSettings} total={total} mpesaConfirmed={mpesaConfirmed} setMpesaConfirmed={setMpesaConfirmed} />}
-            {method === 'debt' && <DebtPaymentView customers={customers} debtCustomerId={debtCustomerId} debtCustomerName={debtCustomerName} debtCustomerPhone={debtCustomerPhone} showNewCustomer={showNewCustomer} total={total} onSelect={handleDebtCustomerSelect} onNewName={setDebtCustomerName} onNewPhone={setDebtCustomerPhone} onShowNew={() => { setShowNewCustomer(true); setDebtCustomerId('') }} onShowExisting={() => setShowNewCustomer(false)} />}
+            {method === 'debt' && <DebtPaymentView customers={customers} debtCustomerId={debtCustomerId} debtCustomerName={debtCustomerName} debtCustomerPhone={debtCustomerPhone} debtCustomerIdNumber={debtCustomerIdNumber} showNewCustomer={showNewCustomer} total={total} onSelect={handleDebtCustomerSelect} onNewName={setDebtCustomerName} onNewPhone={setDebtCustomerPhone} onNewIdNumber={setDebtCustomerIdNumber} onShowNew={() => { setShowNewCustomer(true); setDebtCustomerId('') }} onShowExisting={() => setShowNewCustomer(false)} />}
             {(method === 'debt' || ['sendMoney', 'mpesaPaybill', 'bankPaybill', 'pochi'].includes(method)) && (
               <textarea placeholder="Add a note (optional)..." value={note} onChange={e => setNote(e.target.value)} rows={2}
                 className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-3 px-3 text-sm font-semibold text-slate-700 dark:text-slate-200 outline-none focus:border-brand-orange resize-none transition-colors duration-200" />

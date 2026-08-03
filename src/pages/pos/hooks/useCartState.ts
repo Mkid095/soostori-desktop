@@ -66,13 +66,13 @@ export function useCartState() {
     else { setScanError(`"${barcode}" not found in store`); setTimeout(() => setScanError(null), 3000) }
   }, [allProducts, addToCart])
 
-  const handlePay = useCallback(async (data: { method: 'cash' | 'mpesa' | 'debt'; paidAmount?: number; customerId?: string; customerName?: string; customerPhone?: string; note?: string }) => {
+  const handlePay = useCallback(async (data: { method: 'cash' | 'mpesa' | 'debt'; paidAmount?: number; customerId?: string; customerName?: string; customerPhone?: string; customerIdNumber?: string; note?: string }) => {
     if (!cart.length) return
     setLastSaleAmount(data.paidAmount || subtotal); setIsProcessing(true)
     try {
       const created = await createSale.mutateAsync({ items: cart, subtotal, discountAmount: 0, totalAmount: subtotal,
         paidAmount: data.paidAmount || subtotal, paymentMethod: data.method, note: data.note,
-        customerId: data.customerId, customerName: data.customerName, customerPhone: data.customerPhone })
+        customerId: data.customerId, customerName: data.customerName, customerPhone: data.customerPhone, customerIdNumber: data.customerIdNumber })
       setCart([])
       showToast('Sale completed', 'success')
       // Fire-and-forget: print receipt after the sale is recorded.

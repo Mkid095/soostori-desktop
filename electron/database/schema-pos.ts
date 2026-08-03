@@ -21,6 +21,19 @@ export function createPosTables(): void {
   `)
 
   database.exec(`
+    CREATE TABLE IF NOT EXISTS app_settings (
+      id TEXT PRIMARY KEY DEFAULT 'default',
+      default_theme TEXT DEFAULT 'light',
+      default_language TEXT DEFAULT 'en',
+      login_pin TEXT DEFAULT '0000',
+      pin_set INTEGER DEFAULT 0,
+      last_login TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
+  database.exec(`
     CREATE TABLE IF NOT EXISTS categories (
       id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT, icon TEXT,
       color TEXT DEFAULT '#6366f1', display_order INTEGER DEFAULT 0,
@@ -52,6 +65,7 @@ export function createPosTables(): void {
   `)
 
   migrateProductsTable(database)
+  migrateAppSettingsTable(database)
 
   database.exec(`
     CREATE TABLE IF NOT EXISTS product_variants (
@@ -84,5 +98,24 @@ function migrateProductsTable(database: import('better-sqlite3').Database): void
     if (!existingColNames.includes(col.name)) {
       try { database.exec(`ALTER TABLE products ${col.sql}`) } catch { /* ignore */ }
     }
+  }
+}
+
+function migrateAppSettingsTable(database: import('better-sqlite3').Database): void {
+  const existingTables = database.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as { name: string }[]
+  if (!existingTables.find(t => t.name === 'app_settings')) {
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS app_settings (
+        id TEXT PRIMARY KEY DEFAULT 'default',
+        default_theme TEXT DEFAULT 'light',
+        default_language TEXT DEFAULT 'en',
+        login_pin TEXT DEFAULT '0000',
+        pin_set INTEGER DEFAULT 0,
+        last_login TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
+    database.prepare(`INSERT OR IGNORE INTO app_settings (id, default_theme, default_language, login_pin, pin_set) VALUES ('default', 'light', 'en', '0000', 0)`).run()
   }
 }
