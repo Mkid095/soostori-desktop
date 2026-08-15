@@ -62,6 +62,7 @@ These rules are enforced on every task. No exceptions without documented approva
 | Business logic | **NEVER** in React components | Always in `src/lib/` or `electron/` services |
 | UI components | **NEVER** contain API calls, validation, or business logic | Only rendering + event emission |
 | Generic utilities | **FORBIDDEN** | helpers.ts, common.ts, misc.ts, tools.ts do not exist |
+| **No sparkle icon** | **Strictly forbidden** (✨, `<Sparkles>`, stars ★, magic wand, robot, brain, lightning bolt) — use Lucide or no icon |
 | TypeScript | Strict — no `any`, no implicit `any` | tsc --noEmit must pass |
 | Commit | **Always update CHANGELOG.md** | Every commit, every change |
 

@@ -87,6 +87,10 @@ Enforcement rules for all AI-assisted development in this project.
 
 ### 13. Professional Icons Only
 - No emojis in UI
+- **No sparkle icon (✨ or `<Sparkles>`) in any UI element** — this is the canonical AI indicator and is **strictly forbidden** in every project
+- **Forbidden AI-tell icons** (never use as decoration): sparkle (✨), stars (★), magic wand, robot, brain, lightning bolt — all convey AI/magic
+- Use Lucide icons or similar professional icon library
+- If you need a "new" or "special" indicator, use a badge, label, or styling — not an emoji/sparkle/icon
 - Use Lucide icons or similar professional icon library
 - Icons must be semantically appropriate
 

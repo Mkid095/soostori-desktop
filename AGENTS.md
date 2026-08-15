@@ -140,6 +140,9 @@ docs(pos): update receipt printing data flow
 
 ## UI Rules
 
+- **No sparkle icon (✨ or `<Sparkles>`) anywhere in UI** — canonical AI tell, strictly forbidden
+- **No AI-tell icons** (stars ★, magic wand, robot, brain, lightning bolt) — use Lucide or no icon
+
 - **No emojis in UI** — Use Lucide icons only
 - **Consistent design system** — Use existing Tailwind patterns, no inline styles
 - **Professional icons only** — Lucide React icon library
