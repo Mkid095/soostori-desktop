@@ -85,14 +85,60 @@ Enforcement rules for all AI-assisted development in this project.
 
 ## UI Rules
 
-### 13. Professional Icons Only
-- No emojis in UI
-- **No sparkle icon (✨ or `<Sparkles>`) in any UI element** — this is the canonical AI indicator and is **strictly forbidden** in every project
-- **Forbidden AI-tell icons** (never use as decoration): sparkle (✨), stars (★), magic wand, robot, brain, lightning bolt — all convey AI/magic
-- Use Lucide icons or similar professional icon library
-- If you need a "new" or "special" indicator, use a badge, label, or styling — not an emoji/sparkle/icon
-- Use Lucide icons or similar professional icon library
-- Icons must be semantically appropriate
+### 13. Professional Icons Only (No AI Visual Vocabulary)
+
+**Strictly forbidden standalone icons (these scream "AI-generated"):**
+- ✨ Sparkles (any variation — single, multiple, animated)
+- 🪄 Magic Wand
+- ⚡ Lightning Bolt (when used as decoration rather than action)
+- ✦ Single Star / 4-point star
+- ✨✨ Double / Multiple Sparkles
+- 🧠 Brain
+- 🤖 Robot
+- 🪐 Orb / Sphere
+- ❤️ Heartbeat / 〰️ Pulse (when used as "AI active" indicator)
+- 🖊️✨ Sparkly Pencil
+- 🔍✨ Search + Sparkle
+- 🎨✨ Image + Sparkle
+- 🌐 Neural / Network nodes
+- ◉ Glowing core / orb
+- 🔥 Flame
+- 🎯 Target (used as AI-decoration)
+
+**Forbidden visual styles (the "AI-generated website" look):**
+- Purple / violet / indigo gradient backgrounds
+- Blue-purple / pink-purple / cyan-purple gradients
+- Glassmorphism cards (`rounded-2xl` + blur + semi-transparent)
+- Pulsing glow, floating particles, shimmer effects
+- Aurora backgrounds, blurred blobs
+- Inter typography as the default body font
+
+**Required approach:**
+- Use **Lucide icons** or a similar professional icon library (lucide.dev)
+- Reserve ✨ **only for actual AI features** — do not put it on every action
+- For "AI enhances X" patterns, use the standard icon with a small inline sparkle (Red Hat pattern)
+- Define a fixed icon taxonomy — see table below
+- Icons must be semantically appropriate, not decorative
+
+**Recommended icon taxonomy (Google/AWS/Red Hat pattern):**
+- AI action → ✨ (only on true AI features, max 1-2 places per screen)
+- Generate/Create → 🪄 or ✨ (not both — pick one)
+- Execute / Run → ⚡ (only when speed is the message)
+- Live / Real-time → 〰️ Activity (not "heartbeat" with sparkles)
+- Agent → ◉ or simple robot icon (without sparkles)
+- Deployment → 🚀 or ArrowUp
+- API → `</>` or Terminal
+- Database → Cylinder
+- Security → Shield
+- Settings → Gear
+- Logs → Terminal
+- Integration → Link / Plug
+- Success → Check
+- Error → AlertTriangle
+- Processing → Loader / Spinner
+
+**Why these rules exist:** Sparkle icons and purple gradients are the most recognizable AI-generated UI tells. Google research found that people strongly associate sparkles with AI, but as the icon appears everywhere its meaning becomes less specific. AWS Cloudscape and Red Hat both recommend using sparkle sparingly and reserving it for true AI features. Removing the AI visual vocabulary is one of the highest-impact changes for making UI look human-built.
+
 
 ### 14. Consistent Design System
 - Use shared components from `shared/components/`
