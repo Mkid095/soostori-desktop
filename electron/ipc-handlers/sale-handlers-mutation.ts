@@ -3,8 +3,9 @@ import { getDatabase } from '../database'
 import { v4 as uuidv4 } from 'uuid'
 import log from 'electron-log'
 import { saleCreateSchema, heldSaleCreateSchema } from './validation'
+import { getMainWindow } from '../window-manager'
 
-interface ProductStockRow { stock_quantity: number | null }
+interface ProductStockRow { name: string; stock_quantity: number | null; track_inventory: number | null; low_stock_threshold: number | null }
 interface HeldSaleRow { id: string; name: string | null; cart_items: string; payment_method: string | null; created_at: string }
 
 export function registerSaleMutationHandlers(): void {
@@ -51,11 +52,21 @@ export function registerSaleMutationHandlers(): void {
         item.totalPrice || (item.quantity * item.unitPrice), now)
       if (item.productId) {
         updateStock.run(item.quantity, now, item.productId)
-        const product = database.prepare('SELECT stock_quantity FROM products WHERE id = ?').get(item.productId) as ProductStockRow | undefined
+        const product = database.prepare('SELECT name, stock_quantity, track_inventory, low_stock_threshold FROM products WHERE id = ?').get(item.productId) as ProductStockRow | undefined
         const movementId = uuidv4()
         database.prepare(`INSERT INTO stock_movements (id, product_id, type, quantity, balance_after, reason, reference_id, created_at)
           VALUES (?, ?, 'sale', ?, ?, ?, ?, ?)`).run(movementId, item.productId, -item.quantity,
             product?.stock_quantity || 0, 'Sale', saleId, now)
+        // Fire low-stock notification if product is tracked and below threshold
+        if (product && product.track_inventory && product.low_stock_threshold != null) {
+          const remaining = (product.stock_quantity || 0) - item.quantity
+          if (remaining <= (product.low_stock_threshold || 0) && remaining >= 0) {
+            getMainWindow()?.webContents.send('notification:low-stock', {
+              productName: product.name,
+              stock: remaining,
+            })
+          }
+        }
       }
     }
 

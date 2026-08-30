@@ -52,6 +52,7 @@ Verify these items before declaring any task complete.
 
 - [ ] No emojis in UI
 - [ ] Professional icons used (Lucide or equivalent)
+- [ ] **No AI visual vocabulary** — no sparkle (✨), magic wand (🪄), brain (🧠), robot (🤖), orb, lightning-as-decoration, neural nodes, heartbeat/pulse, flame, target as AI-decoration. No purple/violet gradient backgrounds, glassmorphism, or pulsing glow. Reserve ✨ ONLY for actual AI features.
 - [ ] Consistent with existing design system
 - [ ] Responsive design considered
 - [ ] Loading states present

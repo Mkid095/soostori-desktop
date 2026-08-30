@@ -4,6 +4,7 @@ import type { Product, CartItem } from '../../../lib/types'
 import { useProducts, useHeldSales, useCreateSale, useCreateHeldSale, useDeleteHeldSale, useShopSettings } from '../../../hooks/useDatabase'
 import { useToast } from '../../../hooks/useToast'
 import { buildReceiptData } from './build-receipt-data'
+import type { CheckoutPayload } from './useCheckout'
 
 const CART_KEY = 'soostori_pos_cart'
 export const loadCart = (): CartItem[] => { try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]') } catch { return [] } }
@@ -44,6 +45,10 @@ export function useCartState() {
   const itemCount = cart.reduce((s, i) => s + i.quantity, 0)
 
   const addToCart = useCallback((product: Product) => {
+    if (product.trackInventory && product.stockQuantity <= 0) {
+      setScanError('Out of stock')
+      return
+    }
     if (product.groupPrices?.length && product.allowSingleUnitSale) {
       setPriceSelectionProduct(product)
       return
@@ -70,8 +75,14 @@ export function useCartState() {
 
   const cancelPriceSelection = useCallback(() => setPriceSelectionProduct(null), [])
 
-  const inc = useCallback((id: string) => setCart(prev => prev.map(i =>
-    i.productId === id ? { ...i, quantity: i.quantity + 1, totalPrice: (i.quantity + 1) * i.unitPrice } : i)), [])
+  const inc = useCallback((id: string) => setCart(prev => {
+    const item = prev.find(i => i.productId === id)
+    if (!item) return prev
+    const product = allProducts.find(p => p.id === id)
+    if (product?.trackInventory && item.quantity >= product.stockQuantity) return prev
+    return prev.map(i => i.productId === id
+      ? { ...i, quantity: i.quantity + 1, totalPrice: (i.quantity + 1) * i.unitPrice } : i)
+  }), [allProducts])
   const dec = useCallback((id: string) => setCart(prev => prev.map(i =>
     i.productId === id && i.quantity > 1 ? { ...i, quantity: i.quantity - 1, totalPrice: (i.quantity - 1) * i.unitPrice } : i)
     .filter(i => !(i.productId === id && i.quantity < 1))), [])
@@ -84,7 +95,7 @@ export function useCartState() {
     else { setScanError(`"${barcode}" not found in store`); setTimeout(() => setScanError(null), 3000) }
   }, [allProducts, addToCart])
 
-  const handlePay = useCallback(async (data: { method: 'cash' | 'mpesa' | 'debt'; paidAmount?: number; customerId?: string; customerName?: string; customerPhone?: string; customerIdNumber?: string; note?: string }) => {
+  const handlePay = useCallback(async (data: CheckoutPayload) => {
     if (!cart.length) return
     setLastSaleAmount(data.paidAmount || subtotal); setIsProcessing(true)
     try {

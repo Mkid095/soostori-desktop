@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react'
-import { BarChart3, Calendar, Download, RefreshCw, Search } from 'lucide-react'
+import { BarChart3, Download, RefreshCw, Search } from 'lucide-react'
 import { useSales, useTotalDebtCollected } from '../../hooks/useDatabase'
+import { useExpenseStats } from '../expenses/hooks/useExpenses'
+import { useTopProducts } from '../../hooks/useSales'
 import { useTranslation } from '../../lib/useTranslation'
 import { DateFilter, PaymentFilter, useReportsState } from './hooks/useReportsState'
 import SaleDetailModal from './components/SaleDetailModal'
@@ -8,6 +10,7 @@ import ExportModal from './components/ExportModal'
 import ReportsCharts from './components/ReportsCharts'
 import ReportsStatsCards from './components/ReportsStatsCards'
 import ReportsSaleList from './components/ReportsSaleList'
+import ReportsFilters from './components/ReportsFilters'
 
 const PAGE_SIZE = 50
 const todayIso = () => new Date().toISOString().slice(0, 10)
@@ -17,19 +20,20 @@ const monthAgoIso = () => {
   return d.toISOString().slice(0, 10)
 }
 
-const CustomRangeBar: React.FC<{ from: string; to: string; fromLabel: string; toLabel: string; onChange: (next: { from: string; to: string }) => void }> = ({ from, to, fromLabel, toLabel, onChange }) => (
-  <div className="flex shrink-0 items-center gap-2 border-b border-slate-100 bg-bg-secondary px-4 py-2 dark:border-slate-700">
-    <Calendar size={14} className="text-brand-orange" />
-    <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400">
-      {fromLabel}
-      <input type="date" value={from} max={to || undefined} onChange={(event) => onChange({ from: event.target.value, to })} className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100" />
-    </label>
-    <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400">
-      {toLabel}
-      <input type="date" value={to} min={from || undefined} onChange={(event) => onChange({ from, to: event.target.value })} className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100" />
-    </label>
-  </div>
-)
+function getDateRange(filter: DateFilter, customRange: { from: string; to: string }): { start: string; end: string } {
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  if (filter === 'today') return { start: today.toISOString().slice(0, 10), end: today.toISOString().slice(0, 10) }
+  if (filter === 'week') {
+    const d = new Date(today.getTime() - 7 * 86400000)
+    return { start: d.toISOString().slice(0, 10), end: today.toISOString().slice(0, 10) }
+  }
+  if (filter === 'month') {
+    return { start: new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10), end: today.toISOString().slice(0, 10) }
+  }
+  if (filter === 'custom') return { start: customRange.from, end: customRange.to }
+  return { start: '1970-01-01', end: today.toISOString().slice(0, 10) }
+}
 
 const Reports: React.FC = () => {
   const { t } = useTranslation()
@@ -42,22 +46,11 @@ const Reports: React.FC = () => {
   const [customRange, setCustomRange] = useState({ from: monthAgoIso(), to: todayIso() })
   const { filteredSales, stats } = useReportsState(allSales, dateFilter, paymentFilter, search, customRange)
   const { data: debtCollected } = useTotalDebtCollected()
+  const { total: expenseTotal } = useExpenseStats()
+  const profit = Math.max(0, (stats.total || 0) - expenseTotal)
+  const { start: topStart, end: topEnd } = getDateRange(dateFilter, customRange)
+  const { data: topProducts = [] } = useTopProducts(topStart, topEnd)
   const [displayedCount, setDisplayedCount] = useState(PAGE_SIZE)
-
-  const dateFilters: { value: DateFilter; label: string }[] = [
-    { value: 'today', label: t('rep.today') },
-    { value: 'week', label: t('rep.thisWeek') },
-    { value: 'month', label: t('rep.thisMonth') },
-    { value: 'all', label: t('rep.allTime') },
-    { value: 'custom', label: t('rep.customRange') },
-  ]
-  const paymentFilters: { value: PaymentFilter; label: string }[] = [
-    { value: 'all', label: t('label.name') === 'Name' ? 'All' : t('label.name') /* fallback */ },
-    { value: 'cash', label: t('rep.cash') },
-    { value: 'mpesa', label: t('pos.mpesa') },
-    { value: 'debt', label: t('rep.debt') },
-  ]
-  paymentFilters[0].label = t('deb.all')
 
   const pagedSales = filteredSales.slice(0, displayedCount)
   const hasMore = displayedCount < filteredSales.length
@@ -81,35 +74,23 @@ const Reports: React.FC = () => {
       </header>
 
       <section className="shrink-0 space-y-3 border-b border-slate-100 bg-bg-secondary px-4 py-3 dark:border-slate-700">
-        <ReportsCharts stats={stats} filteredSales={filteredSales} />
-        <ReportsStatsCards stats={stats} debtCollected={debtCollected?.totalCollected || 0} />
+        <ReportsCharts stats={stats} filteredSales={filteredSales} topProducts={topProducts} />
+        <ReportsStatsCards stats={stats} debtCollected={debtCollected?.totalCollected || 0} profit={profit} />
       </section>
 
       <div className="flex shrink-0 items-center gap-2 border-b border-slate-100 bg-bg-secondary px-4 py-2 dark:border-slate-700">
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-          <input placeholder={t('rep.searchSales')} value={search} onChange={(event) => setSearch(event.target.value)} className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-8 pr-3 text-xs font-semibold text-slate-800 outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100" />
+          <input placeholder={t('rep.searchSales')} value={search} onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-8 pr-3 text-xs font-semibold text-slate-800 outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100" />
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-1.5 overflow-x-auto border-b border-slate-100 bg-bg-secondary px-4 py-2 dark:border-slate-700">
-        {dateFilters.map((filter) => (
-          <button key={filter.value} onClick={() => setDateFilter(filter.value)} className={`flex items-center gap-1 whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] font-bold transition-colors ${dateFilter === filter.value ? 'bg-brand-orange text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'}`}>
-            {filter.value === 'custom' && <Calendar size={11} />}
-            {filter.label}
-          </button>
-        ))}
-      </div>
-
-      {dateFilter === 'custom' && <CustomRangeBar from={customRange.from} to={customRange.to} fromLabel={t('label.date')} toLabel={t('label.date')} onChange={setCustomRange} />}
-
-      <div className="flex shrink-0 gap-1.5 overflow-x-auto border-b border-slate-100 bg-bg-secondary px-4 py-2 dark:border-slate-700">
-        {paymentFilters.map((filter) => (
-          <button key={filter.value} onClick={() => setPaymentFilter(filter.value)} className={`whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] font-bold transition-colors ${paymentFilter === filter.value ? 'bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-800' : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'}`}>
-            {filter.label}
-          </button>
-        ))}
-      </div>
+      <ReportsFilters
+        dateFilter={dateFilter} onDateFilter={setDateFilter}
+        paymentFilter={paymentFilter} onPaymentFilter={setPaymentFilter}
+        customRange={customRange} onCustomRange={setCustomRange}
+      />
 
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
@@ -121,7 +102,7 @@ const Reports: React.FC = () => {
             <ReportsSaleList sales={pagedSales} onSelect={setSelectedSale} />
             <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-700">
               <p className="text-xs text-slate-400">{filteredSales.length} transaction{filteredSales.length !== 1 ? 's' : ''}</p>
-              {hasMore && <button onClick={() => setDisplayedCount((prev) => prev + PAGE_SIZE)} className="rounded-lg bg-brand-orange px-4 py-2 text-xs font-bold text-white hover:bg-orange-600">Load More</button>}
+              {hasMore && <button onClick={() => setDisplayedCount((p) => p + PAGE_SIZE)} className="rounded-lg bg-brand-orange px-4 py-2 text-xs font-bold text-white hover:bg-orange-600">Load More</button>}
             </div>
           </>
         )}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useScanner } from '../../hooks/useScanner'
 import { useInventoryState } from './hooks/useInventoryState'
 import { RestockInline } from './components/RestockInline'
@@ -28,6 +28,13 @@ const Inventory: React.FC = () => {
   const [duplicateProduct, setDuplicateProduct] = useState<Product | null>(null)
 
   const filteredProducts = filterProducts(searchTerm, categoryFilter)
+
+  const suggestions = useMemo<Product[]>(() => {
+    if (!searchTerm.trim()) return []
+    return products
+      .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
+      .slice(0, 5)
+  }, [products, searchTerm])
 
   // Listen for "Add Product" trigger from App header button
   useEffect(() => {
@@ -70,6 +77,11 @@ const Inventory: React.FC = () => {
   const openEditProduct = (p: Product) => { setEditingProduct(p); setRestockingProduct(null); setShowAddProduct(false) }
   const openRestock = (p: Product) => { setRestockingProduct(p); setEditingProduct(null); setShowAddProduct(false) }
 
+  const handleSelectSuggestion = (p: Product) => {
+    setSearchTerm('')
+    openEditProduct(p)
+  }
+
   useEffect(() => subscribeHeaderActions((action) => {
     if (action.type === 'inventory:addProduct') openAddProduct()
   }), [])
@@ -88,8 +100,10 @@ const Inventory: React.FC = () => {
       <InventoryHeader stats={stats} />
       <SearchBar
         searchTerm={searchTerm} categoryFilter={categoryFilter} categories={categories}
+        suggestions={suggestions}
         onSearchChange={setSearchTerm} onCategoryChange={setCategoryFilter}
         onAddClick={openAddProduct}
+        onSelectSuggestion={handleSelectSuggestion}
       />
       <CategoryChips categories={categories} selected={categoryFilter} onSelect={setCategoryFilter} />
 
@@ -111,6 +125,10 @@ const Inventory: React.FC = () => {
           onSave={handleFormSave} onClose={handleCloseForm}
           isSaving={isSavingForm} onAddCategory={handleAddCategory}
           initialBarcode={scannedBarcode || undefined}
+          onBarcodeFound={(found) => {
+            setScannedBarcode(null)
+            setEditingProduct(found)
+          }}
         />
       )}
 

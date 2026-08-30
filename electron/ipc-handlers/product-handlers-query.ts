@@ -33,4 +33,37 @@ export function registerProductQueryHandlers(): void {
     const product = getDatabase().prepare(`${PRODUCT_SELECT.replace('p.deleted_at IS NULL AND ', '')} AND UPPER(TRIM(p.barcode)) = ?`).get(normalized)
     return product || null
   })
+
+  ipcMain.handle('db:products:validateImport', (_event, rows: unknown[]) => {
+    const db = getDatabase()
+    const csvRows = rows as Array<{ name: string; barcode?: string; sku?: string }>
+    const newProducts: typeof csvRows = []
+    const updates: typeof csvRows = []
+    const duplicates: typeof csvRows = []
+
+    for (const row of csvRows) {
+      if (!row.name?.trim()) continue
+
+      // Check by barcode first
+      if (row.barcode?.trim()) {
+        const normalized = row.barcode.trim().toUpperCase()
+        const existing = db.prepare(`${PRODUCT_SELECT} AND UPPER(TRIM(p.barcode)) = ?`).get(normalized)
+        if (existing) {
+          updates.push(row)
+          continue
+        }
+      }
+
+      // Check by name (no barcode match) — duplicate name
+      const nameMatch = db.prepare(`${PRODUCT_SELECT} AND LOWER(p.name) = LOWER(?)`).get(row.name.trim())
+      if (nameMatch) {
+        duplicates.push(row)
+        continue
+      }
+
+      newProducts.push(row)
+    }
+
+    return { new: newProducts, updates, duplicates }
+  })
 }

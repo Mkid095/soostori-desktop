@@ -44,4 +44,12 @@ export function createCommerceTables(): void {
       FOREIGN KEY (debt_id) REFERENCES debts(id)
     )
   `)
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS expenses (
+      id TEXT PRIMARY KEY, amount REAL NOT NULL,
+      category TEXT NOT NULL DEFAULT 'other', note TEXT DEFAULT '',
+      date TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `)
 }

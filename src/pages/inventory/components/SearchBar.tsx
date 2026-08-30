@@ -1,18 +1,21 @@
 import { Search, Plus } from 'lucide-react'
-import type { Category } from '../../../lib/types'
+import type { Category, Product } from '../../../lib/types'
+import { SearchSuggestions } from './SearchSuggestions'
 
 interface SearchBarProps {
   searchTerm: string
   categoryFilter: string
   categories: Category[]
+  suggestions: Product[]
   onSearchChange: (v: string) => void
   onCategoryChange: (v: string) => void
   onAddClick: () => void
+  onSelectSuggestion: (product: Product) => void
 }
 
 export const SearchBar: React.FC<SearchBarProps> = ({
-  searchTerm, categoryFilter, categories,
-  onSearchChange, onCategoryChange, onAddClick
+  searchTerm, categoryFilter, categories, suggestions,
+  onSearchChange, onCategoryChange, onAddClick, onSelectSuggestion
 }) => {
   return (
     <div className="px-4 py-2 bg-bg-secondary dark:bg-bg-secondary border-b border-slate-100 dark:border-slate-700 flex items-center gap-2 shrink-0 transition-colors duration-200">
@@ -22,6 +25,12 @@ export const SearchBar: React.FC<SearchBarProps> = ({
           value={searchTerm} onChange={(e) => onSearchChange(e.target.value)}
           className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg py-2 pl-8 pr-3
             text-xs font-semibold focus:border-brand-orange outline-none text-slate-800 dark:text-slate-100 transition-colors duration-200"
+        />
+        <SearchSuggestions
+          suggestions={suggestions}
+          searchTerm={searchTerm}
+          onSelect={onSelectSuggestion}
+          onClear={() => onSearchChange('')}
         />
       </div>
       <select value={categoryFilter}

@@ -77,3 +77,21 @@ export function useDeleteProduct() {
     },
   })
 }
+
+export function useValidateImport(rows: unknown[]) {
+  return useQuery({
+    queryKey: ['products', 'validateImport', rows],
+    queryFn: () => api.validateImport(rows) as Promise<{ new: Product[]; updates: Product[]; duplicates: Product[] }>,
+    enabled: rows.length > 0,
+  })
+}
+
+export function useBulkCreateProducts() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (products: unknown[]) => api.bulkCreate(products) as Promise<{ createdCount: number }>,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+    },
+  })
+}

@@ -31,4 +31,17 @@ export function registerSaleQueryHandlers(): void {
       ORDER BY created_at DESC
     `).all(startDate, endDate)
   })
+
+  ipcMain.handle('db:sales:topProducts', (_event, startDate: string, endDate: string, limit = 10) => {
+    const db = getDatabase()
+    return db.prepare(`
+      SELECT si.product_name, SUM(si.quantity) as totalQty, SUM(si.total_price) as totalRevenue
+      FROM sale_items si
+      JOIN sales s ON si.sale_id = s.id
+      WHERE s.created_at >= ? AND s.created_at <= ?
+      GROUP BY si.product_name
+      ORDER BY totalQty DESC
+      LIMIT ?
+    `).all(startDate, endDate, limit)
+  })
 }

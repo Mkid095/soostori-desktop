@@ -41,6 +41,9 @@ export const rep = {
     'rep.dateTimeItemsSubtotal': 'Date,Time,Items,Subtotal,Discount,Total,Payment,Note',
     'rep.salesReport': 'Sales Report',
     'rep.totalRevenueLabel': 'Total Revenue:',
+    'rep.topProducts': 'Top Products',
+    'rep.quantity': 'Qty Sold',
+    'rep.profit': 'Profit',
   },
   sw: {
     'rep.title': 'Ripoti',
@@ -83,5 +86,8 @@ export const rep = {
     'rep.dateTimeItemsSubtotal': 'Tarehe,Wakati,Vifurushi,Jumla ya pamoja,Punguzo,Jumla,Njia ya Kulipa,Note',
     'rep.salesReport': 'Ripoti ya Mauzo',
     'rep.totalRevenueLabel': 'Mapato Yote:',
+    'rep.topProducts': 'Bidhaa Zinazouzwa Zaidi',
+    'rep.quantity': 'Idadi Iliyouzwa',
+    'rep.profit': 'Faida',
   },
 } as const

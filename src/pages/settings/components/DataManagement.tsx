@@ -1,11 +1,13 @@
 import React, { useState } from 'react'
 import { Download, Info, RefreshCw, Upload } from 'lucide-react'
 import { useTranslation } from '../../../lib/useTranslation'
+import ImportProductsModal from './ImportProductsModal'
 
 const DataManagement: React.FC = () => {
   const { t } = useTranslation()
   const [isExporting, setIsExporting] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
 
   const handleExport = async () => {
     setIsExporting(true)
@@ -47,6 +49,11 @@ const DataManagement: React.FC = () => {
         {isImporting ? <RefreshCw size={16} className="animate-spin" /> : <Upload size={16} />}
         {isImporting ? t('set.importing') : t('set.importData')}
       </button>
+      <button onClick={() => setShowImportModal(true)} className="w-full py-4 bg-white border-2 border-slate-200 text-slate-600 rounded-xl font-bold flex items-center justify-center gap-2 hover:border-brand-orange transition-colors">
+        <Upload size={16} />
+        {t('set.importProducts')}
+      </button>
+      {showImportModal && <ImportProductsModal onClose={() => setShowImportModal(false)} />}
       <div className="pt-4 border-t border-slate-100">
         <p className="text-xs text-slate-400 text-center">{t('set.dataStoredLocally')}</p>
       </div>

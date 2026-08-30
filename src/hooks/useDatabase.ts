@@ -20,6 +20,7 @@ export {
   useSales,
   useSale,
   useCreateSale,
+  useTopProducts,
 } from './useSales'
 
 export {

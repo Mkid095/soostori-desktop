@@ -3,7 +3,7 @@ import type { CartItem, ShopSettings } from '../../../lib/types'
 export interface ReceiptDataInput {
   cart: CartItem[]
   shopSettings: ShopSettings | null | undefined
-  paymentMethod: 'cash' | 'mpesa' | 'debt'
+  paymentMethod: 'cash' | 'mpesa' | 'debt' | 'card' | 'transfer'
   receiptNumber?: string
 }
 
@@ -12,9 +12,11 @@ const formatReceiptDate = (date: Date): string => {
   return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
-const methodLabel = (m: 'cash' | 'mpesa' | 'debt'): string => {
+const methodLabel = (m: 'cash' | 'mpesa' | 'debt' | 'card' | 'transfer'): string => {
   if (m === 'cash') return 'Cash'
   if (m === 'debt') return 'Debt'
+  if (m === 'card') return 'Card'
+  if (m === 'transfer') return 'Transfer'
   return 'M-Pesa'
 }
 

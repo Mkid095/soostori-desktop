@@ -8,6 +8,8 @@ import PaymentMethodButtons from './PaymentMethodButtons'
 import CashPaymentView from './CashPaymentView'
 import MpesaPaymentView from './MpesaPaymentView'
 import DebtPaymentView from './DebtPaymentView'
+import CardPaymentView from './CardPaymentView'
+import TransferPaymentView from './TransferPaymentView'
 import { useCustomers } from '../../../hooks/useDatabase'
 import { useTranslation } from '../../../lib/useTranslation'
 
@@ -88,6 +90,8 @@ const CheckoutSheet: React.FC<CheckoutSheetProps> = ({
             {method === 'cash' && <CashPaymentView given={given} setGiven={setGiven} total={total} givenAmt={givenAmt} change={givenAmt - total} quickAmounts={quickAmounts} />}
             {['sendMoney', 'mpesaPaybill', 'bankPaybill', 'pochi'].includes(method) && <MpesaPaymentView method={method} shopSettings={shopSettings} total={total} mpesaConfirmed={mpesaConfirmed} setMpesaConfirmed={setMpesaConfirmed} />}
             {method === 'debt' && <DebtPaymentView customers={customers} debtCustomerId={debtCustomerId} debtCustomerName={debtCustomerName} debtCustomerPhone={debtCustomerPhone} debtCustomerIdNumber={debtCustomerIdNumber} showNewCustomer={showNewCustomer} total={total} onSelect={handleDebtCustomerSelect} onNewName={setDebtCustomerName} onNewPhone={setDebtCustomerPhone} onNewIdNumber={setDebtCustomerIdNumber} onShowNew={() => { setShowNewCustomer(true); setDebtCustomerId('') }} onShowExisting={() => setShowNewCustomer(false)} />}
+            {method === 'card' && <CardPaymentView total={total} />}
+            {method === 'transfer' && <TransferPaymentView total={total} />}
             {(method === 'debt' || ['sendMoney', 'mpesaPaybill', 'bankPaybill', 'pochi'].includes(method)) && (
               <textarea placeholder={t('label.notes')} value={note} onChange={e => setNote(e.target.value)} rows={2}
                 className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-3 px-3 text-sm font-semibold text-slate-700 dark:text-slate-200 outline-none focus:border-brand-orange resize-none transition-colors duration-200" />
@@ -104,6 +108,8 @@ const CheckoutSheet: React.FC<CheckoutSheetProps> = ({
            <CheckCircle size={20} />}
           {isProcessing ? t('pos.processing') || 'Processing...' :
            method === 'cash' ? `Receive ${formatCurrency(total)}` :
+           method === 'card' ? t('pos.completeCardSale') :
+           method === 'transfer' ? t('pos.completeTransferSale') :
            ['sendMoney', 'mpesaPaybill', 'bankPaybill', 'pochi'].includes(method)
              ? (mpesaConfirmed ? t('pos.completeSale') : t('pos.confirmPayment') || 'Confirm Payment') : t('pos.recordDebt')}
         </button>

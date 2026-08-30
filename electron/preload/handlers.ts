@@ -14,6 +14,8 @@ export function exposeElectronAPI(): void {
       deleteProduct: (id: string) => ipcRenderer.invoke('db:products:delete', id),
       searchProducts: (query: string, shopId?: string) => ipcRenderer.invoke('db:products:search', query, shopId),
       lookupBarcode: (barcode: string) => ipcRenderer.invoke('db:products:lookupBarcode', barcode),
+      validateImport: (rows: unknown[]) => ipcRenderer.invoke('db:products:validateImport', rows),
+      bulkCreate: (products: unknown[]) => ipcRenderer.invoke('db:products:bulkCreate', products),
 
       // Categories
       getCategories: (shopId?: string) => ipcRenderer.invoke('db:categories:list', shopId),
@@ -27,6 +29,8 @@ export function exposeElectronAPI(): void {
       createSale: (sale: unknown) => ipcRenderer.invoke('db:sales:create', sale),
       getSalesByDateRange: (startDate: string, endDate: string, shopId?: string) =>
         ipcRenderer.invoke('db:sales:listByDateRange', startDate, endDate, shopId),
+      getTopProducts: (startDate: string, endDate: string, limit?: number) =>
+        ipcRenderer.invoke('db:sales:topProducts', startDate, endDate, limit),
 
       // Held Sales
       getHeldSales: (shopId?: string) => ipcRenderer.invoke('db:held-sales:list', shopId),
@@ -67,6 +71,11 @@ export function exposeElectronAPI(): void {
         ipcRenderer.invoke('db:debts:recordPayment', debtId, amount, paymentMethod, reference),
       getDebtSummary: () => ipcRenderer.invoke('db:debts:summary'),
       getTotalDebtCollected: () => ipcRenderer.invoke('db:debts:totalCollected'),
+
+      // Expenses
+      getExpenses: () => ipcRenderer.invoke('db:expenses:list'),
+      createExpense: (data: unknown) => ipcRenderer.invoke('db:expenses:create', data),
+      deleteExpense: (id: string) => ipcRenderer.invoke('db:expenses:delete', id),
     },
 
     // Hardware
@@ -113,6 +122,16 @@ export function exposeElectronAPI(): void {
       exportDatabase: (filePath: string) => ipcRenderer.invoke('app:db:export', filePath),
       importDatabase: (filePath: string) => ipcRenderer.invoke('app:db:import', filePath),
       writeFile: (filePath: string, content: string) => ipcRenderer.invoke('app:file:write', filePath, content),
+    },
+
+    // Notifications (bridged from main process)
+    onLowStockNotification: (callback: (data: { productName: string; stock: number }) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, data: { productName: string; stock: number }) => {
+        window.dispatchEvent(new CustomEvent('soostori:low-stock', { detail: data }))
+        callback(data)
+      }
+      ipcRenderer.on('notification:low-stock', handler)
+      return () => ipcRenderer.removeListener('notification:low-stock', handler)
     },
 
     // Auto-updater

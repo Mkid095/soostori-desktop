@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
 import path from 'path'
 import log from 'electron-log'
 import { initDatabase, getDatabase } from './database'
+import { setMainWindow } from './window-manager'
 import {
   registerProductHandlers,
   registerCategoryHandlers,
@@ -10,6 +11,7 @@ import {
   registerDebtHandlers,
   registerSettingsHandlers,
   registerStockHandlers,
+  registerExpenseHandlers,
 } from './ipc-handlers'
 import { registerHardwareHandlers } from './ipc-handlers/hardware-handlers'
 import { registerAppHandlers } from './ipc-handlers/app-handlers'
@@ -93,11 +95,13 @@ app.whenReady().then(async () => {
     registerDebtHandlers()
     registerSettingsHandlers()
     registerStockHandlers()
+    registerExpenseHandlers()
     registerHardwareHandlers()
     registerAppHandlers()
     log.info('IPC handlers registered')
 
     createWindow()
+    setMainWindow(mainWindow!)
 
     // Set up auto-updater after window is created
     // Configure your update server URL in electron-builder.yml publish field
@@ -111,6 +115,7 @@ app.whenReady().then(async () => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow()
+      setMainWindow(mainWindow!)
     }
   })
 })

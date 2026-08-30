@@ -1,4 +1,20 @@
 // Types for exposed API
+export interface ExpenseRow {
+  id: string
+  amount: number
+  category: string
+  note: string
+  date: string
+  created_at: string
+}
+
+export interface ExpenseInput {
+  amount: number
+  category?: string
+  note?: string
+  date: string
+}
+
 export interface ElectronAPI {
   // Database operations
   db: {
@@ -11,6 +27,8 @@ export interface ElectronAPI {
     deleteProduct: (id: string) => Promise<void>
     searchProducts: (query: string, shopId?: string) => Promise<unknown[]>
     lookupBarcode: (barcode: string) => Promise<unknown | null>
+    validateImport: (rows: unknown[]) => Promise<{ new: unknown[]; updates: unknown[]; duplicates: unknown[] }>
+    bulkCreate: (products: unknown[]) => Promise<{ createdCount: number }>
 
     // Categories
     getCategories: (shopId?: string) => Promise<unknown[]>
@@ -23,6 +41,7 @@ export interface ElectronAPI {
     getSaleById: (id: string) => Promise<unknown | null>
     createSale: (sale: unknown) => Promise<unknown>
     getSalesByDateRange: (startDate: string, endDate: string, shopId?: string) => Promise<unknown[]>
+    getTopProducts: (startDate: string, endDate: string, limit?: number) => Promise<unknown[]>
 
     // Cart / Held Sales
     getHeldSales: (shopId?: string) => Promise<unknown[]>
@@ -60,6 +79,11 @@ export interface ElectronAPI {
     recordDebtPayment: (debtId: string, amount: number, paymentMethod: string, reference: string) => Promise<unknown>
     getDebtSummary: () => Promise<{ total: number; count: number }>
     getTotalDebtCollected: () => Promise<{ totalCollected: number }>
+
+    // Expenses
+    getExpenses: () => Promise<ExpenseRow[]>
+    createExpense: (data: ExpenseInput) => Promise<ExpenseRow>
+    deleteExpense: (id: string) => Promise<void>
   }
 
   // Hardware operations
@@ -99,6 +123,9 @@ export interface ElectronAPI {
     importDatabase: (filePath: string) => Promise<void>
     writeFile: (filePath: string, content: string) => Promise<void>
   }
+
+  // Notifications
+  onLowStockNotification: (callback: (data: { productName: string; stock: number }) => void) => () => void
 
   // Auto-updater operations
   updater: {
@@ -141,5 +168,4 @@ export interface UpdateStatusData {
   percent?: number
   bytesPerSecond?: number
   transferred?: number
-  total?: number
-}
+  total?: number}

@@ -20,6 +20,9 @@ import POS from './pages/pos/POS'
 import Inventory from './pages/inventory/Inventory'
 import Reports from './pages/reports/Reports'
 import DebtManagement from './pages/debt/DebtManagement'
+import ExpensesPage from './pages/expenses/ExpensesPage'
+import NotificationsPage from './pages/notifications/NotificationsPage'
+import { useNotifications } from './hooks/useNotifications'
 
 interface ToastContextValue {
   showToast: (message: string, variant?: ToastVariant) => void
@@ -32,6 +35,8 @@ const PAGE_CONFIG: Record<Page, PageConfig> = {
   inventory: { title: 'Stock', subtitle: 'Inventory' },
   reports: { title: 'Reports', subtitle: 'Analytics' },
   debts: { title: 'Debt', subtitle: 'Collections' },
+  expenses: { title: 'Expenses', subtitle: 'Track spending' },
+  notifications: { title: 'Notifications', subtitle: 'Alerts' },
   settings: { title: 'Settings', subtitle: 'Configure' },
 }
 
@@ -41,6 +46,7 @@ const App: React.FC = () => {
   const { toasts, showToast, dismissToast } = useToastController()
   const { heldSalesCount, inventorySearch, debtSearch, reportsDateFilter } = useHeaderControlEvents()
   const { showLogin, loginResolved, dismissLogin } = useLoginStatus()
+  useNotifications() // Initialises low-stock listener from main process
 
   const handleNavigate = useCallback((page: Page) => setCurrentPage(page), [])
   const handleOpenSettings = useCallback(() => setCurrentPage('settings'), [])
@@ -51,6 +57,7 @@ const App: React.FC = () => {
       case 'inventory': return { kind: 'inventory', search: inventorySearch }
       case 'reports': return { kind: 'reports', dateFilter: reportsDateFilter }
       case 'debts': return { kind: 'debts', search: debtSearch }
+      case 'expenses': return null
       default: return null
     }
   }, [currentPage, heldSalesCount, inventorySearch, debtSearch, reportsDateFilter])
@@ -61,6 +68,8 @@ const App: React.FC = () => {
       case 'inventory': return <Inventory />
       case 'reports': return <Reports />
       case 'debts': return <DebtManagement />
+      case 'expenses': return <ExpensesPage />
+      case 'notifications': return <NotificationsPage />
       case 'settings': return <Settings />
       default: return null
     }

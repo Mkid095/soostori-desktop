@@ -1,5 +1,5 @@
 import React from 'react'
-import { ShoppingCart, Package, BarChart3, DollarSign } from 'lucide-react'
+import { ShoppingCart, Package, BarChart3, DollarSign, Bell, Receipt } from 'lucide-react'
 import NavItemButton from './NavItemButton'
 import { useTranslation } from '../../lib/useTranslation'
 import type { TranslationKey } from '../../lib/i18n'
@@ -7,7 +7,7 @@ import type { TranslationKey } from '../../lib/i18n'
 // ============================================================
 // TYPES
 // ============================================================
-type Page = 'pos' | 'inventory' | 'reports' | 'debts' | 'settings'
+type Page = 'pos' | 'inventory' | 'reports' | 'debts' | 'expenses' | 'settings' | 'notifications'
 
 interface NavItem {
   id: Page
@@ -37,6 +37,8 @@ const navGroups: NavGroup[] = [
     items: [
       { id: 'reports', labelKey: 'nav.reports', icon: BarChart3 },
       { id: 'debts', labelKey: 'nav.debts', icon: DollarSign },
+      { id: 'expenses', labelKey: 'nav.expenses', icon: Receipt },
+      { id: 'notifications', labelKey: 'nav.notifications', icon: Bell },
     ],
   },
 ]

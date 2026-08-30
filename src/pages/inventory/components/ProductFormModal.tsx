@@ -8,7 +8,9 @@ import { DistributorStep } from './DistributorStep'
 import { BarcodeStep } from './BarcodeStep'
 import { StepIndicator } from '../../../components/shared/StepIndicator'
 import { FormNavigationFooter } from './FormNavigationFooter'
+import { api } from '../../../lib/api'
 import type { Product, Category } from '../../../lib/types'
+import { mapProductRow, type ProductDbRow } from '../../../hooks/product-mapper'
 
 interface ProductFormModalProps {
   product?: Product | null
@@ -18,6 +20,7 @@ interface ProductFormModalProps {
   isSaving: boolean
   onAddCategory: (name: string, color: string) => void
   initialBarcode?: string
+  onBarcodeFound?: (product: Product) => void
 }
 
 const STEPS = [
@@ -29,10 +32,17 @@ const STEPS = [
 ]
 
 export const ProductFormModal: React.FC<ProductFormModalProps> = ({
-  product, categories, onSave, onClose, isSaving, onAddCategory, initialBarcode
+  product, categories, onSave, onClose, isSaving, onAddCategory, initialBarcode, onBarcodeFound
 }) => {
   const [step, setStep] = useState(product ? 1 : 0)
-  const form = useProductForm(product ?? null, initialBarcode)
+  const form = useProductForm(product ?? null, initialBarcode, {
+    onBarcodeLookup: async (barcode: string) => {
+      const row = await api.getProductByBarcode(barcode) as ProductDbRow | null
+      if (!row) return null
+      return mapProductRow(row)
+    },
+    onBarcodeFound,
+  })
   const isEditing = !!product?.id
 
   const handleSubmit = (e: React.FormEvent) => {

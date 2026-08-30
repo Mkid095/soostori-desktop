@@ -8,6 +8,7 @@ import { set } from './set'
 import { setHw } from './set-hw'
 import { shared } from './shared'
 import { app } from './app'
+import { exp } from './expenses'
 
 // ============================================================
 // TYPES
@@ -18,8 +19,8 @@ export type Language = 'en' | 'sw'
 // TRANSLATIONS RECORD
 // ============================================================
 export const translations = {
-  en: { ...nav.en, ...pos.en, ...inv.en, ...invPricing.en, ...rep.en, ...deb.en, ...set.en, ...setHw.en, ...shared.en, ...app.en },
-  sw: { ...nav.sw, ...pos.sw, ...inv.sw, ...invPricing.sw, ...rep.sw, ...deb.sw, ...set.sw, ...setHw.sw, ...shared.sw, ...app.sw },
+  en: { ...nav.en, ...pos.en, ...inv.en, ...invPricing.en, ...rep.en, ...deb.en, ...set.en, ...setHw.en, ...shared.en, ...app.en, ...exp.en },
+  sw: { ...nav.sw, ...pos.sw, ...inv.sw, ...invPricing.sw, ...rep.sw, ...deb.sw, ...set.sw, ...setHw.sw, ...shared.sw, ...app.sw, ...exp.sw },
 } as const
 
 export type TranslationKey = keyof typeof translations.en

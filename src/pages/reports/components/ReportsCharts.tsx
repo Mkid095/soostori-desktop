@@ -5,10 +5,18 @@ import { formatCurrency } from '../../../lib/formatting-currency'
 import { useTranslation } from '../../../lib/useTranslation'
 import type { Sale } from '../../../lib/types'
 import type { ReportsStats } from '../hooks/useReportsState'
+import TopProductsChart from './TopProductsChart'
+
+interface TopProductRow {
+  product_name: string
+  totalQty: number
+  totalRevenue: number
+}
 
 interface ReportsChartsProps {
   stats: ReportsStats
   filteredSales: Sale[]
+  topProducts?: TopProductRow[]
 }
 
 const METHOD_COLORS: Record<string, string> = {
@@ -18,7 +26,7 @@ const METHOD_COLORS: Record<string, string> = {
   debt: '#f59e0b',
 }
 
-export const ReportsCharts: React.FC<ReportsChartsProps> = ({ stats, filteredSales }) => {
+export const ReportsCharts: React.FC<ReportsChartsProps> = ({ stats, filteredSales, topProducts = [] }) => {
   const { t } = useTranslation()
   const lineData = useMemo(() => {
     const map: Record<string, number> = {}
@@ -42,8 +50,8 @@ export const ReportsCharts: React.FC<ReportsChartsProps> = ({ stats, filteredSal
   const currencyTick = (value: number) => `KES ${(value / 1000).toFixed(0)}k`
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-5 lg:gap-6">
-      <div className="lg:col-span-3">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6">
+      <div className="lg:col-span-2">
         <h3 className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
           <TrendingUp size={12} className="text-brand-orange" />
           {t('rep.revenueOverTime')}
@@ -66,7 +74,7 @@ export const ReportsCharts: React.FC<ReportsChartsProps> = ({ stats, filteredSal
           </ResponsiveContainer>
         )}
       </div>
-      <div className="lg:col-span-2">
+      <div>
         <h3 className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
           <PieIcon size={12} className="text-brand-orange" />
           {t('rep.paymentMethods')}
@@ -91,6 +99,11 @@ export const ReportsCharts: React.FC<ReportsChartsProps> = ({ stats, filteredSal
           </ResponsiveContainer>
         )}
       </div>
+      {topProducts.length > 0 && (
+        <div className="lg:col-span-3">
+          <TopProductsChart data={topProducts} />
+        </div>
+      )}
     </div>
   )
 }

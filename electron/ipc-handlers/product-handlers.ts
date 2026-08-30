@@ -4,11 +4,13 @@ import { v4 as uuidv4 } from 'uuid'
 import log from 'electron-log'
 import { productCreateSchema, productUpdateSchema } from './validation'
 import { registerProductQueryHandlers } from './product-handlers-query'
+import { registerProductMutationHandlers } from './product-handlers-mutation'
 
 export { registerProductQueryHandlers }
 
 export function registerProductHandlers(): void {
   registerProductQueryHandlers()
+  registerProductMutationHandlers()
 
   ipcMain.handle('db:products:create', (_event, rawData: unknown) => {
     const data = productCreateSchema.parse(rawData)

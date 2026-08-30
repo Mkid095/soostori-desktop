@@ -111,6 +111,15 @@ export interface CartLineItem {
   metadata?: Record<string, unknown>
 }
 
+export function useTopProducts(startDate: string, endDate: string, limit = 10) {
+  return useQuery<{ product_name: string; totalQty: number; totalRevenue: number }[]>({
+    queryKey: ['topProducts', startDate, endDate, limit],
+    queryFn: async () => {
+      return await api.getTopProducts(startDate, endDate, limit) as { product_name: string; totalQty: number; totalRevenue: number }[]
+    },
+  })
+}
+
 export function useCreateSale() {
   const queryClient = useQueryClient()
   return useMutation({

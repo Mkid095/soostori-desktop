@@ -14,7 +14,12 @@ const EMPTY_FORM: ProductFormState = {
   unitsPerPackage: '', boxBuyingPrice: '', bulkSellingPrice: '',
 }
 
-export function useProductForm(product: Product | null, initialBarcode?: string) {
+interface UseProductFormOptions {
+  onBarcodeLookup?: (barcode: string) => Promise<Product | null>
+  onBarcodeFound?: (product: Product) => void
+}
+
+export function useProductForm(product: Product | null, initialBarcode?: string, options?: UseProductFormOptions) {
   const [mode, setMode] = useState<ProductFormMode>(product?.unitsPerPackage ? 'bulk' : 'loose')
   const [form, setForm] = useState<ProductFormState>(product ? productToForm(product) : EMPTY_FORM)
   const { groupPrices, addGroupPrice, updateGroupPrice, removeGroupPrice } = useGroupPrices(
@@ -32,9 +37,19 @@ export function useProductForm(product: Product | null, initialBarcode?: string)
   const { costPerUnit, handleBulkPriceChange } = useProductFormPricing(mode, form, setForm)
 
   useEffect(() => {
-    if (initialBarcode && !product?.id) {
-      setForm(f => ({ ...f, barcode: initialBarcode }))
-      barcodeInputRef.current?.focus()
+    if (initialBarcode && !product?.id && options?.onBarcodeLookup) {
+      options.onBarcodeLookup(initialBarcode).then(found => {
+        if (found) {
+          setForm(productToForm(found))
+          setMode(found.unitsPerPackage ? 'bulk' : 'loose')
+          setImageUrl(found.imageUrl || '')
+          setImagePreview(found.imageUrl || null)
+          options.onBarcodeFound?.(found)
+        } else {
+          setForm(f => ({ ...f, barcode: initialBarcode }))
+          barcodeInputRef.current?.focus()
+        }
+      })
     }
   }, [initialBarcode, product?.id])
 

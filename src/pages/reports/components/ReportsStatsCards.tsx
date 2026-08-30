@@ -1,5 +1,5 @@
 import React from 'react'
-import { AlertCircle, Banknote, Smartphone, CreditCard } from 'lucide-react'
+import { AlertCircle, Banknote, Smartphone, CreditCard, TrendingUp } from 'lucide-react'
 import { formatCurrency } from '../../../lib/formatting-currency'
 import { useTranslation } from '../../../lib/useTranslation'
 import type { ReportsStats } from '../hooks/useReportsState'
@@ -57,17 +57,19 @@ const StatCard: React.FC<StatCardProps> = ({ label, amount, accent, icon: Icon }
 interface ReportsStatsCardsProps {
   stats: ReportsStats
   debtCollected: number
+  profit: number
 }
 
-export const ReportsStatsCards: React.FC<ReportsStatsCardsProps> = ({ stats, debtCollected }) => {
+export const ReportsStatsCards: React.FC<ReportsStatsCardsProps> = ({ stats, debtCollected, profit }) => {
   const { t } = useTranslation()
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
       <StatCard label={t('label.total')} amount={stats.total} accent="orange" icon={CreditCard} />
       <StatCard label={t('rep.cash')} amount={stats.cashTotal} accent="emerald" icon={Banknote} />
       <StatCard label={t('pos.mpesa')} amount={stats.mpesaTotal} accent="green" icon={Smartphone} />
       <StatCard label={t('rep.debtSales')} amount={stats.debtTotal} accent="amber" icon={AlertCircle} />
       <StatCard label={t('rep.debtCollected')} amount={debtCollected} accent="violet" icon={AlertCircle} />
+      <StatCard label={t('rep.profit')} amount={profit} accent="emerald" icon={TrendingUp} />
     </div>
   )
 }
