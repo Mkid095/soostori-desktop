@@ -3,6 +3,7 @@ import path from 'path'
 import { app } from 'electron'
 import log from 'electron-log'
 import { createTables, seedDefaultData } from './schema'
+import { runMigrations } from './migrations'
 
 let db: Database.Database | null = null
 
@@ -23,6 +24,7 @@ export async function initDatabase(): Promise<void> {
   db.pragma('foreign_keys = ON')
 
   createTables()
+  runMigrations()
   seedDefaultData()
 }
 

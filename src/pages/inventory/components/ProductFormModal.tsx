@@ -138,13 +138,12 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             )}
           </form>
         </div>
-
         <FormNavigationFooter
-            step={step} totalSteps={STEPS.length}
-            isSaving={isSaving} isValid={form.isValid()}
-            isEditing={isEditing} canGoNext={canGoNext()}
-            onBack={handleBack} onCancel={onClose} onNext={handleNext}
-          />
+          step={step} totalSteps={STEPS.length}
+          isSaving={isSaving} isValid={form.isValid()}
+          isEditing={isEditing} canGoNext={canGoNext()}
+          onBack={handleBack} onCancel={onClose} onNext={handleNext}
+        />
       </div>
     </div>
   )

@@ -52,4 +52,80 @@ export function createCommerceTables(): void {
       date TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `)
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS shops (
+      id TEXT PRIMARY KEY, name TEXT NOT NULL,
+      currency TEXT NOT NULL DEFAULT 'KES', owner_id TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `)
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS employees (
+      id TEXT PRIMARY KEY, shop_id TEXT NOT NULL, name TEXT NOT NULL,
+      pin_hash TEXT NOT NULL, pin_salt TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'cashier', is_active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (shop_id) REFERENCES shops(id)
+    )
+  `)
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS invitations (
+      id TEXT PRIMARY KEY, shop_id TEXT NOT NULL, employee_name TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'cashier', code TEXT NOT NULL UNIQUE,
+      device_name TEXT, created_by TEXT NOT NULL,
+      expires_at TEXT NOT NULL, used_at TEXT,
+      FOREIGN KEY (shop_id) REFERENCES shops(id)
+    )
+  `)
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS devices (
+      id TEXT PRIMARY KEY, shop_id TEXT NOT NULL, employee_id TEXT,
+      device_name TEXT NOT NULL DEFAULT 'POS',
+      device_type TEXT NOT NULL DEFAULT 'desktop',
+      capabilities TEXT NOT NULL DEFAULT '{"sales":true,"inventory":true,"printing":true}',
+      is_host INTEGER NOT NULL DEFAULT 0, is_online INTEGER NOT NULL DEFAULT 0,
+      connection_token TEXT,
+      last_seen TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (shop_id) REFERENCES shops(id)
+    )
+  `)
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id TEXT PRIMARY KEY, shop_id TEXT NOT NULL, user_id TEXT NOT NULL,
+      device_id TEXT, action TEXT NOT NULL,
+      entity_type TEXT, entity_id TEXT, payload TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `)
+
+  // Device pairing approvals — new LAN devices must be approved by owner/manager
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS device_pairings (
+      id          TEXT PRIMARY KEY,
+      shop_id     TEXT NOT NULL,
+      device_id   TEXT NOT NULL,
+      requested_by TEXT NOT NULL,
+      approved_by TEXT,
+      status      TEXT NOT NULL DEFAULT 'pending',
+      token       TEXT,
+      created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `)
+
+  // Active login sessions — tracks who is logged into which device
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS device_sessions (
+      id         TEXT PRIMARY KEY,
+      device_id  TEXT NOT NULL,
+      user_id   TEXT NOT NULL,
+      login_at  TEXT NOT NULL,
+      logout_at TEXT,
+      FOREIGN KEY (device_id) REFERENCES devices(id)
+    )
+  `)
 }

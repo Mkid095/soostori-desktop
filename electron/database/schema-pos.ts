@@ -49,7 +49,7 @@ export function createPosTables(): void {
       sku TEXT, barcode TEXT UNIQUE, description TEXT, image_url TEXT,
       cost_price REAL DEFAULT 0, selling_price REAL NOT NULL,
       discount_price REAL, unit TEXT DEFAULT 'piece',
-      stock_quantity INTEGER DEFAULT 0, low_stock_threshold INTEGER DEFAULT 5,
+      stock_quantity INTEGER DEFAULT 0, current_stock INTEGER DEFAULT 0, low_stock_threshold INTEGER DEFAULT 5,
       track_inventory INTEGER DEFAULT 1, has_variants INTEGER DEFAULT 0,
       parent_variant_id TEXT, expiry_date TEXT, metadata TEXT,
       is_active INTEGER DEFAULT 1,
@@ -93,11 +93,19 @@ function migrateProductsTable(database: import('better-sqlite3').Database): void
     { name: 'box_buying_price', sql: 'ADD COLUMN box_buying_price REAL' },
     { name: 'bulk_selling_price', sql: 'ADD COLUMN bulk_selling_price REAL' },
     { name: 'group_prices', sql: 'ADD COLUMN group_prices TEXT' },
+    { name: 'current_stock', sql: 'ADD COLUMN current_stock INTEGER DEFAULT 0' },
   ]
   for (const col of newCols) {
     if (!existingColNames.includes(col.name)) {
       try { database.exec(`ALTER TABLE products ${col.sql}`) } catch { /* ignore */ }
     }
+  }
+
+  // Initialize current_stock from stock_quantity for existing products (event-source bootstrap)
+  if (existingColNames.includes('current_stock') && existingColNames.includes('stock_quantity')) {
+    try {
+      database.exec(`UPDATE products SET current_stock = stock_quantity WHERE current_stock = 0 AND stock_quantity > 0`)
+    } catch { /* ignore */ }
   }
 }
 

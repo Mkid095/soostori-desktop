@@ -4,18 +4,19 @@ import log from 'electron-log'
 import { initDatabase, getDatabase } from './database'
 import { setMainWindow } from './window-manager'
 import {
-  registerProductHandlers,
-  registerCategoryHandlers,
-  registerSaleHandlers,
-  registerCustomerHandlers,
-  registerDebtHandlers,
-  registerSettingsHandlers,
-  registerStockHandlers,
-  registerExpenseHandlers,
+  registerProductHandlers, registerCategoryHandlers, registerSaleHandlers,
+  registerCustomerHandlers, registerDebtHandlers, registerSettingsHandlers,
+  registerStockHandlers, registerExpenseHandlers, registerShopHandlers,
+  registerAuthHandlers, registerInviteHandlers, registerDeviceHandlers,
+  registerInventoryTxHandlers, registerAuditHandlers,
+  registerSyncSaleHandlers, registerSyncQueueHandlers,
+  registerSyncConflictHandlers,
 } from './ipc-handlers'
 import { registerHardwareHandlers } from './ipc-handlers/hardware-handlers'
 import { registerAppHandlers } from './ipc-handlers/app-handlers'
 import { setupAutoUpdater } from './updater'
+import { startHeartbeatService } from './services/heartbeat-service'
+import { verifySubscription } from './services/cloud-service'
 
 // Configure logging
 log.transports.file.level = 'info'
@@ -96,6 +97,15 @@ app.whenReady().then(async () => {
     registerSettingsHandlers()
     registerStockHandlers()
     registerExpenseHandlers()
+    registerShopHandlers()
+    registerAuthHandlers()
+    registerInviteHandlers()
+    registerDeviceHandlers()
+    registerInventoryTxHandlers()
+    registerAuditHandlers()
+    registerSyncSaleHandlers()
+    registerSyncQueueHandlers()
+    registerSyncConflictHandlers()
     registerHardwareHandlers()
     registerAppHandlers()
     log.info('IPC handlers registered')
@@ -106,6 +116,10 @@ app.whenReady().then(async () => {
     // Set up auto-updater after window is created
     // Configure your update server URL in electron-builder.yml publish field
     setupAutoUpdater(mainWindow!)
+
+    // Start background services
+    startHeartbeatService()
+    verifySubscription().catch(() => {})  // fire-and-forget, non-blocking
   } catch (error) {
     log.error('Failed to initialize app:', error)
     dialog.showErrorBox('Initialization Error', `Failed to start: ${error}`)
