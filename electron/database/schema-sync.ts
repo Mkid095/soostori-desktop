@@ -27,6 +27,7 @@ export function createSyncTables(): void {
       event_type      TEXT NOT NULL,
       payload         TEXT NOT NULL,
       sequence_number INTEGER NOT NULL,
+      synced_at       TEXT,
       created_at      TEXT NOT NULL
     )
   `)

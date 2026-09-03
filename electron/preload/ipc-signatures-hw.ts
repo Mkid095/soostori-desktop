@@ -41,3 +41,13 @@ export interface UpdaterIpc {
   status: () => Promise<{ status: string; version?: string }>
   onStatus: (callback: (data: UpdateStatusData) => void) => () => void
 }
+
+export interface CloudIpc {
+  syncEvents: () => Promise<{ pushed: number }>
+  syncShopSettings: () => Promise<{ success: boolean; error?: string }>
+  pullShopSettings: () => Promise<{ success: boolean; error?: string }>
+  heartbeat: (deviceId: string) => Promise<{ success: boolean }>
+  subscription: () => Promise<{ valid: boolean; plan: string | null; deviceLimit: number | null; expiryDate: string | null }>
+  fullSync: () => Promise<{ success: boolean; error?: string }>
+  health: () => Promise<{ reachable: boolean; latencyMs: number | null }>
+}

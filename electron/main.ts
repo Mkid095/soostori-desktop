@@ -11,12 +11,15 @@ import {
   registerInventoryTxHandlers, registerAuditHandlers,
   registerSyncSaleHandlers, registerSyncQueueHandlers,
   registerSyncConflictHandlers,
+  registerCloudHandlers,
 } from './ipc-handlers'
 import { registerHardwareHandlers } from './ipc-handlers/hardware-handlers'
 import { registerAppHandlers } from './ipc-handlers/app-handlers'
 import { setupAutoUpdater } from './updater'
 import { startHeartbeatService } from './services/heartbeat-service'
+import { configureSyncTaskService, startSyncTaskService, stopSyncTaskService } from './services/sync-task-service'
 import { verifySubscription } from './services/cloud-service'
+import { getSyncStore } from './services/store'
 
 // Configure logging
 log.transports.file.level = 'info'
@@ -106,6 +109,7 @@ app.whenReady().then(async () => {
     registerSyncSaleHandlers()
     registerSyncQueueHandlers()
     registerSyncConflictHandlers()
+    registerCloudHandlers()
     registerHardwareHandlers()
     registerAppHandlers()
     log.info('IPC handlers registered')
@@ -118,6 +122,10 @@ app.whenReady().then(async () => {
     setupAutoUpdater(mainWindow!)
 
     // Start background services
+    const syncStore = getSyncStore()
+    const deviceId = (syncStore.get('deviceId') as string | undefined) ?? ''
+    configureSyncTaskService(deviceId)
+    startSyncTaskService()
     startHeartbeatService()
     verifySubscription().catch(() => {})  // fire-and-forget, non-blocking
   } catch (error) {
@@ -142,6 +150,7 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   log.info('App quitting...')
+  stopSyncTaskService()
   const db = getDatabase()
   if (db) {
     db.close()
