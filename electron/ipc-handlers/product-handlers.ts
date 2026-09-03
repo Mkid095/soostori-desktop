@@ -5,6 +5,7 @@ import log from 'electron-log'
 import { productCreateSchema, productUpdateSchema } from './validation'
 import { registerProductQueryHandlers } from './product-handlers-query'
 import { registerProductMutationHandlers } from './product-handlers-mutation'
+import { pushProduct } from '../services/cloud-entity-sync'
 
 export { registerProductQueryHandlers }
 
@@ -34,6 +35,8 @@ export function registerProductHandlers(): void {
       data.allowSingleUnitSale !== undefined ? (data.allowSingleUnitSale ? 1 : 0) : 1,
       data.unitsPerPackage ?? null, data.boxBuyingPrice ?? null, data.bulkSellingPrice ?? null,
       data.groupPrices ? JSON.stringify(data.groupPrices) : null, now, now)
+    // Push to cloud (fire-and-forget)
+    pushProduct(id).catch(() => {})
     return db.prepare('SELECT * FROM products WHERE id = ?').get(id)
   })
 
@@ -70,12 +73,14 @@ export function registerProductHandlers(): void {
     fields.push('updated_at = ?')
     values.push(now, id)
     db.prepare(`UPDATE products SET ${fields.join(', ')} WHERE id = ?`).run(...values)
+    pushProduct(id).catch(() => {})
     return db.prepare('SELECT * FROM products WHERE id = ?').get(id)
   })
 
   ipcMain.handle('db:products:delete', (_event, id: string) => {
     const now = new Date().toISOString()
     getDatabase().prepare('UPDATE products SET deleted_at = ?, is_active = 0 WHERE id = ?').run(now, id)
+    pushProduct(id).catch(() => {})
   })
 
   log.info('Product mutation handlers registered')

@@ -1,33 +1,36 @@
 /**
- * cloud-auth-sync.ts — Sync cloud entities into local SQLite.
- *
- * syncEmployeesFromCloud(shopId) — upserts employees from cloud into local DB
- * syncShopFromCloud(deviceId) — resolves and upserts the shop for a device
+ * cloud-auth-sync.ts — Sync cloud employees/shops into local SQLite.
  */
 
 import { getDatabase } from '../database'
 import * as instant from './instant-api'
 import { v4 as uuidv4 } from 'uuid'
 import log from 'electron-log'
-import type { EmployeeCache } from './cloud-auth'
 
 const APP_ID = process.env.INSTANT_APP_ID || ''
 
-export interface CloudShop { id: string; name: string; currency: string; slug: string; taxRate: number }
+export interface CloudEmployee {
+  id: string; shopId: string; name: string; role: string; status: string
+}
 
-export async function syncEmployeesFromCloud(shopId: string): Promise<EmployeeCache[]> {
+export interface CloudShop {
+  id: string; name: string; currency: string; slug: string; taxRate: number
+}
+
+export async function syncEmployeesFromCloud(shopId: string): Promise<Array<{ id: string; cloudId: string; name: string; role: string; isActive: number }>> {
   if (!APP_ID) return []
   try {
     const result = await instant.instaqQuery(APP_ID, { employees: { $: { where: { shopId } } } })
     const emps = (result as { employees?: Array<Record<string, unknown>> })?.employees ?? []
     const db = getDatabase()
     const now = new Date().toISOString()
-    const cache: EmployeeCache[] = []
+    const resultCache: Array<{ id: string; cloudId: string; name: string; role: string; isActive: number }> = []
+
     for (const e of emps) {
       const emp = e as Record<string, unknown>
       const cloudId = String(emp.id ?? '')
       const name = String(emp.name ?? 'Unknown')
-      const role = String(emp.role ?? 'cashier')
+      const role = String(emp.role ?? 'attendant')
       const isActive = (emp.status === 'active' || emp.status === 'enabled') ? 1 : 0
       const existing = db.prepare('SELECT id FROM employees WHERE cloud_id = ?').get(cloudId) as { id: string } | undefined
       if (existing) {
@@ -38,17 +41,17 @@ export async function syncEmployeesFromCloud(shopId: string): Promise<EmployeeCa
           VALUES (?, ?, ?, ?, ?, '', '', ?, ?, ?)`)
           .run(uuidv4(), cloudId, shopId, name, role, isActive, now, now)
       }
-      cache.push({ id: existing?.id ?? uuidv4(), cloudId, shopId, name, role, pinHash: '', pinSalt: '', isActive })
+      resultCache.push({ id: existing?.id ?? uuidv4(), cloudId, name, role, isActive })
     }
-    log.info(`syncEmployeesFromCloud: ${cache.length} employees for shop ${shopId}`)
-    return cache
+    log.info(`syncEmployeesFromCloud: ${resultCache.length} for shop ${shopId}`)
+    return resultCache
   } catch (err) { log.warn('syncEmployeesFromCloud failed', err); return [] }
 }
 
 export async function syncShopFromCloud(deviceId: string): Promise<CloudShop | null> {
   if (!APP_ID) return null
   try {
-    const devResult = await instant.instaqQuery(APP_ID, { devices: { $: { where: { id: deviceId } } } })
+    const devResult = await instant.instaqQuery(APP_ID, { devices: { $: { where: { deviceId } } } })
     const devs = (devResult as { devices?: unknown[] })?.devices ?? []
     if (!devs.length) return null
     const cloudShopId = String((devs[0] as Record<string, unknown>).shopId ?? '')
@@ -72,7 +75,7 @@ export async function syncShopFromCloud(deviceId: string): Promise<CloudShop | n
       db.prepare('INSERT OR IGNORE INTO shops (id, name, currency, created_at) VALUES (?, ?, ?, ?)')
         .run(shop.id, shop.name, shop.currency, new Date().toISOString())
     }
-    log.info(`syncShopFromCloud: "${shop.name}" (${shop.id})`)
+    log.info(`syncShopFromCloud: "${shop.name}"`)
     return shop
   } catch (err) { log.warn('syncShopFromCloud failed', err); return null }
 }

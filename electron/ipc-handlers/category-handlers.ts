@@ -3,6 +3,7 @@ import { getDatabase } from '../database'
 import { v4 as uuidv4 } from 'uuid'
 import log from 'electron-log'
 import { categoryCreateSchema, categoryUpdateSchema } from './validation'
+import { pushCategory } from '../services/cloud-entity-sync'
 
 export function registerCategoryHandlers(): void {
   ipcMain.handle('db:categories:list', (_event, _shopId?: string) => {
@@ -32,6 +33,7 @@ export function registerCategoryHandlers(): void {
       now
     )
 
+    pushCategory(id).catch(() => {})
     return db.prepare('SELECT * FROM categories WHERE id = ?').get(id)
   })
 
@@ -55,12 +57,14 @@ export function registerCategoryHandlers(): void {
     values.push(id)
 
     db.prepare(`UPDATE categories SET ${fields.join(', ')} WHERE id = ?`).run(...values)
+    pushCategory(id).catch(() => {})
     return db.prepare('SELECT * FROM categories WHERE id = ?').get(id)
   })
 
   ipcMain.handle('db:categories:delete', (_event, id: string) => {
     const db = getDatabase()
     db.prepare('UPDATE categories SET is_active = 0 WHERE id = ?').run(id)
+    pushCategory(id).catch(() => {})
   })
 
   log.info('Category IPC handlers registered')

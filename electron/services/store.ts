@@ -10,6 +10,9 @@ interface SyncStoreSchema {
   shopId: string
   employeeId: string
   firstLaunchAt: string
+  subscription: string  // JSON-serialized cloud subscription state
+  subscriptionCheckedAt: string
+  subscriptionLastSuccess: string
 }
 
 let syncStore: ElectronStore<SyncStoreSchema> | null = null
@@ -28,6 +31,9 @@ export function getSyncStore(): ElectronStore<SyncStoreSchema> {
         shopId: '',
         employeeId: '',
         firstLaunchAt: new Date().toISOString(),
+        subscription: '',
+        subscriptionCheckedAt: '',
+        subscriptionLastSuccess: '',
       },
     })
   }

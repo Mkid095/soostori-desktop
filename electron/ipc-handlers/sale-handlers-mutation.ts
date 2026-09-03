@@ -5,6 +5,7 @@ import log from 'electron-log'
 import { saleCreateSchema, heldSaleCreateSchema } from './validation'
 import { getMainWindow } from '../window-manager'
 import { syncService } from '../sync/sync-service'
+import { pushSale } from '../services/cloud-entity-sync'
 
 interface ProductStockRow { name: string; stock: number; track_inventory: number | null; low_stock_threshold: number | null }
 interface HeldSaleRow { id: string; name: string | null; cart_items: string; payment_method: string | null; created_at: string }
@@ -137,8 +138,12 @@ export function registerSaleMutationHandlers(): void {
         .run(uuidv4(), shopId, userId, deviceId, 'sale_created', 'sale', saleId, saleAuditPayload, now)
     } catch { log.warn('Failed to write sale audit log') }
 
+    // Push sale to cloud
+    pushSale(saleId).catch(() => {})
+
     return database.prepare('SELECT * FROM sales WHERE id = ?').get(saleId)
   })
+  // Note: pushSale(saleId) is called inside the host-mode branch above; no double-push here.
 
   // Held Sales
   ipcMain.handle('db:held-sales:list', () => getDatabase().prepare('SELECT * FROM held_sales ORDER BY created_at DESC').all())

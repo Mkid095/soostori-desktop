@@ -3,6 +3,7 @@ import { getDatabase } from '../database'
 import { v4 as uuidv4 } from 'uuid'
 import log from 'electron-log'
 import { z } from 'zod'
+import { pushExpense } from '../services/cloud-entity-sync'
 
 interface ExpenseRow {
   id: string
@@ -35,6 +36,7 @@ export function registerExpenseHandlers(): void {
       INSERT INTO expenses (id, amount, category, note, date, created_at)
       VALUES (?, ?, ?, ?, ?, ?)
     `).run(id, data.amount, data.category, data.note || '', data.date, now)
+    pushExpense(id).catch(() => {})
     return db.prepare('SELECT * FROM expenses WHERE id = ?').get(id) as ExpenseRow
   })
 
