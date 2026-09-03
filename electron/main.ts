@@ -12,6 +12,7 @@ import {
   registerSyncSaleHandlers, registerSyncQueueHandlers,
   registerSyncConflictHandlers,
   registerCloudHandlers,
+  registerCloudAuthHandlers,
 } from './ipc-handlers'
 import { registerHardwareHandlers } from './ipc-handlers/hardware-handlers'
 import { registerAppHandlers } from './ipc-handlers/app-handlers'
@@ -110,6 +111,7 @@ app.whenReady().then(async () => {
     registerSyncQueueHandlers()
     registerSyncConflictHandlers()
     registerCloudHandlers()
+    registerCloudAuthHandlers()
     registerHardwareHandlers()
     registerAppHandlers()
     log.info('IPC handlers registered')

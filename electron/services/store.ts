@@ -4,6 +4,12 @@ interface SyncStoreSchema {
   lastProcessedSeq: number
   hostDeviceId: string
   hostUrl: string
+  cloudSession: string  // JSON-serialized CloudSession
+  cloudDeviceId: string
+  deviceId: string      // local device UUID
+  shopId: string
+  employeeId: string
+  firstLaunchAt: string
 }
 
 let syncStore: ElectronStore<SyncStoreSchema> | null = null
@@ -16,6 +22,12 @@ export function getSyncStore(): ElectronStore<SyncStoreSchema> {
         lastProcessedSeq: 0,
         hostDeviceId: '',
         hostUrl: '',
+        cloudSession: '',
+        cloudDeviceId: '',
+        deviceId: '',
+        shopId: '',
+        employeeId: '',
+        firstLaunchAt: new Date().toISOString(),
       },
     })
   }

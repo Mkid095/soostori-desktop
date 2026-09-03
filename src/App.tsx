@@ -15,7 +15,7 @@ import { useLoginStatus } from './lib/login-status'
 import { useSidebarPrefs, SIDEBAR_COLLAPSED, SIDEBAR_EXPANDED } from './lib/sidebar-prefs'
 import LoginScreen from './components/LoginScreen'
 import SetupWizard from './components/SetupWizard'
-import WelcomeScreen from './components/WelcomeScreen'
+import CloudLoginScreen from './components/CloudLoginScreen'
 import { AuthProvider } from './lib/auth-context'
 import { PageRenderer as PageRendererComponent } from './pages/PageRenderer'
 import { usePermissions } from './hooks/usePermissions'
@@ -24,12 +24,12 @@ import { api } from './lib/api'
 import type { ShopUser, Device } from '../electron/preload/types'
 import { PAGE_CONFIG } from './lib/page-config'
 
-// DEV_MODE: when true, SetupWizard is accessible for local development.
-// In production, a shop must be provisioned via cloud authentication.
 const DEV_MODE = typeof process !== 'undefined' && process.env.NODE_ENV === 'development'
 
 interface ToastContextValue { showToast: (message: string, variant?: ToastVariant) => void }
 export const ToastContext = createContext<ToastContextValue | null>(null)
+
+type CloudAuthStep = 'none' | 'logging-in' | 'logged-in'
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('pos')
@@ -44,17 +44,44 @@ const App: React.FC = () => {
   const [authDevice, setAuthDevice] = useState<Device | null>(null)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [showSetup, setShowSetup] = useState(false)
+  const [cloudAuthStep, setCloudAuthStep] = useState<CloudAuthStep>('none')
+  const [pendingCloudAuth, setPendingCloudAuth] = useState<{ shopId: string; userId: string; deviceId: string } | null>(null)
 
+  // On startup: try to restore a previous cloud session, otherwise check local shop
   useEffect(() => {
-    api.getShop().then(shop => {
-      setShopExists(!!shop)
-      // In dev mode, allow local setup wizard when no shop exists
-      setShowSetup(DEV_MODE && !shop)
-    }).catch(() => setShopExists(false))
+    async function init() {
+      const cloud = window.electronAPI?.cloudAuth
+      if (cloud) {
+        try {
+          const restored = await cloud.restoreSession()
+          if (restored.restored) {
+            setCloudAuthStep('logged-in')
+            // Check if shop exists locally; if not, wait for full sync
+            const shop = await api.getShop()
+            if (shop) setShopExists(true)
+            else setShopExists(false)
+            return
+          }
+        } catch { /* cloud not available */ }
+      }
+      // Fallback: check local shop
+      api.getShop().then(shop => {
+        setShopExists(!!shop)
+        setShowSetup(DEV_MODE && !shop)
+      }).catch(() => setShopExists(false))
+    }
+    init()
   }, [])
 
   const handleNavigate = useCallback((page: Page) => setCurrentPage(page), [])
   const handleOpenSettings = useCallback(() => setCurrentPage('settings'), [])
+
+  // Cloud login completed — switch to local PIN login
+  const handleCloudLoginComplete = useCallback((shopId: string, userId: string, deviceId: string) => {
+    setCloudAuthStep('logged-in')
+    setPendingCloudAuth({ shopId, userId, deviceId })
+    setShopExists(true)
+  }, [])
 
   const handleLogin = useCallback((user: ShopUser, sid: string, deviceId: string) => {
     setAuthUser(user)
@@ -83,22 +110,22 @@ const App: React.FC = () => {
     }
   }, [currentPage, heldSalesCount, inventorySearch, debtSearch, reportsDateFilter])
 
-  // Loading state
+  // Loading
   if (shopExists === null) return null
 
-  // Production: no shop found → show cloud onboarding welcome screen
-  if (!shopExists && !showSetup) {
+  // Cloud auth in progress — show CloudLoginScreen
+  if (!shopExists && !showSetup && cloudAuthStep === 'none') {
     return (
       <ThemeProvider><LanguageProvider>
-        <WelcomeScreen
-          onLoginWithAccount={() => { /* cloud auth — pending Instant DB contract */ }}
-          onJoinShop={() => { /* cloud invite flow — pending */ }}
+        <CloudLoginScreen
+          onComplete={handleCloudLoginComplete}
+          fallbackToSetup={() => setShowSetup(DEV_MODE)}
         />
       </LanguageProvider></ThemeProvider>
     )
   }
 
-  // Dev mode: show local setup wizard (only when DEV_MODE=true)
+  // Dev mode: show local setup wizard
   if (showSetup) {
     return (
       <ThemeProvider><LanguageProvider>

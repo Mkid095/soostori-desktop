@@ -64,9 +64,11 @@ export function createCommerceTables(): void {
   database.exec(`
     CREATE TABLE IF NOT EXISTS employees (
       id TEXT PRIMARY KEY, shop_id TEXT NOT NULL, name TEXT NOT NULL,
-      pin_hash TEXT NOT NULL, pin_salt TEXT NOT NULL,
+      pin_hash TEXT NOT NULL DEFAULT '', pin_salt TEXT NOT NULL DEFAULT '',
       role TEXT NOT NULL DEFAULT 'cashier', is_active INTEGER NOT NULL DEFAULT 1,
+      cloud_id TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (shop_id) REFERENCES shops(id)
     )
   `)

@@ -50,4 +50,19 @@ export interface CloudIpc {
   subscription: () => Promise<{ valid: boolean; plan: string | null; deviceLimit: number | null; expiryDate: string | null }>
   fullSync: () => Promise<{ success: boolean; error?: string }>
   health: () => Promise<{ reachable: boolean; latencyMs: number | null }>
+  reconnect: () => Promise<{ ok: boolean }>
+}
+
+export interface CloudAuthIpc {
+  requestMagicCode: (email: string) => Promise<{ codeSent: boolean; message: string }>
+  verifyMagicCode: (email: string, code: string) => Promise<{ success: boolean; session?: Record<string, unknown>; error?: string }>
+  registerDevice: (data: { email: string; deviceId: string; deviceName: string; cloudUser: Record<string, unknown>; employeeId: string; employeeName: string }) => Promise<{ success: boolean; session?: Record<string, unknown>; shop?: Record<string, unknown>; employeeCount?: number; error?: string }>
+  getSession: () => Promise<Record<string, unknown> | null>
+  logout: () => Promise<{ success: boolean }>
+  syncEmployees: (shopId?: string) => Promise<{ employees: Record<string, unknown>[]; count: number }>
+  subscription: (shopId?: string) => Promise<{ valid: boolean; plan: string | null; deviceLimit: number | null; expiryDate: string | null }>
+  restoreSession: () => Promise<{ restored: boolean; employeeCount?: number }>
+  createInvite: (data: { shopId: string; employeeName: string; role: string; createdBy: string; deviceName?: string }) => Promise<{ id: string; code: string; expiresAt: string }>
+  acceptInvite: (data: { code: string; userName: string; pin: string; deviceId: string; deviceName?: string }) => Promise<{ userId: string; deviceId: string }>
+  getEmployees: (shopId?: string) => Promise<Record<string, unknown>[]>
 }
