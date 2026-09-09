@@ -10,6 +10,7 @@ import {
   requestMagicCode, verifyMagicCode, setSession, getSession, clearSession,
   setDeviceId, getShopId, getEmployeeId,
 } from '../services/cloud-auth'
+import { getCloudAuthSingleton } from './cloud-auth-core'
 import { syncEmployeesFromCloud, syncShopFromCloud } from '../services/cloud-auth-sync'
 import { cloudDownloadInitialSnapshot } from '../services/cloud-snapshot'
 import { getSyncStore } from '../services/store'
@@ -75,38 +76,57 @@ export function registerCloudAuthHandlers(): void {
     return { employees, count: employees.length }
   })
 
-  // Restore previous session on startup
+  // Restore previous session on startup — CloudAuth singleton handles both
+  // OAuth sessions (stored via @soostori/auth ElectronStoreSessionStorage) and
+  // magic-code sessions (stored via cloud-auth.ts getSyncStore).
+  // Returns the full canonical identity chain: userId → shopId → employeeId → deviceId.
   ipcMain.handle('cloud:auth:restoreSession', async () => {
-    const session = getSession()
+    const cloudAuth = getCloudAuthSingleton()
+    const cloudSession = await cloudAuth.restoreSession()
+
+    // Magic-code sessions are NOT stored via CloudAuth — check the sync store directly
+    const localSession = getSession()
+    const session = cloudSession ?? localSession
     if (!session) return { restored: false }
+
     const store = getSyncStore()
     const db = getDatabase()
     const deviceId = session.deviceId || store.get('deviceId') as string || uuidv4()
     if (!session.deviceId) setDeviceId(deviceId)
+    store.set('deviceId', deviceId)
 
-    // Ensure device exists locally
-    const localDevice = db.prepare('SELECT id FROM devices WHERE id = ?').get(deviceId)
-    if (!localDevice) {
-      const now = new Date().toISOString()
-      db.prepare(`INSERT INTO devices (id, shop_id, device_name, device_type, is_online, created_at) VALUES (?, ?, ?, 'desktop', 1, ?)`)
-        .run(deviceId, session.shopId || '', `POS-${session.email.split('@')[0]}`, now)
-    }
-
-    // Ensure shop exists
-    db.prepare('INSERT OR IGNORE INTO shops (id, name, currency) VALUES (?, ?, ?)')
-      .run(session.shopId || 'local', 'Shop', 'KES')
-
-    // Sync employees
+    // Sync employees to populate the identity chain (cloudSession may have empty shopId/employeeId)
     const shopId = session.shopId || getShopId()
+    let employeeCount = 0
     if (shopId) {
       try {
         const employees = await syncEmployeesFromCloud(shopId)
         store.set('employeeId', employees[0]?.id ?? '')
-        log.info(`Session restored: ${employees.length} employees`)
-        return { restored: true, employeeCount: employees.length }
+        store.set('shopId', shopId)
+        employeeCount = employees.length
       } catch { log.warn('Session restore: employee sync failed'); }
     }
-    return { restored: true, employeeCount: 0 }
+
+    // Ensure local records exist
+    const localDevice = db.prepare('SELECT id FROM devices WHERE id = ?').get(deviceId)
+    if (!localDevice) {
+      const now = new Date().toISOString()
+      db.prepare(`INSERT INTO devices (id, shop_id, device_name, device_type, is_online, created_at) VALUES (?, ?, ?, 'desktop', 1, ?)`)
+        .run(deviceId, shopId || '', `POS-${session.email.split('@')[0]}`, now)
+    }
+    db.prepare('INSERT OR IGNORE INTO shops (id, name, currency) VALUES (?, ?, ?)')
+      .run(shopId || 'local', 'Shop', 'KES')
+
+    log.info(`Session restored: user=${session.userId}, shop=${shopId}, employees=${employeeCount}, device=${deviceId}`)
+    return {
+      restored: true,
+      userId: session.userId,
+      email: session.email,
+      shopId: shopId || session.shopId,
+      employeeId: store.get('employeeId') as string || '',
+      deviceId,
+      employeeCount,
+    }
   })
 
   log.info('Cloud auth IPC handlers registered')

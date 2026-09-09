@@ -66,7 +66,15 @@ export interface CloudAuthIpc {
   logout: () => Promise<{ success: boolean }>
   syncEmployees: (shopId?: string) => Promise<{ employees: Record<string, unknown>[]; count: number }>
   subscription: (shopId?: string) => Promise<{ valid: boolean; plan: string | null; deviceLimit: number | null; expiryDate: string | null }>
-  restoreSession: () => Promise<{ restored: boolean; employeeCount?: number }>
+  restoreSession: () => Promise<{
+    restored: boolean
+    userId?: string
+    email?: string
+    shopId?: string
+    employeeId?: string
+    deviceId?: string
+    employeeCount?: number
+  }>
   createInvite: (data: { shopId: string; employeeName: string; role: string; createdBy: string; deviceName?: string }) => Promise<{ id: string; code: string; expiresAt: string }>
   acceptInvite: (data: { code: string; userName: string; pin: string; deviceId: string; deviceName?: string }) => Promise<{ userId: string; deviceId: string }>
   getEmployees: (shopId?: string) => Promise<Record<string, unknown>[]>
