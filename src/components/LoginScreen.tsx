@@ -24,20 +24,24 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   const sh = () => { setShk(true); setTimeout(() => setShk(false), 500) }
 
   const getDeviceId = (): string => {
-    let id = localStorage.getItem('deviceId')
-    if (!id) {
-      id = `POS-${Math.random().toString(36).slice(2, 10).toUpperCase()}`
-      localStorage.setItem('deviceId', id)
-    }
-    return id
+    // Canonical device UUID comes from main process via electron-store
+    const stored = localStorage.getItem('deviceId')
+    if (stored) return stored
+    // Fallback — will be overwritten once IPC responds
+    return `POS-${Math.random().toString(36).slice(2, 10).toUpperCase()}`
   }
 
   useEffect(() => {
+    // Load canonical device ID from main process
+    window.electronAPI.db.getDeviceId().then(({ deviceId }) => {
+      localStorage.setItem('deviceId', deviceId)
+    }).catch(() => {})
+    // Load shop then scoped users
     window.electronAPI.db.getShop().then(shop => {
       if (!shop) return
-      return window.electronAPI.db.getUsers()
+      return window.electronAPI.db.getUsers(shop.id)
     }).then(allUsers => {
-      if (allUsers) setUsers(allUsers.filter((u: ShopUser) => u.is_active === 1))
+      if (allUsers) setUsers((allUsers as ShopUser[]).filter((u: ShopUser) => u.is_active === 1))
     }).catch(() => {})
   }, [])
 

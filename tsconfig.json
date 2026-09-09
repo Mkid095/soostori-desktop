@@ -5,18 +5,66 @@
     "moduleResolution": "bundler",
     "strict": true,
     "esModuleInterop": true,
+    "downlevelIteration": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": [
+        "src/*"
+      ],
+      "@soostori/core": [
+        "C:/Users/Administrator/Documents/GitHub/soostori-sdk/packages/core/src/index.ts"
+      ],
+      "@soostori/auth": [
+        "C:/Users/Administrator/Documents/GitHub/soostori-sdk/packages/auth/src/index.ts"
+      ],
+      "@soostori/desktop-adapter": [
+        "C:/Users/Administrator/Documents/GitHub/soostori-sdk/packages/desktop-adapter/src/index.ts"
+      ],
+      "@soostori/devices": [
+        "C:/Users/Administrator/Documents/GitHub/soostori-sdk/packages/devices/src/index.ts"
+      ],
+      "@soostori/storage": [
+        "C:/Users/Administrator/Documents/GitHub/soostori-sdk/packages/storage/src/index.ts"
+      ],
+      "@soostori/inventory": [
+        "C:/Users/Administrator/Documents/GitHub/soostori-sdk/packages/inventory/src/index.ts"
+      ],
+      "@soostori/events": [
+        "C:/Users/Administrator/Documents/GitHub/soostori-sdk/packages/events/src/index.ts"
+      ],
+      "@soostori/business": [
+        "C:/Users/Administrator/Documents/GitHub/soostori-sdk/packages/business/src/index.ts"
+      ],
+      "@soostori/sales": [
+        "C:/Users/Administrator/Documents/GitHub/soostori-sdk/packages/business/sales/src/index.ts"
+      ],
+      "@soostori/products": [
+        "C:/Users/Administrator/Documents/GitHub/soostori-sdk/packages/business/products/src/index.ts"
+      ],
+      "@soostori/updates": [
+        "C:/Users/Administrator/Documents/GitHub/soostori-sdk/packages/updates/src/index.ts"
+      ]
     }
   },
-  "include": ["src/**/*", "electron/**/*"],
-  "exclude": ["node_modules", "dist", "dist-electron"]
+  "include": [
+    "src/**/*",
+    "electron/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "dist-electron",
+    "electron/integration"
+  ]
 }

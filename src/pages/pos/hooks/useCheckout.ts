@@ -104,6 +104,7 @@ export function useCheckout(cart: CartItem[], shopSettings: ShopSettings | null 
 
   const onMethodChange = useCallback((m: PaymentMethod) => {
     setMethod(m)
+    setMpesaConfirmed(false)
   }, [])
 
   return { method, given, note, mpesaConfirmed, showThankYou, debtCustomerId, debtCustomerName, debtCustomerPhone, debtCustomerIdNumber, showNewCustomer,

@@ -1,48 +1,48 @@
+/**
+ * Stock IPC handlers — manual stock adjustments.
+ *
+ * All stock mutations now flow through the SDK canonical path:
+ *   db:inventory:adjust → adjustStock() → StockMovementLedger
+ *     → Primary authorization check (ONLINE required)
+ *     → inventory_transactions ledger
+ *     → products.current_stock cache update
+ *
+ * Legacy: stock_movements table is retired from new production writes.
+ * Kept for historical reads only.
+ */
+
 import { ipcMain } from 'electron'
 import { getDatabase } from '../database'
-import { v4 as uuidv4 } from 'uuid'
 import log from 'electron-log'
 import { stockAdjustmentSchema } from './validation'
-
-interface ProductStockRow {
-  stock_quantity: number | null
-}
+import { adjustStock } from '../sdk/inventory-orchestrator'
+import { desktopLoadSession } from '../auth/electron-store-session'
 
 export function registerStockHandlers(): void {
-  ipcMain.handle('db:inventory:adjust', (_event, rawProductId: unknown, rawQuantityChange: unknown, rawReason: unknown) => {
+  ipcMain.handle('db:inventory:adjust', async (_event, rawProductId: unknown, rawQuantityChange: unknown, rawReason: unknown) => {
     const validated = stockAdjustmentSchema.parse({
       productId: rawProductId,
       quantityChange: rawQuantityChange,
       reason: rawReason,
     })
-    const db = getDatabase()
-    const id = uuidv4()
-    const now = new Date().toISOString()
 
-    const product = db.prepare('SELECT stock_quantity FROM products WHERE id = ?').get(validated.productId) as ProductStockRow | undefined
-    if (!product) throw new Error('Product not found')
+    // Get current user from session
+    const session = await desktopLoadSession()
+    const userId = session?.userId ?? 'system'
 
-    const newQuantity = (product.stock_quantity || 0) + validated.quantityChange
-    if (newQuantity < 0) throw new Error('Insufficient stock')
-
-    db.prepare('UPDATE products SET stock_quantity = ?, updated_at = ? WHERE id = ?').run(newQuantity, now, validated.productId)
-
-    db.prepare(`
-      INSERT INTO stock_movements (id, product_id, type, quantity, balance_after, reason, created_at)
-      VALUES (?, ?, 'adjustment', ?, ?, ?, ?)
-    `).run(id, validated.productId, validated.quantityChange, newQuantity, validated.reason, now)
-
-    const adjustmentLogId = uuidv4()
-    db.prepare(`
-      INSERT INTO stock_adjustment_log (id, product_id, quantity_before, quantity_after, quantity_change, reason, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(adjustmentLogId, validated.productId, product.stock_quantity, newQuantity, validated.quantityChange, validated.reason, now)
+    // Run through SDK orchestrator with Primary authorization
+    const result = await adjustStock({
+      productId: validated.productId,
+      quantity: validated.quantityChange,
+      reason: validated.reason,
+      userId,
+    })
 
     return {
       productId: validated.productId,
-      previousQuantity: product.stock_quantity || 0,
-      newQuantity,
-      quantityChange: validated.quantityChange,
+      previousQuantity: result.previousQuantity,
+      newQuantity: result.newQuantity,
+      quantityChange: result.quantityChange,
       reason: validated.reason,
     }
   })

@@ -1,7 +1,15 @@
-import React, { useCallback, useMemo, useState, createContext, useEffect } from 'react'
+/**
+ * App.tsx — Root layout, page routing, and auth orchestration.
+ *
+ * Startup logic extracted to useAppInit hook.
+ * Auth callbacks extracted to useAppAuth hook.
+ * Per ANPAS: UI components must not contain business logic.
+ */
+
+import React, { useCallback, useMemo, useState } from 'react'
 import TitleBar from './components/TitleBar'
+import PrimaryStatusIndicator from './components/PrimaryStatusIndicator'
 import SoostoriSidebar, { type Page } from './components/sidebar/Sidebar'
-import SoostoriHeader from './components/sidebar/Header'
 import HeaderControls from './components/sidebar/HeaderControls'
 import type { HeaderControlSlot } from './components/sidebar/HeaderControls'
 import ToastContainer from './components/ToastContainer'
@@ -20,16 +28,15 @@ import { AuthProvider } from './lib/auth-context'
 import { PageRenderer as PageRendererComponent } from './pages/PageRenderer'
 import { usePermissions } from './hooks/usePermissions'
 import { useNotifications } from './hooks/useNotifications'
-import { api } from './lib/api'
-import type { ShopUser, Device } from '../electron/preload/types'
+import { useAppInit } from './hooks/useAppInit'
+import { useAppAuth } from './hooks/useAppAuth'
+import type { ShopUser } from '../electron/preload/types'
 import { PAGE_CONFIG } from './lib/page-config'
 
 const DEV_MODE = typeof process !== 'undefined' && process.env.NODE_ENV === 'development'
 
 interface ToastContextValue { showToast: (message: string, variant?: ToastVariant) => void }
-export const ToastContext = createContext<ToastContextValue | null>(null)
-
-type CloudAuthStep = 'none' | 'logging-in' | 'logged-in'
+export const ToastContext = React.createContext<ToastContextValue | null>(null)
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('pos')
@@ -39,65 +46,31 @@ const App: React.FC = () => {
   const { showLogin, loginResolved, dismissLogin } = useLoginStatus()
   useNotifications()
 
-  const [shopExists, setShopExists] = useState<boolean | null>(null)
-  const [authUser, setAuthUser] = useState<ShopUser | null>(null)
-  const [authDevice, setAuthDevice] = useState<Device | null>(null)
-  const [sessionId, setSessionId] = useState<string | null>(null)
-  const [showSetup, setShowSetup] = useState(false)
-  const [cloudAuthStep, setCloudAuthStep] = useState<CloudAuthStep>('none')
-  const [pendingCloudAuth, setPendingCloudAuth] = useState<{ shopId: string; userId: string; deviceId: string } | null>(null)
+  const {
+    shopExists, cloudAuthStep, pendingCloudAuth,
+    setCloudAuthStep, setPendingCloudAuth, setShopExists,
+  } = useAppInit()
 
-  // On startup: try to restore a previous cloud session, otherwise check local shop
-  useEffect(() => {
-    async function init() {
-      const cloud = window.electronAPI?.cloudAuth
-      if (cloud) {
-        try {
-          const restored = await cloud.restoreSession()
-          if (restored.restored) {
-            setCloudAuthStep('logged-in')
-            // Check if shop exists locally; if not, wait for full sync
-            const shop = await api.getShop()
-            if (shop) setShopExists(true)
-            else setShopExists(false)
-            return
-          }
-        } catch { /* cloud not available */ }
-      }
-      // Fallback: check local shop
-      api.getShop().then(shop => {
-        setShopExists(!!shop)
-        setShowSetup(DEV_MODE && !shop)
-      }).catch(() => setShopExists(false))
-    }
-    init()
-  }, [])
+  const [showSetup, setShowSetup] = useState(false)
+  const [authUser, setAuthUser] = useState<ShopUser | null>(null)
+  const [sessionId, setSessionId] = useState<string | null>(null)
+
+  const { handleCloudLoginComplete, handleLogin } = useAppAuth({
+    cloudAuthStep, pendingCloudAuth,
+    setCloudAuthStep, setPendingCloudAuth, setShopExists,
+    onLoginComplete: (_user, _sid) => {
+      setAuthUser(_user)
+      setSessionId(_sid)
+      setShowSetup(false)
+      dismissLogin()
+    },
+  })
 
   const handleNavigate = useCallback((page: Page) => setCurrentPage(page), [])
   const handleOpenSettings = useCallback(() => setCurrentPage('settings'), [])
 
-  // Cloud login completed — switch to local PIN login
-  const handleCloudLoginComplete = useCallback((shopId: string, userId: string, deviceId: string) => {
-    setCloudAuthStep('logged-in')
-    setPendingCloudAuth({ shopId, userId, deviceId })
-    setShopExists(true)
-  }, [])
-
-  const handleLogin = useCallback((user: ShopUser, sid: string, deviceId: string) => {
-    setAuthUser(user)
-    setSessionId(sid)
-    api.registerDevice({ name: deviceId, employeeId: user.id }).then(dev => setAuthDevice(dev)).catch(() => {})
-    setShowSetup(false)
-    dismissLogin()
-  }, [dismissLogin])
-
-  const handleSetupComplete = useCallback(() => {
-    setShopExists(true)
-    setShowSetup(false)
-  }, [])
-
   const { can } = usePermissions(authUser)
-  const authValue = useMemo(() => ({ user: authUser, device: authDevice, sessionId, can }), [authUser, authDevice, sessionId, can])
+  const authValue = useMemo(() => ({ user: authUser, device: null, sessionId, can }), [authUser, sessionId, can])
 
   const headerControls = useMemo<HeaderControlSlot>(() => {
     switch (currentPage) {
@@ -110,26 +83,23 @@ const App: React.FC = () => {
     }
   }, [currentPage, heldSalesCount, inventorySearch, debtSearch, reportsDateFilter])
 
-  // Loading
   if (shopExists === null) return null
 
-  // Cloud auth in progress — show CloudLoginScreen
   if (!shopExists && !showSetup && cloudAuthStep === 'none') {
     return (
       <ThemeProvider><LanguageProvider>
         <CloudLoginScreen
           onComplete={handleCloudLoginComplete}
-          fallbackToSetup={() => setShowSetup(DEV_MODE)}
+          fallbackToSetup={() => { setCloudAuthStep('none'); setShowSetup(DEV_MODE) }}
         />
       </LanguageProvider></ThemeProvider>
     )
   }
 
-  // Dev mode: show local setup wizard
   if (showSetup) {
     return (
       <ThemeProvider><LanguageProvider>
-        <SetupWizard onComplete={handleSetupComplete} />
+        <SetupWizard onComplete={() => { setShopExists(true); setShowSetup(false) }} />
       </LanguageProvider></ThemeProvider>
     )
   }
@@ -150,7 +120,16 @@ const App: React.FC = () => {
                     isCollapsed={sidebarCollapsed} onToggleCollapse={handleToggleSidebar} />
                   <div className="flex-1 flex flex-col min-w-0 transition-[margin] duration-300"
                     style={{ marginLeft: sidebarWidth }}>
-                    <SoostoriHeader title={title} subtitle={subtitle} controls={<HeaderControls slot={headerControls} />} />
+                    <div className="flex items-center gap-3 border-b border-border-color bg-bg-secondary px-4 h-12 shrink-0 transition-colors duration-200">
+                      <div className="min-w-0 flex-1">
+                        <h1 className="truncate text-[14px] font-black leading-tight text-text-primary">{title}</h1>
+                        {subtitle && <p className="truncate text-[10px] leading-tight text-text-muted">{subtitle}</p>}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <PrimaryStatusIndicator />
+                        {headerControls && <HeaderControls slot={headerControls} />}
+                      </div>
+                    </div>
                     <main className="flex-1 overflow-hidden bg-bg-primary dark:bg-bg-primary transition-colors duration-200">
                       <PageRendererComponent page={currentPage} />
                     </main>

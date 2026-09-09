@@ -4,6 +4,16 @@ import { v4 as uuidv4 } from 'uuid'
 import log from 'electron-log'
 import { debtCreateSchema, debtPaymentSchema } from './validation'
 import { z } from 'zod'
+import { hasPermission } from '@soostori/auth'
+import type { EmployeeRole } from '@soostori/core'
+import { desktopLoadSession } from '../auth/electron-store-session'
+
+/** Look up an employee's role from the local employees table. */
+function getEmployeeRole(employeeId: string): EmployeeRole {
+  const db = getDatabase()
+  const row = db.prepare('SELECT role FROM employees WHERE id = ?').get(employeeId) as { role: string } | undefined
+  return (row?.role ?? 'cashier') as EmployeeRole
+}
 
 interface DebtRow {
   id: string
@@ -23,7 +33,10 @@ interface SummaryRow {
 }
 
 export function registerDebtHandlers(): void {
-  ipcMain.handle('db:debts:list', () => {
+  ipcMain.handle('db:debts:list', async () => {
+    const session = await desktopLoadSession()
+    if (!session) throw new Error('Not authenticated')
+    if (!hasPermission(getEmployeeRole(session.employeeId), 'debt')) throw new Error('Insufficient permissions')
     const db = getDatabase()
     return db.prepare(`
       SELECT d.*, c.name as customer_name, c.phone as customer_phone
@@ -33,7 +46,10 @@ export function registerDebtHandlers(): void {
     `).all()
   })
 
-  ipcMain.handle('db:debts:get', (_event, id: string) => {
+  ipcMain.handle('db:debts:get', async (_event, id: string) => {
+    const session = await desktopLoadSession()
+    if (!session) throw new Error('Not authenticated')
+    if (!hasPermission(getEmployeeRole(session.employeeId), 'debt')) throw new Error('Insufficient permissions')
     const db = getDatabase()
     const debt = db.prepare(`
       SELECT d.*, c.name as customer_name, c.phone as customer_phone
@@ -47,7 +63,10 @@ export function registerDebtHandlers(): void {
     return null
   })
 
-  ipcMain.handle('db:debts:create', (_event, rawData: unknown) => {
+  ipcMain.handle('db:debts:create', async (_event, rawData: unknown) => {
+    const session = await desktopLoadSession()
+    if (!session) throw new Error('Not authenticated')
+    if (!hasPermission(getEmployeeRole(session.employeeId), 'debt')) throw new Error('Insufficient permissions')
     const data = debtCreateSchema.parse(rawData)
     const db = getDatabase()
     const id = uuidv4()
@@ -59,7 +78,10 @@ export function registerDebtHandlers(): void {
     return db.prepare('SELECT * FROM debts WHERE id = ?').get(id)
   })
 
-  ipcMain.handle('db:debts:recordPayment', (_event, debtId: string, rawAmount: unknown, rawPaymentMethod: unknown, rawReference: unknown) => {
+  ipcMain.handle('db:debts:recordPayment', async (_event, debtId: string, rawAmount: unknown, rawPaymentMethod: unknown, rawReference: unknown) => {
+    const session = await desktopLoadSession()
+    if (!session) throw new Error('Not authenticated')
+    if (!hasPermission(getEmployeeRole(session.employeeId), 'debt')) throw new Error('Insufficient permissions')
     const validated = debtPaymentSchema.parse({ debtId, amount: rawAmount, paymentMethod: rawPaymentMethod, reference: rawReference })
     const db = getDatabase()
     const now = new Date().toISOString()
@@ -82,14 +104,20 @@ export function registerDebtHandlers(): void {
     return { debtId, amountPaid: newPaid, status: newStatus }
   })
 
-  ipcMain.handle('db:debts:summary', () => {
+  ipcMain.handle('db:debts:summary', async () => {
+    const session = await desktopLoadSession()
+    if (!session) throw new Error('Not authenticated')
+    if (!hasPermission(getEmployeeRole(session.employeeId), 'debt')) throw new Error('Insufficient permissions')
     const db = getDatabase()
     const total = db.prepare("SELECT COALESCE(SUM(amount - amount_paid), 0) as val FROM debts WHERE status != 'paid'").get() as SummaryRow | undefined
     const count = db.prepare("SELECT COUNT(*) as val FROM debts WHERE status != 'paid'").get() as SummaryRow | undefined
     return { total: total?.val || 0, count: count?.val || 0 }
   })
 
-  ipcMain.handle('db:debts:totalCollected', () => {
+  ipcMain.handle('db:debts:totalCollected', async () => {
+    const session = await desktopLoadSession()
+    if (!session) throw new Error('Not authenticated')
+    if (!hasPermission(getEmployeeRole(session.employeeId), 'debt')) throw new Error('Insufficient permissions')
     const db = getDatabase()
     const collected = db.prepare("SELECT COALESCE(SUM(amount_paid), 0) as val FROM debts WHERE status IN ('paid', 'partial')").get() as SummaryRow | undefined
     return { totalCollected: collected?.val || 0 }

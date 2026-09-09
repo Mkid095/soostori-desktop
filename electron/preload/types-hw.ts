@@ -23,12 +23,23 @@ export interface ReceiptItem {
 }
 
 export interface UpdateStatusData {
-  status: string
-  version?: string
-  message?: string
-  releaseNotes?: string
-  percent?: number
-  bytesPerSecond?: number
-  transferred?: number
-  total?: number
+  state: string
+  currentVersion: string
+  availableVersion?: string
+  updateType?: 'ota' | 'binary'
+  progress?: {
+    downloadedBytes: number
+    totalBytes?: number
+    bytesPerSecond: number
+    percent: number
+    etaSeconds: number
+  }
+  error?: {
+    code: string
+    message: string
+    retryCount?: number
+  }
+  requiresRestart: boolean
+  lastCheckedAt?: string
+  installedAt?: string
 }

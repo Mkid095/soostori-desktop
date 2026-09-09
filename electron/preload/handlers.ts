@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { dbHandlers } from './handlers-db'
 import { hwHandlers, appHandlers } from './handlers-hw-app'
 import { updaterHandlers } from './handlers-hw-app'
+import { exposeAuthHandlers } from './handlers-auth'
 import type { ElectronAPI } from './types'
 
 const cloudHandlers: ElectronAPI['cloud'] = {
@@ -13,6 +14,10 @@ const cloudHandlers: ElectronAPI['cloud'] = {
   fullSync: () => ipcRenderer.invoke('cloud:fullSync'),
   health: () => ipcRenderer.invoke('cloud:health'),
   reconnect: () => ipcRenderer.invoke('cloud:reconnect'),
+  pullProducts: () => ipcRenderer.invoke('cloud:pullProducts'),
+  pullCategories: () => ipcRenderer.invoke('cloud:pullCategories'),
+  pullCustomers: () => ipcRenderer.invoke('cloud:pullCustomers'),
+  pullAll: () => ipcRenderer.invoke('cloud:pullAll'),
 }
 
 const cloudAuthHandlers: ElectronAPI['cloudAuth'] = {
@@ -30,6 +35,9 @@ const cloudAuthHandlers: ElectronAPI['cloudAuth'] = {
 }
 
 export function exposeElectronAPI(): void {
+  // Register SDK auth as window.cloudAuthSdk (separate from old magic-code cloudAuth)
+  exposeAuthHandlers()
+
   contextBridge.exposeInMainWorld('electronAPI', {
     db: dbHandlers,
     hw: hwHandlers,
@@ -45,5 +53,37 @@ export function exposeElectronAPI(): void {
       ipcRenderer.on('notification:low-stock', handler)
       return () => ipcRenderer.removeListener('notification:low-stock', handler)
     },
+    onSyncStatusChange: (callback: (mode: 'host' | 'client' | 'offline') => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, mode: 'host' | 'client' | 'offline') => {
+        window.dispatchEvent(new CustomEvent('soostori:app:syncStatus', { detail: mode === 'offline' ? 'offline' : 'online' }))
+        callback(mode)
+      }
+      ipcRenderer.on('sync:statusChange', handler)
+      return () => ipcRenderer.removeListener('sync:statusChange', handler)
+    },
+    onSaleCompleted: (callback: (data: { saleId: string; total: number }) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, data: { saleId: string; total: number }) => {
+        window.dispatchEvent(new CustomEvent('soostori:sale-completed', { detail: data }))
+        callback(data)
+      }
+      ipcRenderer.on('notification:sale-completed', handler)
+      return () => ipcRenderer.removeListener('notification:sale-completed', handler)
+    },
+    // @soostori/notifications engine — in-app channel dispatches here
+    onNotification: (callback: (data: {
+      id: string; title: string; body: string; priority: string
+      data?: Record<string, unknown>; timestamp: number; read: boolean
+    }) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, data: {
+        id: string; title: string; body: string; priority: string
+        data?: Record<string, unknown>; timestamp: number; read: boolean
+      }) => {
+        window.dispatchEvent(new CustomEvent('soostori:notification', { detail: data }))
+        callback(data)
+      }
+      ipcRenderer.on('notification:rendered', handler)
+      return () => ipcRenderer.removeListener('notification:rendered', handler)
+    },
+    cloudAuthSdk: null,
   } as ElectronAPI)
 }

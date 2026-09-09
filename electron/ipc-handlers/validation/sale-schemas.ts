@@ -16,7 +16,7 @@ export const saleCreateSchema = z.object({
   discountAmount: z.number().min(0).optional(),
   taxAmount: z.number().min(0).optional(),
   totalAmount: z.number().min(0),
-  paymentMethod: z.enum(['cash', 'mpesa', 'debt']),
+  paymentMethod: z.enum(['cash', 'mpesa', 'card', 'transfer', 'debt']),
   paidAmount: z.number().min(0).optional(),
   note: z.string().optional(),
   status: z.enum(['pending', 'completed', 'cancelled', 'refunded']).optional(),

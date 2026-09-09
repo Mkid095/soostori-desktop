@@ -4,6 +4,7 @@ import { app } from 'electron'
 import log from 'electron-log'
 import { createTables, seedDefaultData } from './schema'
 import { runMigrations } from './migrations'
+import { runSdkAlignmentMigration } from './schema-9-1-migration'
 
 let db: Database.Database | null = null
 
@@ -12,6 +13,10 @@ export function getDatabase(): Database.Database {
     throw new Error('Database not initialized')
   }
   return db
+}
+
+export function setDatabase(newDb: Database.Database): void {
+  db = newDb
 }
 
 export async function initDatabase(): Promise<void> {
@@ -25,6 +30,7 @@ export async function initDatabase(): Promise<void> {
 
   createTables()
   runMigrations()
+  runSdkAlignmentMigration()
   seedDefaultData()
 }
 

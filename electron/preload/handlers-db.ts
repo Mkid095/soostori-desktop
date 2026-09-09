@@ -22,6 +22,7 @@ export const dbHandlers: DbIpc = {
   getSales: (shopId?: string, limit?: number, offset?: number) => ipcRenderer.invoke('db:sales:list', shopId, limit, offset),
   getSaleById: (id: string) => ipcRenderer.invoke('db:sales:get', id),
   createSale: (sale: unknown) => ipcRenderer.invoke('db:sales:create', sale),
+  refundSale: (saleId: string) => ipcRenderer.invoke('db:sales:refund', saleId),
   getSalesByDateRange: (startDate: string, endDate: string, shopId?: string) =>
     ipcRenderer.invoke('db:sales:listByDateRange', startDate, endDate, shopId),
   getTopProducts: (startDate: string, endDate: string, limit?: number) =>
@@ -66,9 +67,10 @@ export const dbHandlers: DbIpc = {
   deleteExpense: (id: string) => ipcRenderer.invoke('db:expenses:delete', id),
   // Shop / Auth / Team
   getShop: () => ipcRenderer.invoke('db:shop:get'),
+  getDeviceId: () => ipcRenderer.invoke('db:device:getId'),
   createShop: (data: { name: string; currency: string; ownerName: string; ownerPin: string }) =>
     ipcRenderer.invoke('db:shop:create', data),
-  getUsers: () => ipcRenderer.invoke('db:shop:getUsers'),
+  getUsers: (shopId: string) => ipcRenderer.invoke('db:shop:getUsers', shopId),
   login: (userId: string, pin: string, deviceId: string) =>
     ipcRenderer.invoke('db:auth:login', userId, pin, deviceId),
   createUser: (data: { name: string; pin: string; role: string }) =>
@@ -76,23 +78,26 @@ export const dbHandlers: DbIpc = {
   updateUser: (id: string, data: { name?: string; pin?: string; role?: string }) =>
     ipcRenderer.invoke('db:auth:updateUser', id, data),
   deleteUser: (id: string) => ipcRenderer.invoke('db:auth:deleteUser', id),
-  logout: (sessionId: string) => ipcRenderer.invoke('db:auth:logout', sessionId),
+  logout: (sessionId: string, deviceId: string, userId: string) =>
+    ipcRenderer.invoke('db:auth:logout', sessionId, deviceId, userId),
   // Invitations
-  createInvite: (data: { employeeName: string; role: string; deviceName: string }) =>
+  createInvite: (data: { shopId: string; employeeName: string; role: string; createdBy: string; deviceName?: string }) =>
     ipcRenderer.invoke('db:invites:create', data),
-  acceptInvite: (code: string, userName: string, pin: string, deviceName: string) =>
-    ipcRenderer.invoke('db:invites:accept', code, userName, pin, deviceName),
+  acceptInvite: (code: string, userName: string, pin: string, deviceId: string) =>
+    ipcRenderer.invoke('db:invites:accept', code, userName, pin, deviceId),
   listInvites: () => ipcRenderer.invoke('db:invites:list'),
   // Devices
-  listDevices: () => ipcRenderer.invoke('db:devices:list'),
-  registerDevice: (data: { name: string; employeeId?: string }) =>
+  listDevices: (shopId: string) => ipcRenderer.invoke('db:devices:list', shopId),
+  registerDevice: (data: { deviceId: string; shopId: string; deviceName?: string; employeeId?: string }) =>
     ipcRenderer.invoke('db:devices:register', data),
   deviceHeartbeat: (deviceId: string) => ipcRenderer.invoke('db:devices:heartbeat', deviceId),
   setHostDevice: (deviceId: string, masterPin: string) =>
     ipcRenderer.invoke('db:devices:setHost', deviceId, masterPin),
-  requestPairing: (deviceId: string) => ipcRenderer.invoke('db:devices:requestPairing', deviceId),
-  approvePairing: (pairingId: string) => ipcRenderer.invoke('db:devices:approvePairing', pairingId),
+  requestPairing: (data: { shopId: string; deviceId: string; requestedBy: string; deviceName?: string }) =>
+    ipcRenderer.invoke('db:devices:requestPairing', data),
+  approvePairing: (pairingId: string, approvedBy: string) => ipcRenderer.invoke('db:devices:approvePairing', pairingId, approvedBy),
   rejectPairing: (pairingId: string) => ipcRenderer.invoke('db:devices:rejectPairing', pairingId),
+  getPairings: (shopId: string) => ipcRenderer.invoke('db:devices:getPairings', shopId),
   // Inventory TX
   createInventoryTx: (data: { productId: string; eventType: string; quantity: number; balanceAfter: number; status: string; payload?: string }) =>
     ipcRenderer.invoke('db:inventory:txCreate', data),
@@ -119,4 +124,10 @@ export const dbHandlers: DbIpc = {
     ipcRenderer.invoke('db:inventory:createSnapshot', shopId, productCount, lastSequence),
   getLatestInventorySnapshot: (shopId: string) =>
     ipcRenderer.invoke('db:inventory:getLatestSnapshot', shopId),
+  // LAN Sync Service
+  syncStartHost: (port?: number) => ipcRenderer.invoke('sync:startHost', port),
+  syncStartClient: (hostUrl: string, deviceToken?: string) => ipcRenderer.invoke('sync:startClient', hostUrl, deviceToken),
+  syncStop: () => ipcRenderer.invoke('sync:stop'),
+  syncGetMode: () => ipcRenderer.invoke('sync:getMode'),
+  syncGetAuthorityStatus: () => ipcRenderer.invoke('sync:getAuthorityStatus'),
 }

@@ -17,6 +17,47 @@ export interface CloudShop {
   id: string; name: string; currency: string; slug: string; taxRate: number
 }
 
+export async function syncDevicesFromCloud(shopId: string): Promise<void> {
+  if (!APP_ID) return
+  try {
+    const result = await instant.instaqQuery(APP_ID, { devices: { $: { where: { shopId } } } })
+    const devs = (result as { devices?: unknown[] })?.devices ?? []
+    const db = getDatabase()
+    const now = new Date().toISOString()
+
+    for (const d of devs) {
+      const dev = d as Record<string, unknown>
+      const deviceId = String(dev.deviceId ?? '')
+      if (!deviceId) continue
+      const hasPin = dev.hasPin === true || dev.hasPin === 1 ? 1 : 0
+      const pinSetupAt = dev.pinSetupAt ? String(dev.pinSetupAt) : null
+      const isPrimary = dev.isPrimary === true || dev.isPrimary === 1 ? 1 : 0
+      db.prepare(`UPDATE devices SET device_name=?, is_primary=?, cloud_has_pin=?, cloud_pin_setup_at=?, last_seen=? WHERE device_id=?`)
+        .run(String(dev.deviceName ?? 'POS'), isPrimary, hasPin, pinSetupAt, now, deviceId)
+    }
+    log.info(`syncDevicesFromCloud: ${devs.length} devices for shop ${shopId}`)
+  } catch (err) { log.warn('syncDevicesFromCloud failed', err) }
+}
+
+export async function syncInvitationsFromCloud(shopId: string): Promise<void> {
+  if (!APP_ID) return
+  try {
+    const result = await instant.instaqQuery(APP_ID, { invitations: { $: { where: { shopId } } } })
+    const invs = (result as { invitations?: unknown[] })?.invitations ?? []
+    const db = getDatabase()
+
+    for (const inv of invs) {
+      const i = inv as Record<string, unknown>
+      const code = String(i.code ?? '')
+      if (!code) continue
+      const usedAt = i.usedAt ? String(i.usedAt) : null
+      db.prepare(`UPDATE invitations SET cloud_used_at=? WHERE code=?`)
+        .run(usedAt, code)
+    }
+    log.info(`syncInvitationsFromCloud: ${invs.length} invitations for shop ${shopId}`)
+  } catch (err) { log.warn('syncInvitationsFromCloud failed', err) }
+}
+
 export async function syncEmployeesFromCloud(shopId: string): Promise<Array<{ id: string; cloudId: string; name: string; role: string; isActive: number }>> {
   if (!APP_ID) return []
   try {

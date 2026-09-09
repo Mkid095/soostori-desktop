@@ -84,6 +84,7 @@ export class DiscoveryService extends EventEmitter {
       employeeId: this.opts.employeeId,
       employeeName: this.opts.employeeName,
       appVersion: this.opts.appVersion,
+      last_seen_ms: Date.now(),
     }
     const msg = Buffer.from(JSON.stringify(advert))
     for (const ip of this.getLocalIps()) {

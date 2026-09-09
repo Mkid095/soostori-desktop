@@ -1,11 +1,17 @@
-import { pbkdf2Sync, randomBytes } from 'crypto'
+/**
+ * @deprecated PIN operations are now handled by @soostori/auth/pin-node.
+ * This file must not be imported anywhere. It is kept only to prevent
+ * broken imports during the transition period.
+ *
+ * Canonical PIN storage:
+ *   - Verifier: device-local EncryptedStorage only (NEVER in FIDScript)
+ *   - Salt: device-local EncryptedStorage + server-side Redis (enroll salt)
+ *   - hasPin / pinSetupAt: FIDScript devices.hasPin / devices.pinSetupAt
+ *
+ * Use:
+ *   import { hashPin, verifyPin } from '@soostori/auth/pin-node'
+ */
 
-export function hashPin(pin: string): { hash: string; salt: string } {
-  const salt = randomBytes(16).toString('hex')
-  const hash = pbkdf2Sync(pin, salt, 100000, 32, 'sha256').toString('hex')
-  return { hash, salt }
-}
-
-export function verifyPin(pin: string, hash: string, salt: string): boolean {
-  return pbkdf2Sync(pin, salt, 100000, 32, 'sha256').toString('hex') === hash
-}
+// Intentional compile error to prevent any accidental usage
+const PIN_MODULE_REMOVED = true
+;(PIN_MODULE_REMOVED as boolean) // eslint-disable-line @typescript-eslint/no-unused-expressions

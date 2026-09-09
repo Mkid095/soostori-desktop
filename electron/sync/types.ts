@@ -1,12 +1,13 @@
 // Outgoing messages (client → server) — server never sees these as SyncEvent.eventType
-export type ClientMessageType = 'HEARTBEAT' | 'GET_EVENTS_AFTER' | 'SALE_PENDING'
+export type ClientMessageType = 'HEARTBEAT' | 'GET_EVENTS_AFTER' | 'SALE_PENDING' | 'SALE_REFUNDED'
   | 'STOCK_ADJUSTED' | 'PRODUCT_CREATED' | 'PRODUCT_UPDATED' | 'PRODUCT_DELETED'
   | 'CATEGORY_CREATED' | 'CATEGORY_UPDATED' | 'PRICE_CHANGED'
 
 // Incoming events (server → client)
 export type ServerEventType =
-  | 'SALE_PENDING' | 'SALE_CONFIRMED' | 'SALE_REJECTED'
-  | 'STOCK_ADJUSTED' | 'PRODUCT_CREATED' | 'PRODUCT_UPDATED' | 'PRODUCT_DELETED'
+  | 'SALE_PENDING' | 'SALE_CONFIRMED' | 'SALE_REJECTED' | 'SALE_REFUNDED'
+  | 'STOCK_ADJUSTED' | 'STOCK_ADJUSTED_REJECTED'
+  | 'PRODUCT_CREATED' | 'PRODUCT_UPDATED' | 'PRODUCT_DELETED'
   | 'CATEGORY_CREATED' | 'CATEGORY_UPDATED' | 'PRICE_CHANGED'
   | 'DEVICE_ONLINE' | 'DEVICE_OFFLINE'
   | 'HOST_TRANSFER' | 'HEARTBEAT_ACK'
@@ -51,6 +52,7 @@ export interface DiscoveryAdvert {
   employeeId: string
   employeeName: string
   appVersion: string
+  last_seen_ms: number  // Unix-ms timestamp of last heartbeat from Primary
 }
 
 export interface DiscoveryRequest {

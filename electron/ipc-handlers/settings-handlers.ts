@@ -2,6 +2,7 @@ import { ipcMain } from 'electron'
 import { getDatabase } from '../database'
 import log from 'electron-log'
 import { shopSettingsSchema } from './validation'
+import { hashPin, verifyPin } from '@soostori/auth/pin-node'
 
 export function registerSettingsHandlers(): void {
   ipcMain.handle('db:shop-settings:get', () => {
@@ -69,14 +70,19 @@ export function registerSettingsHandlers(): void {
 
   ipcMain.handle('app:settings:setPin', (_event, pin: string) => {
     const db = getDatabase()
-    db.prepare('UPDATE app_settings SET login_pin = ?, pin_set = 1, updated_at = ? WHERE id = ?').run(pin, new Date().toISOString(), 'default')
+    const { hash, salt } = hashPin(pin)
+    db.prepare('UPDATE app_settings SET login_pin_hash = ?, login_pin_salt = ?, login_pin = NULL, pin_set = 1, updated_at = ? WHERE id = ?').run(hash, salt, new Date().toISOString(), 'default')
     return { success: true }
   })
 
   ipcMain.handle('app:settings:verifyPin', (_event, pin: string) => {
     const db = getDatabase()
-    const row = db.prepare('SELECT login_pin FROM app_settings WHERE id = ?').get('default') as { login_pin: string } | undefined
-    return { valid: row?.login_pin === pin }
+    const row = db.prepare('SELECT login_pin_hash, login_pin_salt, pin_set FROM app_settings WHERE id = ?').get('default') as { login_pin_hash: string | null; login_pin_salt: string | null; pin_set: number } | undefined
+    // If no hashed PIN exists yet, fall back to legacy plain-text comparison
+    if (!row || row.pin_set === 0 || !row.login_pin_hash || !row.login_pin_salt) {
+      return { valid: false }
+    }
+    return { valid: verifyPin(pin, row.login_pin_hash as string, row.login_pin_salt as string) }
   })
 
   ipcMain.handle('app:settings:recordLogin', () => {

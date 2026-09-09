@@ -13,7 +13,8 @@ import {
 import { syncEmployeesFromCloud, syncShopFromCloud } from '../services/cloud-auth-sync'
 import { cloudDownloadInitialSnapshot } from '../services/cloud-snapshot'
 import { getSyncStore } from '../services/store'
-import { hashPin } from '../database/pin-hash'
+// Phase 11.2 Batch A: route hashPin through the published SDK.
+import { hashPin } from '@soostori/auth/pin-node'
 import { dispatchSyncStatus } from '../sync/sync-service-core'
 
 export function registerCloudAuthHandlers(): void {

@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { StepIndicator } from './shared/StepIndicator'
 import { ShopDetailsStep, OwnerAccountStep } from './SetupWizardSteps'
 import { useTranslation } from '../lib/useTranslation'
+import MinimalTitleBar from './MinimalTitleBar'
 
 interface SetupWizardProps {
   onComplete: () => void
@@ -48,27 +49,32 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
   }
 
   if (step === 2) return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl p-10 shadow-2xl w-full max-w-sm flex flex-col items-center gap-5 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-green-50 dark:bg-green-900/30 flex items-center justify-center">
-          <svg className="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-          </svg>
+    <div className="flex flex-col h-screen bg-bg-primary">
+      <MinimalTitleBar />
+      <div className="flex-1 flex items-center justify-center px-6">
+        <div className="bg-bg-secondary rounded-2xl p-10 shadow-2xl w-full max-w-sm flex flex-col items-center gap-5 text-center border border-border-color">
+          <div className="w-16 h-16 rounded-2xl bg-green-50 dark:bg-green-900/30 flex items-center justify-center">
+            <svg className="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-text-primary">{t('wizard.setupComplete')}</h2>
+            <p className="text-sm text-text-muted mt-2">{t('wizard.setupCompleteHint')}</p>
+          </div>
+          <button onClick={onComplete} className="w-full py-3 rounded-xl bg-brand-orange text-white font-semibold hover:bg-orange-600 active:scale-95 transition-all">
+            {t('wizard.goToLogin')}
+          </button>
         </div>
-        <div>
-          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">{t('wizard.setupComplete')}</h2>
-          <p className="text-sm text-slate-500 mt-2">{t('wizard.setupCompleteHint')}</p>
-        </div>
-        <button onClick={onComplete} className="w-full py-3 rounded-xl bg-brand-orange text-white font-semibold hover:bg-orange-600 active:scale-95 transition-all">
-          {t('wizard.goToLogin')}
-        </button>
       </div>
     </div>
   )
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden">
+    <div className="flex flex-col h-screen bg-bg-primary">
+      <MinimalTitleBar />
+      <div className="flex-1 flex items-center justify-center px-6">
+      <div className="bg-bg-secondary rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden border border-border-color">
         <StepIndicator steps={STEPS} currentStep={step} />
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-6">
           {step === 0 && (
@@ -107,6 +113,7 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
             )}
           </div>
         </form>
+      </div>
       </div>
     </div>
   )

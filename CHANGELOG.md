@@ -6,7 +6,67 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+- FIDScript/InstantDB backend schema: shops, products, categories, customers, sales, saleItems, employees, devices, invitations, debts, debtPayments, expenses, offerCombos, devicePairings, syncEvents, subscriptions, auditLogs
+- `.env` updated to Soostori app ID `487be5c5-7615-4bbd-b3b7-3aa97154ca99`
+- **`@soostori/devices` SDK gap analysis** (`electron/services/devices-sdk-note.md`): Audit of Phase 11 found the SDK's `PrimaryDeviceCoordinator` already wired via `electron/sdk/primary-coordinator.ts`. The `db:devices:getPrimaryState` handler reimplements the same 15s/60s staleness logic — flagged as a Phase 2 quick win (~15 lines). Device pairing (`device_pairings` table) has no SDK equivalent and must remain as raw SQL. `DevicesRepository` is an interface only, requiring a concrete SQLite implementation for Phase 2 full adoption.
+- **`@soostori/notifications` SDK integrated**: `electron/services/notification-service.ts` wires `NotificationEngine` + `ElectronInAppChannel` as the desktop channel. Sale and low-stock events now route through `notify()` → `NotificationEngine.dispatch()` → renderer via `soostori:notification` DOM event. `sale-create-handlers.ts` now uses `notify('sale.confirmed', ...)` and `notify('stock.low', ...)` replacing direct `webContents.send` calls.
+- **`@soostori/cloud` replacement assessment** (`electron/services/instant-api.ts`): Documented a 5-point migration assessment in the file header. CloudClient can replace the InstaQL/Instaml helpers with a one-line-per-call swap; auth and custom sync endpoints need small wrappers; WebSocket realtime is a future item. Raw SQL audit path in `sale-create-handlers.ts` left in place — `@soostori/audit`'s `AuditRecorder` is async/event-driven and requires an `AuditStorage` adapter wired to SQLite; the canonical in-memory adapter exists in `electron/services/canonical/audit-recorder.ts` but a production SQLite-backed storage is not yet wired.
+- **`@soostori/inventory` via `InventoryRepository`**: Created `electron/services/inventory-repository.ts` — singleton accessor that exposes `getInventoryLedger()` returning a `StockMovementLedger` backed by `DesktopInventoryRepository`. Fixed `appendMovement` to also update `products.current_stock` (was missing). Fixed `listMovements` to properly support all `MovementFilter` fields. Updated `sync-service-apply.ts`: `applySaleConfirmed` is now `async` and routes stock decrement through `StockMovementLedger`, replacing inline raw SQL. `sale-create-handlers.ts` refund path already uses `adjustStock` from `inventory-orchestrator` which already routes through the ledger.
+- **Phase 0.6 schema alignment**: Local SQLite schema aligned with canonical FIDScript schema. Added to `devices`: `is_primary`, `cloud_has_pin`, `cloud_pin_setup_at`; Added to `invitations`: `cloud_used_at`; Added to `sync_events`: `idempotency_key`, `version`, `timestamp`; Added to `inventory_transactions`: `version`, `timestamp`; Added to `app_settings`: `cloud_has_pin`, `cloud_pin_setup_at`. Types updated: `CloudDevice` (hasPin, pinSetupAt, isPrimary), `CloudInvitation` (usedAt), `CloudShop` (currency), `CloudSyncEvent` (idempotencyKey, version, timestamp). Added `syncDevicesFromCloud` and `syncInvitationsFromCloud` to `cloud-auth-sync.ts`. Added migration functions for all new columns to handle existing databases.
+
 ### Fixed
+
+- **SQLite schema error on launch**: `devices` table was missing `device_id` column causing "no such column: device_id" error. Added `device_id TEXT` to `devices` table creation in `schema-commerce.ts` and added corresponding migration in `schema-9-1-migration.ts` to handle existing databases.
+- **Cloud login broken (CRITICAL)**: `registerDevice` returns `{ success, shop, employeeCount, snapshot }` but `useCloudLogin` accessed `session.shopId` which was undefined. Fixed to extract `shop.id` from the response object.
+- **Sale `mpesaConfirmed` not reset on payment method change**: `onMethodChange` in `useCheckout.ts` now calls `setMpesaConfirmed(false)` when switching away from M-Pesa.
+- **Auth IPC handlers missing Zod validation (HIGH)**: Added `auth-schemas.ts` with `loginSchema`, `createUserSchema`, `updateUserSchema`; wired into `db:auth:login`, `db:auth:createUser`, `db:auth:updateUser` handlers.
+- **Device IPC handlers missing Zod validation (HIGH)**: Added `device-schemas.ts` with `registerDeviceSchema`, `requestPairingSchema`; wired into `db:devices:register` and `db:devices:requestPairing`.
+- **Notification systems disconnected (HIGH)**: `NotificationsDropdown` and `useNotifications` were two independent implementations with no shared state. Unified: `useNotifications` is now the single source of truth with localStorage persistence; `NotificationsDropdown` consumes it as a hook. All event listeners (`online/offline`, `sync_complete`, `update_available`, `low_stock`, `sale_completed`) are registered inside `useNotifications`.
+- **LAN sync SALE_CONFIRMED sent stub record (HIGH)**: `server-handler-sale.ts` broadcast `{ saleId }` only — receiving devices inserted empty sales with zero totals. Fixed to broadcast full sale details (items, amounts, payment method, customer). `applySaleConfirmed` now inserts the complete sale record with sale items and decrements stock for each item, keeping both ledgers consistent.
+- **LAN sync missing conflict resolution on STOCK_ADJUSTED (HIGH)**: `applyStockAdjusted` skipped events with `sequence_number >= ?`, but remote broadcasts can race — a higher sequence arriving before a lower one. Fixed: skip only when a movement with `sequence_number > ?` exists; added `expectedBalance` field check for stale broadcast protection.
+- **LAN sync missing SALE_REFUNDED event (HIGH)**: Added `SALE_REFUNDED` to `ClientMessageType` and `ServerEventType` in `types.ts`; wired `applySaleRefunded` into client event handler in `sync-service.ts`. Refund handler (`sale-create-handlers.ts`) broadcasts `SALE_REFUNDED` via `syncService.sendLocalMutation` so all devices mark the sale refunded.
+- **`sale_completed` event not reaching renderer (HIGH)**: Added `onSaleCompleted` preload bridge in `handlers.ts` — wires `notification:sale-completed` IPC to `soostori:sale-completed` custom DOM event consumed by `useNotifications`. Main process fires `notification:sale-completed` after each sale commit.
+- **MEDIUM — cloud sync Phase 3**: `cloud-sync-service.ts` push/pull queues are documented as Phase 3 stubs; the app is fully offline-capable in Phase 1.
+- **MEDIUM — automatic host election**: Not implemented — requires Raft-like leader election among discovered peers. Documented for Phase 3.
+- **MEDIUM — discovered-device LAN peer UI**: `syncService.onHostDiscovered` callback exists but no renderer UI surfaces discovered peers. Documented for Phase 2.
+
+### Refactored (ANPAS Compliance)
+
+All production source files are now ≤150 lines per the ANPAS 150-line max rule.
+
+- **Split `UpdateIndicator.tsx` (174L)**: extracted state sub-components → `update-indicator-states.tsx` (7 focused sub-components: Idle, Checking, Available, Downloading, Ready, Installing, Error)
+- **Split `oauth-callback-server.ts` (161L)**: extracted module-level state helpers → `oauth-server-state.ts`; fixed dangling `_server` reference
+- **Split `useSales.ts` (155L)**: extracted row mappers → `useSalesMappers.ts` (`mapSale`, `mapSaleItem`)
+- **Split `desktop-inventory-repository.ts` (184L)**: extracted row mappers → `inventory-mappers.ts` (`rowToMovement`, `rowToBalance`, `normalizeType`)
+- **Inlined `primary-coordinator.ts` (153L)**: removed unused `mapStateToStatusName` function, eliminated `PrimaryDeviceState` import; reduced to 143 lines
+- **Rewrote `App.tsx` (188L)**: extracted startup logic → `useAppInit.ts`, auth handlers → `useAppAuth.ts`
+- **Fixed `business-repo split`**: corrected `../../../database` → `../../database` paths across all three repo files; `ShopRow` interface now defined locally in each consumer rather than shared export
+- **Fixed `server.ts`**: corrected import of `createEvent`/`ServerState` from `server-handlers-core` (where they are defined), `handleMessage` from `server-handlers`
+- **Fixed `sale-create-handlers.ts`**: added missing `const db = getDatabase()` module-level reference
+- **Fixed `useAppAuth.ts`**: fixed closure scope issue with `canonicalId`; corrected `Device.id` property access (not `deviceId`)
+- **TypeScript compilation errors** (multiple): `electron-secure-storage.ts` — replaced direct `getSyncStore()` calls with typed `sstore()` helper to resolve `keyof SyncStoreSchema` type conflicts; `oauth-callback-server.ts` — changed `import { net } from 'electron'` to `import net from 'node:net'` to correctly use Node.js `net` module for TCP server; `settings-handlers.ts` — `verifyPin` call tightened to require non-null `login_pin_salt` before calling; `preload/handlers.ts` — added `cloudAuthSdk: null` to `contextBridge.exposeInMainWorld` object to satisfy `ElectronAPI` interface.
+- **electron-builder packaging failure**: pnpm monorepo workspace symlinks (`business`, `core`, `desktop-adapter`, `devices`, `events`, `inventory` → `soostori-sdk/packages/*`) caused "must be under project" errors. Disabled `asar` packaging and excluded all `node_modules/.pnpm/**` and `node_modules/@soostori/**` from files to bypass symlink traversal.
+
+- **SQLite datetime syntax fix**: `migrations.ts` used `datetime("now")` with double quotes — SQLite interprets double quotes as column identifiers. Fixed to use backtick template literals: `datetime('now')` with single quotes, per SQLite's string literal syntax.
+
+- **SDK import fix**: `hashPin` and `verifyPin` are exported from `@soostori/auth/pin-node`, not the main `@soostori/auth` entry. Updated imports in `auth-handlers.ts`, `cloud-auth-handlers.ts`, `invite-handlers.ts`, and `shop-handlers.ts`.
+
+- **App settings PIN security**: `app_settings.login_pin` was stored as plain text. Added `login_pin_hash` and `login_pin_salt` columns, migrated `setPin` to use `@soostori/auth/pin-node`'s `hashPin()`, and `verifyPin` to use `verifyPin()` with constant-time comparison. Falls back to deny if no hashed PIN exists yet.
+
+### Added
+
+- **SDK upgrade**: `@soostori/auth` upgraded to `0.1.0-alpha.3` with full CloudAuth contract: Google OAuth PKCE, email/password, session refresh, trusted device management.
+
+- **`ElectronSecureStorage`**: OS-backed secure token storage using Electron's `safe-storage` API (DPAPI on Windows). Encrypts refresh tokens and trusted device tokens before storing in sync-store JSON. Safe for offline use.
+
+- **`ElectronPlatformAuthAdapter`**: Platform adapter implementation for `@soostori/auth` CloudAuth — provides `openOAuthBrowser()` via `shell.openExternal`, `getSecureStorage()` via `ElectronSecureStorage`, `getNetworkStatus()` via cached renderer IPC status, `randomString()` via Node `crypto.randomBytes`.
+
+- **Schema migration v3**: Adds `login_pin_hash` and `login_pin_salt` to `app_settings` table and `device_id` to `devices` table for existing databases.
+
+- **`MinimalTitleBar`**: Slim title bar component for auth-only screens (CloudLoginScreen, SetupWizard) with window controls only — no sync/notifications/theme/settings. Respects light/dark mode via theme tokens.
+
+- **Window title bar missing on login/setup screens**: `CloudLoginScreen` and `SetupWizard` rendered without `TitleBar` when using `frame: false`. Added `TitleBar` with window controls (minimize/expand/close) to both screens.
 
 - **TypeScript: `@soostori/updates` tsconfig alias** (`tsconfig.json`): Added `@soostori/updates` path mapping to SDK updates package source, fixing TypeScript resolution in `electron/update-manager.ts`.
 

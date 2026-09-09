@@ -3,6 +3,9 @@ import { getDatabase } from './index'
 export function createSyncTables(): void {
   const database = getDatabase()
 
+  migrateSyncEventsTable(database)
+  migrateInventoryTransactionsTable(database)
+
   // Offline event retry queue
   database.exec(`
     CREATE TABLE IF NOT EXISTS sync_queue (
@@ -27,6 +30,9 @@ export function createSyncTables(): void {
       event_type      TEXT NOT NULL,
       payload         TEXT NOT NULL,
       sequence_number INTEGER NOT NULL,
+      idempotency_key TEXT,
+      version         INTEGER DEFAULT 0,
+      timestamp       TEXT,
       synced_at       TEXT,
       created_at      TEXT NOT NULL
     )
@@ -48,11 +54,15 @@ export function createSyncTables(): void {
       status          TEXT DEFAULT 'confirmed',
       payload         TEXT,
       sequence_number INTEGER DEFAULT 0,
+      idempotency_key TEXT,
+      version         INTEGER DEFAULT 0,
+      timestamp      TEXT,
       created_at      TEXT NOT NULL
     )
   `)
   database.exec(`CREATE INDEX IF NOT EXISTS idx_inv_tx_product ON inventory_transactions(product_id)`)
   database.exec(`CREATE INDEX IF NOT EXISTS idx_inv_tx_shop ON inventory_transactions(shop_id)`)
+  database.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_inv_tx_idemokey ON inventory_transactions(idempotency_key) WHERE idempotency_key IS NOT NULL`)
 
   // Fast-join snapshots for new devices joining the LAN
   database.exec(`
@@ -118,4 +128,29 @@ export function createSyncTables(): void {
   database.exec(`CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id)`)
   database.exec(`CREATE INDEX IF NOT EXISTS idx_products_active ON products(is_active)`)
   database.exec(`CREATE INDEX IF NOT EXISTS idx_sales_created ON sales(created_at)`)
+}
+
+function migrateSyncEventsTable(database: import('better-sqlite3').Database): void {
+  const cols = database.prepare("PRAGMA table_info(sync_events)").all() as { name: string }[]
+  const existing = cols.map(c => c.name)
+  if (!existing.includes('idempotency_key')) {
+    database.exec('ALTER TABLE sync_events ADD COLUMN idempotency_key TEXT')
+  }
+  if (!existing.includes('version')) {
+    database.exec('ALTER TABLE sync_events ADD COLUMN version INTEGER DEFAULT 0')
+  }
+  if (!existing.includes('timestamp')) {
+    database.exec('ALTER TABLE sync_events ADD COLUMN timestamp TEXT')
+  }
+}
+
+function migrateInventoryTransactionsTable(database: import('better-sqlite3').Database): void {
+  const cols = database.prepare("PRAGMA table_info(inventory_transactions)").all() as { name: string }[]
+  const existing = cols.map(c => c.name)
+  if (!existing.includes('version')) {
+    database.exec('ALTER TABLE inventory_transactions ADD COLUMN version INTEGER DEFAULT 0')
+  }
+  if (!existing.includes('timestamp')) {
+    database.exec('ALTER TABLE inventory_transactions ADD COLUMN timestamp TEXT')
+  }
 }

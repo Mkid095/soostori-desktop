@@ -4,11 +4,11 @@ import { useNetworkStatus } from '../lib/network-status'
 import { useTranslation } from '../lib/useTranslation'
 
 export type SyncState = 'idle' | 'syncing' | 'error'
-const SYNC_STATUS_EVENT = 'soostori-sync-status'
+const SYNC_STATUS_EVENT = 'soostori:app:syncStatus'
 
-type SyncStatusEvent = CustomEvent<SyncState | 'offline' | 'complete'>
+type SyncStatusEvent = CustomEvent<{ status: SyncState | 'offline' | 'complete' }>
 
-/** Compact sync status control. Sync services can publish soostori-sync-status events. */
+/** Compact sync status control. Listens for soostori:app:syncStatus DOM events from sync service. */
 const SyncIndicator: React.FC = () => {
   const { t } = useTranslation()
   const { isOnline } = useNetworkStatus()
@@ -28,9 +28,9 @@ const SyncIndicator: React.FC = () => {
   useEffect(() => {
     const handleSyncStatus = (event: Event) => {
       const detail = (event as SyncStatusEvent).detail
-      if (detail === 'offline') setSyncState('idle')
-      else if (detail === 'complete' || detail === 'idle') setSyncState('idle')
-      else setSyncState(detail)
+      if (detail.status === 'offline') setSyncState('idle')
+      else if (detail.status === 'complete' || detail.status === 'idle') setSyncState('idle')
+      else setSyncState(detail.status)
     }
     window.addEventListener(SYNC_STATUS_EVENT, handleSyncStatus)
     return () => window.removeEventListener(SYNC_STATUS_EVENT, handleSyncStatus)

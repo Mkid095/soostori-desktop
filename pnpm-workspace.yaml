@@ -1,6 +1,26 @@
+packages:
+  - 'packages/*'
+  - '../soostori-sdk/packages/*'
+
 allowBuilds:
   '@serialport/bindings-cpp': false
   better-sqlite3: false
   electron: false
   esbuild: false
   lzma-native: false
+
+minimumReleaseAgeExclude:
+  - '@soostori/audit@0.1.0-alpha.1'
+  - '@soostori/auth@0.1.0-alpha.1 || 0.1.0-alpha.3'
+  - '@soostori/cloud@0.1.0-alpha.1'
+  - '@soostori/core@0.1.0-alpha.1 || 0.1.0-alpha.2'
+  - '@soostori/events@0.1.0-alpha.1'
+  - '@soostori/notifications@0.1.0-alpha.1'
+  - '@soostori/offline@0.1.0-alpha.1'
+  - '@soostori/schema@0.1.0-alpha.1 || 0.1.0-alpha.2'
+  - '@soostori/storage@0.1.0-alpha.1'
+  - '@soostori/subscription@0.1.0-alpha.1'
+  - '@soostori/customers@0.1.0-alpha.1'
+  - '@soostori/debts@0.1.0-alpha.1'
+  - '@soostori/products@0.1.0-alpha.1'
+  - '@soostori/sales@0.1.0-alpha.1'

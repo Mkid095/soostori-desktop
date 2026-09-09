@@ -48,8 +48,9 @@ export const appHandlers: AppIpc = {
 export const updaterHandlers: UpdaterIpc = {
   check: () => ipcRenderer.invoke('updater:check'),
   download: () => ipcRenderer.invoke('updater:download'),
-  install: () => ipcRenderer.send('updater:install'),
+  install: () => ipcRenderer.invoke('updater:install'),
   status: () => ipcRenderer.invoke('updater:status'),
+  abort: () => ipcRenderer.invoke('updater:abort'),
   onStatus: (callback: (data: UpdateStatusData) => void) => {
     const handler = (_event: Electron.IpcRendererEvent, data: UpdateStatusData) => callback(data)
     ipcRenderer.on('updater:status', handler)

@@ -26,6 +26,7 @@ export interface DbIpc {
   getSales: (shopId?: string, limit?: number, offset?: number) => Promise<unknown[]>
   getSaleById: (id: string) => Promise<unknown | null>
   createSale: (sale: unknown) => Promise<unknown>
+  refundSale: (saleId: string) => Promise<{ id: string; status: string }>
   getSalesByDateRange: (startDate: string, endDate: string, shopId?: string) => Promise<unknown[]>
   getTopProducts: (startDate: string, endDate: string, limit?: number) => Promise<unknown[]>
   // Held Sales
@@ -66,24 +67,26 @@ export interface DbIpc {
   // Shop / Auth / Team
   getShop: () => Promise<Shop | null>
   createShop: (data: { name: string; currency: string; ownerName: string; ownerPin: string }) => Promise<Shop>
-  getUsers: () => Promise<ShopUser[]>
+  getUsers: (shopId: string) => Promise<ShopUser[]>
+  getDeviceId: () => Promise<{ deviceId: string }>
   login: (userId: string, pin: string, deviceId: string) => Promise<{ user: ShopUser; sessionId: string }>
   createUser: (data: { name: string; pin: string; role: string }) => Promise<ShopUser>
   updateUser: (id: string, data: { name?: string; pin?: string; role?: string }) => Promise<ShopUser>
   deleteUser: (id: string) => Promise<void>
-  logout: (sessionId: string) => Promise<void>
+  logout: (sessionId: string, deviceId: string, userId: string) => Promise<{ success: boolean }>
   // Invitations
-  createInvite: (data: { employeeName: string; role: string; deviceName: string }) => Promise<Invitation>
-  acceptInvite: (code: string, userName: string, pin: string, deviceName: string) => Promise<{ user: ShopUser; device: Device }>
+  createInvite: (data: { shopId: string; employeeName: string; role: string; createdBy: string; deviceName?: string }) => Promise<Invitation>
+  acceptInvite: (code: string, userName: string, pin: string, deviceId: string) => Promise<{ userId: string; shopId: string }>
   listInvites: () => Promise<Invitation[]>
   // Devices
-  listDevices: () => Promise<Device[]>
-  registerDevice: (data: { name: string; employeeId?: string }) => Promise<Device>
+  listDevices: (shopId: string) => Promise<Device[]>
+  registerDevice: (data: { deviceId: string; shopId: string; deviceName?: string; employeeId?: string }) => Promise<Device>
   deviceHeartbeat: (deviceId: string) => Promise<void>
   setHostDevice: (deviceId: string, masterPin: string) => Promise<{ success: boolean }>
-  requestPairing: (deviceId: string) => Promise<DevicePairing>
-  approvePairing: (pairingId: string) => Promise<void>
+  requestPairing: (data: { shopId: string; deviceId: string; requestedBy: string; deviceName?: string }) => Promise<DevicePairing>
+  approvePairing: (pairingId: string, approvedBy: string) => Promise<void>
   rejectPairing: (pairingId: string) => Promise<void>
+  getPairings: (shopId: string) => Promise<DevicePairing[]>
   // Inventory TX
   createInventoryTx: (data: { productId: string; eventType: string; quantity: number; balanceAfter: number; status: string; payload?: string }) => Promise<InventoryTransaction>
   getInventoryBalance: (productId: string) => Promise<number>
@@ -102,4 +105,10 @@ export interface DbIpc {
   // Inventory Snapshots
   createInventorySnapshot: (shopId: string, productCount: number, lastSequence: number) => Promise<InventorySnapshot>
   getLatestInventorySnapshot: (shopId: string) => Promise<InventorySnapshot | null>
+  // LAN Sync Service
+  syncStartHost: (port?: number) => Promise<{ mode: 'host' }>
+  syncStartClient: (hostUrl: string, deviceToken?: string) => Promise<{ mode: 'client' }>
+  syncStop: () => Promise<{ mode: 'offline' }>
+  syncGetMode: () => Promise<{ mode: 'host' | 'client' | 'offline' }>
+  syncGetAuthorityStatus: () => Promise<{ status: 'online' | 'stale' | 'lost' | 'unknown' }>
 }

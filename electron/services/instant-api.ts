@@ -3,6 +3,33 @@
  *
  * Used by desktop (main process) to communicate with apiinstant.fidscript.com.
  * Entity field names match the shared cloud schema used by web and mobile.
+ *
+ * ─── @soostori/cloud replacement assessment ─────────────────────────────────
+ *
+ * `@soostori/cloud`'s CloudClient covers InstaQL queries, Instaml transactions,
+ * upsert, getById, and health — all the same REST endpoints used here.
+ * Migration is feasible: replace the three helpers below with a CloudClient
+ * instance (token managed via setToken/getToken), which gives a typed,
+ * timeout-aware SDK with the same network behaviour.
+ *
+ * Gaps vs. current implementation:
+ *   1. Magic-code auth (sendMagicCode / verifyMagicCode) is not exposed on
+ *      CloudClient's public surface, though the underlying API supports it.
+ *      Desktop would need thin wrappers around CloudClient.request() or a
+ *      separate auth helper — same effort as keeping instant-api.ts.
+ *   2. WebSocket realtime is not implemented in CloudClient. If realtime
+ *      subscriptions are added later, that would be net-new on top of CloudClient.
+ *   3. Shop sync and employee sync custom endpoints (desktop-specific REST
+ *      helpers not in the SDK) would need to stay as custom helpers or be
+ *      folded into a desktop-specific CloudClient subclass.
+ *
+ * Migration cost: LOW. CloudClient can replace the InstaQL/Instaml helpers
+ * with a one-line-per-call swap. The auth helpers and custom sync endpoints
+ * need small wrappers. WebSocket realtime is a future item. Recommended: replace
+ * instaqQuery and instamlTx with CloudClient equivalents in a follow-up PR,
+ * keeping the auth helpers here until CloudClient exposes them natively.
+ *
+ * ───────────────────────────────────────────────────────────────────────────
  */
 
 const API_URI = process.env.INSTANT_API_URI || 'https://apiinstant.fidscript.com'

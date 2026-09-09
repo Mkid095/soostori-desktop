@@ -35,10 +35,11 @@ export interface AppIpc {
 }
 
 export interface UpdaterIpc {
-  check: () => Promise<{ status: string; version?: string; message?: string }>
-  download: () => Promise<{ status: string; message?: string }>
-  install: () => void
-  status: () => Promise<{ status: string; version?: string }>
+  check: () => Promise<UpdateStatusData>
+  download: () => Promise<UpdateStatusData>
+  install: () => Promise<{ blocked?: boolean; reason?: string }>
+  status: () => Promise<UpdateStatusData>
+  abort: () => Promise<UpdateStatusData>
   onStatus: (callback: (data: UpdateStatusData) => void) => () => void
 }
 
@@ -51,6 +52,10 @@ export interface CloudIpc {
   fullSync: () => Promise<{ success: boolean; error?: string }>
   health: () => Promise<{ reachable: boolean; latencyMs: number | null }>
   reconnect: () => Promise<{ ok: boolean }>
+  pullProducts: () => Promise<{ success: boolean; count?: number; error?: string }>
+  pullCategories: () => Promise<{ success: boolean; count?: number; error?: string }>
+  pullCustomers: () => Promise<{ success: boolean; count?: number; error?: string }>
+  pullAll: () => Promise<{ success: boolean; counts?: { products: number; categories: number; customers: number }; error?: string }>
 }
 
 export interface CloudAuthIpc {
@@ -65,4 +70,28 @@ export interface CloudAuthIpc {
   createInvite: (data: { shopId: string; employeeName: string; role: string; createdBy: string; deviceName?: string }) => Promise<{ id: string; code: string; expiresAt: string }>
   acceptInvite: (data: { code: string; userName: string; pin: string; deviceId: string; deviceName?: string }) => Promise<{ userId: string; deviceId: string }>
   getEmployees: (shopId?: string) => Promise<Record<string, unknown>[]>
+}
+
+/** @soostori/auth CloudAuth SDK — Google OAuth + email/password via FIDScript */
+export interface CloudAuthSdkIpc {
+  signInWithGoogle(config: { clientId: string; redirectUri: string; scopes?: string[] }): Promise<{ started: boolean; error?: string }>
+  handleOAuthCallback(code: string, state: string, codeVerifier: string, redirectUri: string): Promise<{ success: boolean; userId?: string; email?: string; isNewUser?: boolean; error?: string }>
+  signInWithEmail(email: string, password: string): Promise<{ success: boolean; userId?: string; email?: string; isEmailVerified?: boolean; error?: string }>
+  restoreSession(): Promise<{ restored: boolean; userId?: string; email?: string; shopId?: string; employeeId?: string; deviceId?: string; isStale?: boolean }>
+  refreshSession(): Promise<{ refreshed: boolean; error?: string }>
+  signOut(): Promise<{ success: boolean }>
+  onAuthEvent(callback: (event: { type: string; userId?: string; email?: string; error?: string }) => void): () => void
+  getSession(): Promise<{ hasSession: boolean; userId?: string; email?: string }>
+  setNetworkStatus(isOnline: boolean): void
+}
+
+/** Rendered notification from @soostori/notifications engine */
+export interface RenderedNotification {
+  id: string
+  title: string
+  body: string
+  priority: string
+  data?: Record<string, unknown>
+  timestamp: number
+  read: boolean
 }

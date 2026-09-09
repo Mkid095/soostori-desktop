@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import type { UpdateStatusData } from '../lib/types/api'
 
 export type NotificationKind = 'update_available' | 'sync_complete' | 'offline' | 'online' | 'low_stock' | 'info'
 
@@ -11,6 +12,12 @@ export interface NotificationItem {
   version?: string
   productName?: string
   stockQuantity?: number
+}
+
+/** Map SDK notification priority to hook notification kind. */
+function priorityToKind(priority: string): NotificationKind {
+  if (priority === 'urgent' || priority === 'high') return 'info'
+  return 'info'
 }
 
 const STORAGE_KEY = 'soostori_notifications'
@@ -43,7 +50,17 @@ export function useNotifications() {
     saveToStorage(notifications)
   }, [notifications])
 
-  // Listen for low-stock events from the main process via custom DOM event
+  const addNotification = useCallback((item: Omit<NotificationItem, 'id' | 'timestamp' | 'read'>) => {
+    const newItem: NotificationItem = {
+      ...item,
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      timestamp: Date.now(),
+      read: false,
+    }
+    setNotifications(prev => [newItem, ...prev].slice(0, MAX_NOTIFICATIONS))
+  }, [])
+
+  // Listen for low-stock events from the main process
   useEffect(() => {
     const handler = (event: Event) => {
       const { productName, stock } = (event as CustomEvent<{ productName: string; stock: number }>).detail
@@ -56,17 +73,70 @@ export function useNotifications() {
     }
     window.addEventListener('soostori:low-stock', handler)
     return () => window.removeEventListener('soostori:low-stock', handler)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [addNotification])
 
-  const addNotification = useCallback((item: Omit<NotificationItem, 'id' | 'timestamp' | 'read'>) => {
-    const newItem: NotificationItem = {
-      ...item,
-      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      timestamp: Date.now(),
-      read: false,
+  // Listen for browser online/offline
+  useEffect(() => {
+    const handleOnline = () => addNotification({ kind: 'online' })
+    const handleOffline = () => addNotification({ kind: 'offline' })
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
     }
-    setNotifications(prev => [newItem, ...prev].slice(0, MAX_NOTIFICATIONS))
-  }, [])
+  }, [addNotification])
+
+  // Listen for sync events
+  useEffect(() => {
+    const handleSyncComplete = () => addNotification({ kind: 'sync_complete' })
+    window.addEventListener('soostori-sync-complete', handleSyncComplete)
+    return () => window.removeEventListener('soostori-sync-complete', handleSyncComplete)
+  }, [addNotification])
+
+  // Listen for update events from the updater
+  useEffect(() => {
+    const handleUpdate = (data: UpdateStatusData) => {
+      if (data.state === 'UPDATE_AVAILABLE') {
+        addNotification({
+          kind: 'update_available',
+          message: `Version ${data.availableVersion || 'new'} is available.`,
+          version: data.availableVersion,
+        })
+      }
+    }
+    const unsubscribe = window.electronAPI?.updater?.onStatus(handleUpdate)
+    return () => unsubscribe?.()
+  }, [addNotification])
+
+  // Listen for sale completed — notification system gets wired here
+  useEffect(() => {
+    const handleSaleCompleted = (event: Event) => {
+      const { saleId, total } = (event as CustomEvent<{ saleId: string; total: number }>).detail
+      addNotification({
+        kind: 'info',
+        message: `Sale completed: ${total.toFixed(2)}`,
+      })
+    }
+    window.addEventListener('soostori:sale-completed', handleSaleCompleted)
+    return () => window.removeEventListener('soostori:sale-completed', handleSaleCompleted)
+  }, [addNotification])
+
+  // @soostori/notifications engine — unified notification from SDK channels (in-app, etc.)
+  useEffect(() => {
+    const handleSdkNotification = (event: Event) => {
+      const { id, title, body, priority, timestamp } = (
+        event as CustomEvent<{ id: string; title: string; body: string; priority: string; timestamp: number }>
+      ).detail
+      addNotification({
+        kind: priorityToKind(priority),
+        message: body,
+        timestamp,
+      } as Omit<NotificationItem, 'id' | 'timestamp' | 'read'>)
+    }
+    window.addEventListener('soostori:notification', handleSdkNotification)
+    return () => window.removeEventListener('soostori:notification', handleSdkNotification)
+  }, [addNotification])
 
   const markRead = useCallback((id: string) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))

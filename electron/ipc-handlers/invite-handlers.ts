@@ -2,7 +2,8 @@ import { ipcMain } from 'electron'
 import { getDatabase } from '../database'
 import { v4 as uuidv4 } from 'uuid'
 import log from 'electron-log'
-import { hashPin } from '../database/pin-hash'
+// Phase 11.2 Batch A: route hashPin through the published SDK.
+import { hashPin } from '@soostori/auth/pin-node'
 
 export function registerInviteHandlers(): void {
   ipcMain.handle('db:invites:create', (_event, rawData: unknown) => {
@@ -27,11 +28,11 @@ export function registerInviteHandlers(): void {
     const userId = uuidv4(); const now = new Date().toISOString(); const { hash, salt } = hashPin(data.pin)
     db.prepare(`INSERT INTO employees (id, shop_id, name, pin_hash, pin_salt, role, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?)`)
       .run(userId, invite.shop_id, data.userName, hash, salt, invite.role, now)
-    db.prepare('UPDATE devices SET employee_id = ?, is_online = 1, last_seen = ? WHERE id = ?').run(userId, now, data.deviceId)
+    // NOTE: device linking is done by the caller after device registration with canonical UUID
     db.prepare(`UPDATE invitations SET used_at = ? WHERE id = ?`).run(now, invite.id)
     db.prepare(`INSERT INTO device_sessions (id, device_id, user_id, login_at) VALUES (?, ?, ?, ?)`).run(uuidv4(), data.deviceId, userId, now)
     log.info(`Invite accepted: ${invite.id}, user: ${userId}`)
-    return { userId }
+    return { userId, shopId: invite.shop_id }
   })
 
   ipcMain.handle('db:invites:list', (_event, shopId: string) => {

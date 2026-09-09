@@ -1,72 +1,86 @@
-import React, { useCallback, useEffect, useState } from 'react'
-import { AlertCircle, ArrowUpCircle, Download, RefreshCw } from 'lucide-react'
-import type { UpdateStatusData } from '../lib/types/api'
-import { useTranslation } from '../lib/useTranslation'
+/**
+ * UpdateIndicator — renders the current SDK update state.
+ * Maps canonical @soostori/updates states to UI sub-components.
+ * Sub-components extracted to update-indicator-states.tsx per ANPAS.
+ */
 
-type UpdateStatus = 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'not-available' | 'error' | 'dev-mode'
+import React, { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from '../lib/useTranslation'
+import type { UpdateStatusData } from '../../electron/preload/types-hw'
+import {
+  UpdateIndicatorIdle, UpdateIndicatorChecking, UpdateIndicatorAvailable,
+  UpdateIndicatorDownloading, UpdateIndicatorReady, UpdateIndicatorInstalling,
+  UpdateIndicatorError,
+} from './update-indicator-states'
+
+type UiState = 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'installing' | 'error'
+
+function sdkStateToUi(data: UpdateStatusData): UiState {
+  switch (data.state) {
+    case 'CURRENT': return 'idle'
+    case 'CHECKING': return 'checking'
+    case 'UPDATE_AVAILABLE': return 'available'
+    case 'DOWNLOADING': return 'downloading'
+    case 'READY_TO_INSTALL': return 'ready'
+    case 'INSTALLING': return 'installing'
+    case 'ERROR': return 'error'
+    default: return 'idle'
+  }
+}
 
 const UpdateIndicator: React.FC = () => {
   const { t } = useTranslation()
-  const [status, setStatus] = useState<UpdateStatus>('idle')
-  const [version, setVersion] = useState('')
+  const [uiState, setUiState] = useState<UiState>('idle')
+  const [availableVersion, setAvailableVersion] = useState('')
   const [progress, setProgress] = useState(0)
   const [errorMessage, setErrorMessage] = useState('')
 
   const applyStatus = useCallback((data: UpdateStatusData) => {
-    const nextStatus = data.status as UpdateStatus
-    setStatus(nextStatus)
-    if (data.version) setVersion(data.version)
-    if (typeof data.percent === 'number') setProgress(data.percent)
-    if (data.message) setErrorMessage(data.message)
+    setUiState(sdkStateToUi(data))
+    setAvailableVersion(data.availableVersion ?? '')
+    if (data.progress?.percent !== undefined) setProgress(data.progress.percent)
+    if (data.error?.message) setErrorMessage(data.error.message)
   }, [])
 
   useEffect(() => {
     const updater = window.electronAPI?.updater
     if (!updater) return
     let active = true
-    updater.status().then((data) => { if (active) applyStatus(data) }).catch(() => undefined)
-    const unsubscribe = updater.onStatus(applyStatus)
-    return () => { active = false; unsubscribe?.() }
+    updater.status().then(d => { if (active) applyStatus(d) }).catch(() => undefined)
+    const unsub = updater.onStatus(applyStatus)
+    return () => { active = false; unsub?.() }
   }, [applyStatus])
 
   const checkForUpdates = useCallback(() => {
     const updater = window.electronAPI?.updater
     if (!updater) return
-    setStatus('checking')
-    updater.check().then(applyStatus).catch((error: unknown) => {
-      setStatus('error')
-      setErrorMessage(error instanceof Error ? error.message : t('app.unableCheckUpdates'))
+    setUiState('checking')
+    updater.check().then(applyStatus).catch((err: unknown) => {
+      setUiState('error')
+      setErrorMessage(err instanceof Error ? err.message : t('app.unableCheckUpdates'))
     })
   }, [applyStatus, t])
 
   const downloadUpdate = useCallback(() => {
-    window.electronAPI?.updater?.download().catch(() => {
-      setStatus('error')
-      setErrorMessage(t('app.unableDownloadUpdate'))
+    window.electronAPI?.updater?.download().catch((err: unknown) => {
+      setUiState('error')
+      setErrorMessage(err instanceof Error ? err.message : t('app.unableDownloadUpdate'))
     })
   }, [t])
 
-  if (status === 'idle' || status === 'not-available' || status === 'dev-mode') {
-    return <button type="button" onClick={checkForUpdates} aria-label={t('app.checkUpdates')} title={t('app.checkUpdates')} className="flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[10px] font-bold text-slate-500 transition-all duration-200 hover:bg-orange-50 hover:text-brand-orange"><RefreshCw size={13} /><span>{t('app.checkUpdates')}</span></button>
-  }
+  const installUpdate = useCallback(() => {
+    window.electronAPI?.updater?.install().then(result => {
+      if (result?.blocked) { setUiState('error'); setErrorMessage(t('app.updateBlockedSale') || 'Please complete the current sale first') }
+    }).catch(() => {})
+  }, [t])
 
-  if (status === 'checking') {
-    return <div role="status" aria-label={t('app.checkingForUpdates')} className="flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[10px] font-bold text-blue-600"><RefreshCw size={13} className="animate-spin" /><span>{t('app.updating')}</span></div>
-  }
-
-  if (status === 'available') {
-    return <button type="button" onClick={downloadUpdate} aria-label={`${t('app.downloadUpdate')} ${version}`} title={`${t('app.versionAvailableTitle')} ${version}`} className="flex h-7 items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 text-[10px] font-bold text-emerald-700 transition-all duration-200 hover:bg-emerald-100 animate-pulse"><ArrowUpCircle size={13} /><span>Update {version || 'available'}</span></button>
-  }
-
-  if (status === 'downloading') {
-    return <div role="status" aria-label={`${t('app.downloading')} ${Math.round(progress)}%`} className="flex h-7 items-center gap-1.5 rounded-full bg-blue-50 px-2.5 text-[10px] font-bold text-blue-700"><Download size={13} /><div className="h-1.5 w-12 overflow-hidden rounded-full bg-blue-100"><div className="h-full rounded-full bg-blue-500 transition-all duration-200" style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} /></div><span>{t('app.downloading')} {Math.round(progress)}%</span></div>
-  }
-
-  if (status === 'ready') {
-    return <button type="button" onClick={() => window.electronAPI?.updater?.install()} aria-label={t('app.restartToUpdate')} title={t('app.restartToUpdate')} className="flex h-7 items-center gap-1.5 rounded-full bg-orange-500 px-2.5 text-[10px] font-bold text-white transition-all duration-200 hover:bg-orange-600"><RefreshCw size={13} /><span>{t('app.restartToUpdateLabel')}</span></button>
-  }
-
-  return <button type="button" onClick={checkForUpdates} aria-label={t('app.updateFailedRetry')} title={errorMessage || t('app.updateFailed')} className="flex h-7 items-center gap-1.5 rounded-full bg-red-50 px-2.5 text-[10px] font-bold text-red-700 transition-all duration-200 hover:bg-red-100"><AlertCircle size={13} /><span>{t('action.retry')}</span></button>
+  if (uiState === 'idle') return <UpdateIndicatorIdle onCheck={checkForUpdates} t={t} />
+  if (uiState === 'checking') return <UpdateIndicatorChecking t={t} />
+  if (uiState === 'available') return <UpdateIndicatorAvailable version={availableVersion} onDownload={downloadUpdate} t={t} />
+  if (uiState === 'downloading') return <UpdateIndicatorDownloading progress={progress} t={t} />
+  if (uiState === 'ready') return <UpdateIndicatorReady onInstall={installUpdate} t={t} />
+  if (uiState === 'installing') return <UpdateIndicatorInstalling t={t} />
+  return <UpdateIndicatorError message={errorMessage} onRetry={checkForUpdates} t={t} />
 }
 
 export default UpdateIndicator

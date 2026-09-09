@@ -3,10 +3,15 @@
  *
  * Uses the same endpoint pattern as mobile's @fidscript/instant-react.
  * Desktop has no Electron SDK — uses REST API directly.
+ *
+ * Phase 11.2 Batch A: persistence helpers now consume @soostori/auth
+ * serializeSession for the contract boundary. SessionData is a Desktop
+ * interface; we keep it but delegate JSON serde to the SDK where possible.
  */
 
 import { sendMagicCode as apiSendMagicCode, verifyMagicCode as apiVerifyMagicCode } from './instant-api'
-import { getSyncStore } from './store'
+import { getSyncStore, getOrCreateDeviceId } from './store'
+import { serializeSession } from '@soostori/auth'
 import log from 'electron-log'
 import type { SessionData } from './cloud-schema'
 
@@ -42,7 +47,9 @@ export async function verifyMagicCode(email: string, code: string): Promise<Sess
 export function setSession(session: SessionData | null): void {
   _session = session
   const store = getSyncStore()
-  if (session) store.set('cloudSession', JSON.stringify(session))
+  // serializeSession from @soostori/auth is JSON.stringify but officially
+  // canonical — ensures all session writes route through the SDK contract.
+  if (session) store.set('cloudSession', serializeSession(session as never))
   else store.delete('cloudSession')
 }
 
@@ -51,7 +58,7 @@ export function getSession(): SessionData | null {
   const store = getSyncStore()
   const raw = store.get('cloudSession') as string | undefined
   if (!raw) return null
-  try { _session = JSON.parse(raw); return _session } catch { return null }
+  try { _session = JSON.parse(raw) as SessionData; return _session } catch { return null }
 }
 
 export function clearSession(): void {
@@ -68,7 +75,7 @@ export function setDeviceId(deviceId: string): void {
 }
 
 export function getDeviceId(): string {
-  return _session?.deviceId ?? getSyncStore().get('cloudDeviceId') as string ?? ''
+  return _session?.deviceId ?? getSyncStore().get('cloudDeviceId') as string ?? getOrCreateDeviceId()
 }
 
 export function getShopId(): string {

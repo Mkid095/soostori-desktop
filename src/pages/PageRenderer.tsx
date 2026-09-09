@@ -6,6 +6,8 @@ import Reports from '../pages/reports/Reports'
 import DebtManagement from '../pages/debt/DebtManagement'
 import ExpensesPage from '../pages/expenses/ExpensesPage'
 import NotificationsPage from '../pages/notifications/NotificationsPage'
+import TeamPage from '../pages/team/TeamPage'
+import DevicesPage from '../pages/devices/DevicesPage'
 
 interface Props {
   page: string
@@ -20,8 +22,8 @@ export function PageRenderer({ page }: Props): React.ReactElement {
     case 'expenses': return <ExpensesPage />
     case 'notifications': return <NotificationsPage />
     case 'settings': return <Settings />
-    case 'team': return <div className="p-6 text-slate-500">Team management coming soon</div>
-    case 'devices': return <div className="p-6 text-slate-500">Devices coming soon</div>
+    case 'team': return <TeamPage />
+    case 'devices': return <DevicesPage />
     default: return <div className="p-6 text-slate-500">Page not found</div>
   }
 }

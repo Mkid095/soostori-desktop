@@ -26,8 +26,13 @@ export function createPosTables(): void {
       default_theme TEXT DEFAULT 'light',
       default_language TEXT DEFAULT 'en',
       login_pin TEXT DEFAULT '0000',
+      login_pin_hash TEXT,
+      login_pin_salt TEXT,
       pin_set INTEGER DEFAULT 0,
       last_login TEXT,
+      -- Cloud PIN metadata (canonical verifier lives in EncryptedStorage, not here)
+      cloud_has_pin INTEGER DEFAULT 0,
+      cloud_pin_setup_at TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     )
@@ -118,12 +123,32 @@ function migrateAppSettingsTable(database: import('better-sqlite3').Database): v
         default_theme TEXT DEFAULT 'light',
         default_language TEXT DEFAULT 'en',
         login_pin TEXT DEFAULT '0000',
+        login_pin_hash TEXT,
+        login_pin_salt TEXT,
         pin_set INTEGER DEFAULT 0,
         last_login TEXT,
+        cloud_has_pin INTEGER DEFAULT 0,
+        cloud_pin_setup_at TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP
       )
     `)
     database.prepare(`INSERT OR IGNORE INTO app_settings (id, default_theme, default_language, login_pin, pin_set) VALUES ('default', 'light', 'en', '0000', 0)`).run()
+  }
+
+  // Add hashed PIN columns to existing table (v3 migration)
+  const cols = database.prepare("PRAGMA table_info(app_settings)").all() as { name: string }[]
+  const existingColNames = cols.map(c => c.name)
+  if (!existingColNames.includes('login_pin_hash')) {
+    database.exec('ALTER TABLE app_settings ADD COLUMN login_pin_hash TEXT')
+  }
+  if (!existingColNames.includes('login_pin_salt')) {
+    database.exec('ALTER TABLE app_settings ADD COLUMN login_pin_salt TEXT')
+  }
+  if (!existingColNames.includes('cloud_has_pin')) {
+    database.exec('ALTER TABLE app_settings ADD COLUMN cloud_has_pin INTEGER DEFAULT 0')
+  }
+  if (!existingColNames.includes('cloud_pin_setup_at')) {
+    database.exec('ALTER TABLE app_settings ADD COLUMN cloud_pin_setup_at TEXT')
   }
 }

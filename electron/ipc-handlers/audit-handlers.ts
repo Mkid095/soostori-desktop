@@ -2,6 +2,9 @@ import { ipcMain } from 'electron'
 import { getDatabase } from '../database'
 import { v4 as uuidv4 } from 'uuid'
 import log from 'electron-log'
+import { AuditRecorder } from '@soostori/audit'
+
+export { AuditRecorder }
 
 export function registerAuditHandlers(): void {
   ipcMain.handle('db:audit:log', (_event, rawData: unknown) => {

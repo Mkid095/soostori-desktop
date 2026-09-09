@@ -3,6 +3,9 @@ import { getDatabase } from './index'
 export function createCommerceTables(): void {
   const database = getDatabase()
 
+  migrateDevicesTable(database)
+  migrateInvitationsTable(database)
+
   database.exec(`
     CREATE TABLE IF NOT EXISTS offer_combos (
       id TEXT PRIMARY KEY, name TEXT NOT NULL, type TEXT DEFAULT 'combo',
@@ -79,17 +82,22 @@ export function createCommerceTables(): void {
       role TEXT NOT NULL DEFAULT 'cashier', code TEXT NOT NULL UNIQUE,
       device_name TEXT, created_by TEXT NOT NULL,
       expires_at TEXT NOT NULL, used_at TEXT,
+      cloud_used_at TEXT,
       FOREIGN KEY (shop_id) REFERENCES shops(id)
     )
   `)
 
   database.exec(`
     CREATE TABLE IF NOT EXISTS devices (
-      id TEXT PRIMARY KEY, shop_id TEXT NOT NULL, employee_id TEXT,
+      id TEXT PRIMARY KEY, device_id TEXT,
+      shop_id TEXT NOT NULL, employee_id TEXT,
       device_name TEXT NOT NULL DEFAULT 'POS',
       device_type TEXT NOT NULL DEFAULT 'desktop',
       capabilities TEXT NOT NULL DEFAULT '{"sales":true,"inventory":true,"printing":true}',
       is_host INTEGER NOT NULL DEFAULT 0, is_online INTEGER NOT NULL DEFAULT 0,
+      is_primary INTEGER NOT NULL DEFAULT 0,
+      cloud_has_pin INTEGER NOT NULL DEFAULT 0,
+      cloud_pin_setup_at TEXT,
       connection_token TEXT,
       last_seen TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (shop_id) REFERENCES shops(id)
@@ -130,4 +138,26 @@ export function createCommerceTables(): void {
       FOREIGN KEY (device_id) REFERENCES devices(id)
     )
   `)
+}
+
+function migrateDevicesTable(database: import('better-sqlite3').Database): void {
+  const cols = database.prepare("PRAGMA table_info(devices)").all() as { name: string }[]
+  const existing = cols.map(c => c.name)
+  if (!existing.includes('is_primary')) {
+    database.exec('ALTER TABLE devices ADD COLUMN is_primary INTEGER NOT NULL DEFAULT 0')
+  }
+  if (!existing.includes('cloud_has_pin')) {
+    database.exec('ALTER TABLE devices ADD COLUMN cloud_has_pin INTEGER NOT NULL DEFAULT 0')
+  }
+  if (!existing.includes('cloud_pin_setup_at')) {
+    database.exec('ALTER TABLE devices ADD COLUMN cloud_pin_setup_at TEXT')
+  }
+}
+
+function migrateInvitationsTable(database: import('better-sqlite3').Database): void {
+  const cols = database.prepare("PRAGMA table_info(invitations)").all() as { name: string }[]
+  const existing = cols.map(c => c.name)
+  if (!existing.includes('cloud_used_at')) {
+    database.exec('ALTER TABLE invitations ADD COLUMN cloud_used_at TEXT')
+  }
 }

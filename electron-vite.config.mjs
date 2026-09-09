@@ -4,6 +4,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const SDK = path.resolve(__dirname, '../soostori-sdk/packages')
 
 export default defineConfig({
   main: {
@@ -15,7 +16,19 @@ export default defineConfig({
       outDir: 'dist-electron',
       emptyOutDir: false,
       rollupOptions: {
-        external: ['better-sqlite3', 'serialport'],
+        external: ['better-sqlite3', 'serialport', 'electron-store'],
+      },
+    },
+    resolve: {
+      alias: {
+        '@soostori/core': `${SDK}/core/src/index.ts`,
+        '@soostori/devices': `${SDK}/devices/src/index.ts`,
+        '@soostori/events': `${SDK}/events/src/index.ts`,
+        '@soostori/inventory': `${SDK}/inventory/src/index.ts`,
+        '@soostori/business': `${SDK}/business/src/index.ts`,
+        '@soostori/desktop-adapter': `${SDK}/desktop-adapter/src/index.ts`,
+        '@soostori/sales': `${SDK}/business/sales/src/index.ts`,
+        '@soostori/updates': `${SDK}/updates/src/index.ts`,
       },
     },
   },
