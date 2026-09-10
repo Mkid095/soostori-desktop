@@ -5,6 +5,7 @@ import log from 'electron-log'
 import { createTables, seedDefaultData } from './schema'
 import { runMigrations } from './migrations'
 import { runSdkAlignmentMigration } from './schema-9-1-migration'
+import { runShopIdMigration } from './migrations/2025-09-10-add-shop-id-to-commercial-tables'
 
 let db: Database.Database | null = null
 
@@ -31,6 +32,7 @@ export async function initDatabase(): Promise<void> {
   createTables()
   runMigrations()
   runSdkAlignmentMigration()
+  runShopIdMigration()
   seedDefaultData()
 }
 

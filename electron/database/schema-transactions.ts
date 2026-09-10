@@ -32,6 +32,7 @@ export function createTransactionTables(): void {
       total_amount REAL NOT NULL, paid_amount REAL NOT NULL,
       payment_method TEXT DEFAULT 'cash', note TEXT,
       customer_id_number TEXT,
+      shop_id TEXT NOT NULL DEFAULT 'default',
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     )
@@ -43,6 +44,7 @@ export function createTransactionTables(): void {
       variation_name TEXT, product_name TEXT NOT NULL,
       quantity INTEGER NOT NULL, unit_price REAL NOT NULL,
       discount REAL DEFAULT 0, total_price REAL NOT NULL,
+      shop_id TEXT NOT NULL DEFAULT 'default',
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE,
       FOREIGN KEY (product_id) REFERENCES products(id)
@@ -53,6 +55,7 @@ export function createTransactionTables(): void {
     CREATE TABLE IF NOT EXISTS held_sales (
       id TEXT PRIMARY KEY, name TEXT, cart_items TEXT NOT NULL,
       payment_method TEXT DEFAULT 'cash',
+      shop_id TEXT NOT NULL DEFAULT 'default',
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )
   `)

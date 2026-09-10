@@ -43,6 +43,7 @@ export function createPosTables(): void {
       id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT, icon TEXT,
       color TEXT DEFAULT '#6366f1', display_order INTEGER DEFAULT 0,
       is_active INTEGER DEFAULT 1,
+      shop_id TEXT NOT NULL DEFAULT 'default',
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     )
@@ -58,6 +59,7 @@ export function createPosTables(): void {
       track_inventory INTEGER DEFAULT 1, has_variants INTEGER DEFAULT 0,
       parent_variant_id TEXT, expiry_date TEXT, metadata TEXT,
       is_active INTEGER DEFAULT 1,
+      shop_id TEXT NOT NULL DEFAULT 'default',
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP, deleted_at TEXT,
       distributor_name TEXT, distributor_phone TEXT,

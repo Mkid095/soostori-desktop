@@ -21,6 +21,7 @@ export function createCommerceTables(): void {
       id TEXT PRIMARY KEY, name TEXT NOT NULL, phone TEXT, email TEXT,
       address TEXT, notes TEXT, is_active INTEGER DEFAULT 1,
       id_number TEXT,
+      shop_id TEXT NOT NULL DEFAULT 'default',
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     )
@@ -31,6 +32,7 @@ export function createCommerceTables(): void {
       id TEXT PRIMARY KEY, customer_id TEXT, sale_id TEXT,
       amount REAL NOT NULL, amount_paid REAL DEFAULT 0,
       status TEXT DEFAULT 'pending', due_date TEXT, notes TEXT,
+      shop_id TEXT NOT NULL DEFAULT 'default',
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (customer_id) REFERENCES customers(id),
@@ -52,7 +54,9 @@ export function createCommerceTables(): void {
     CREATE TABLE IF NOT EXISTS expenses (
       id TEXT PRIMARY KEY, amount REAL NOT NULL,
       category TEXT NOT NULL DEFAULT 'other', note TEXT DEFAULT '',
-      date TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      date TEXT NOT NULL,
+      shop_id TEXT NOT NULL DEFAULT 'default',
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `)
 
