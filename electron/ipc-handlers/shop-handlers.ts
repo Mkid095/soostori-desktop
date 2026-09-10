@@ -13,7 +13,8 @@ import { getOrCreateDeviceId } from '../services/store'
 
 export function registerShopHandlers(): void {
   ipcMain.handle('db:shop:create', async (_event, rawData: unknown) => {
-    const data = rawData as { shopName: string; ownerName: string; ownerPin: string; currency?: string }
+    // D6: SetupWizard sends `name` (matches IPC signature). Handler reads `name`.
+    const data = rawData as { name: string; ownerName: string; ownerPin: string; currency?: string }
     const db = getDatabase()
     const shopId = uuidv4()
     const userId = uuidv4()
@@ -21,7 +22,7 @@ export function registerShopHandlers(): void {
     const { hash, salt } = hashPin(ownerPin)
 
     db.prepare(`INSERT INTO shops (id, name, currency, created_at) VALUES (?, ?, ?, ?)`)
-      .run(shopId, data.shopName, data.currency || 'KES', new Date().toISOString())
+      .run(shopId, data.name, data.currency || 'KES', new Date().toISOString())
 
     db.prepare(`
       INSERT INTO employees (id, shop_id, name, pin_hash, pin_salt, role, is_active, created_at)
@@ -35,8 +36,8 @@ export function registerShopHandlers(): void {
       const repo = new DesktopBusinessRepository()
       const svc = new BusinessService(repo, asDeviceId(getOrCreateDeviceId()))
       await svc.createBusiness({
-        name: data.shopName,
-        slug: data.shopName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'shop',
+        name: data.name,
+        slug: data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'shop',
         taxRate: 0,
         currency: data.currency || 'KES',
         ownerPersonId: asUserId(userId),
