@@ -5,7 +5,9 @@ import log from 'electron-log'
 // Phase 11.2 Batch A: consume the published @soostori/auth and @soostori/core
 // directly. desktop-adapter was a transitional bridge only.
 import { hashPin, verifyPin } from '@soostori/auth/pin-node'
-import { hasPermission, ROLE_PERMISSIONS } from '@soostori/auth'
+// Phase 04: replaced old hasPermission (role-level) with canonical can/capability API
+import { can, CAPABILITIES } from '@soostori/auth'
+import type { Member } from '@soostori/auth'
 import { asUserId, asShopId, asEmployeeId, asDeviceId } from '@soostori/core'
 import type { AuthSession, EmployeeRole } from '@soostori/core'
 import { desktopSaveSession, desktopClearSession, desktopLoadSession } from '../auth/electron-store-session'
@@ -19,11 +21,11 @@ interface ShopUserRow {
 
 const SESSION_TTL_HOURS = 24
 
-/** Look up the caller's role from the authenticated session. */
-function getCallerRole(session: AuthSession): EmployeeRole {
+/** Build a Member object for the capability system from the session's employeeId. */
+function getCallerMember(session: AuthSession): Member {
   const db = getDatabase()
   const row = db.prepare('SELECT role FROM employees WHERE id = ?').get(session.employeeId as string) as { role: string } | undefined
-  return (row?.role ?? 'cashier') as EmployeeRole
+  return { role: (row?.role ?? 'cashier') as EmployeeRole }
 }
 
 export function registerAuthHandlers(): void {
@@ -90,7 +92,7 @@ export function registerAuthHandlers(): void {
   ipcMain.handle('db:auth:createUser', async (_event, rawData: unknown) => {
     const session = await desktopLoadSession()
     if (!session) throw new Error('Not authenticated')
-    if (!hasPermission(getCallerRole(session), 'employee.create')) throw new Error('Insufficient permissions: employee management required')
+    if (!can(getCallerMember(session), CAPABILITIES.TEAM_UPDATE)) throw new Error('Insufficient permissions: team.update required')
     const data = createUserSchema.parse(rawData)
     const db = getDatabase()
     const userId = uuidv4()
@@ -103,7 +105,7 @@ export function registerAuthHandlers(): void {
   ipcMain.handle('db:auth:updateUser', async (_event, rawData: unknown) => {
     const session = await desktopLoadSession()
     if (!session) throw new Error('Not authenticated')
-    if (!hasPermission(getCallerRole(session), 'employee.update')) throw new Error('Insufficient permissions: employee management required')
+    if (!can(getCallerMember(session), CAPABILITIES.TEAM_UPDATE)) throw new Error('Insufficient permissions: team.update required')
     const data = updateUserSchema.parse(rawData)
     const db = getDatabase()
     const fields: string[] = []; const values: (string | number | null)[] = []
@@ -119,7 +121,7 @@ export function registerAuthHandlers(): void {
   ipcMain.handle('db:auth:deleteUser', async (_event, userId: string) => {
     const session = await desktopLoadSession()
     if (!session) throw new Error('Not authenticated')
-    if (!hasPermission(getCallerRole(session), 'employee.delete')) throw new Error('Insufficient permissions: employee management required')
+    if (!can(getCallerMember(session), CAPABILITIES.TEAM_REMOVE)) throw new Error('Insufficient permissions: team.remove required')
     getDatabase().prepare('UPDATE employees SET is_active = 0 WHERE id = ?').run(userId)
     return { success: true }
   })
@@ -137,10 +139,13 @@ export function registerAuthHandlers(): void {
     return { success: true }
   })
 
-  ipcMain.handle('db:auth:hasPermission', (_event, role: string, permission: string) => {
-    // D1+D2: explicit UNKNOWN_ROLE guard before checking permission
-    if (!ROLE_PERMISSIONS[role as EmployeeRole]) throw new Error('UNKNOWN_ROLE')
-    return hasPermission(role as EmployeeRole, permission)
+  // Phase 04: now uses canonical capability API — accepts role string and capability
+  ipcMain.handle('db:auth:can', (_event, role: string, capability: string) => {
+    if (!(['owner', 'manager', 'cashier', 'attendant', 'viewer'] as const).includes(role as any)) {
+      throw new Error('UNKNOWN_ROLE')
+    }
+    const member: Member = { role: role as EmployeeRole }
+    return can(member, capability as any)
   })
 
   log.info('Auth IPC handlers registered')

@@ -4,6 +4,8 @@
  * Extracted from `sale-create-handlers.ts` per ANPAS ≤150-line cap so the
  * create handler can wire `defaultSyncEngine.enqueue()` (Cycle 04 Sub-F)
  * without blowing the cap. Zero behavior change vs. the previous home.
+ *
+ * Phase 04: capability enforcement — sales.refund required.
  */
 
 import { ipcMain } from 'electron'
@@ -13,11 +15,27 @@ import { desktopLoadSession } from '../auth/electron-store-session'
 import { adjustStock } from '../sdk/inventory-orchestrator'
 import { syncService } from '../sync/sync-service'
 import { resolveActiveShopId } from '../database/active-shop'
+// Phase 04: canonical capability API
+import { can, CAPABILITIES } from '@soostori/auth'
+import type { Member } from '@soostori/auth'
+import type { EmployeeRole } from '@soostori/core'
+
+/** Build a Member for the capability system from the session's employeeId. */
+function getCallerMember(session: { employeeId: string }): Member {
+  const db = getDatabase()
+  const row = db.prepare('SELECT role FROM employees WHERE id = ?').get(session.employeeId) as { role: string } | undefined
+  return { role: (row?.role ?? 'cashier') as EmployeeRole }
+}
 
 export function registerSaleRefundHandlers(): void {
   ipcMain.handle('db:sales:refund', async (_event, saleId: string) => {
     const session = await desktopLoadSession()
-    const userId = session?.userId ?? 'system'
+    if (!session) throw new Error('Not authenticated')
+    // Phase 04: capability enforcement
+    if (!can(getCallerMember(session), CAPABILITIES.SALES_REFUND)) {
+      throw new Error('Insufficient permissions: sales.refund required')
+    }
+    const userId = session.userId ?? 'system'
     const db = getDatabase()
     const shopId = await resolveActiveShopId()
     const sale = db.prepare('SELECT * FROM sales WHERE id = ? AND shop_id = ?').get(saleId, shopId) as {

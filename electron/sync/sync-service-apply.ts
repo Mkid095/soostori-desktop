@@ -170,3 +170,11 @@ export function applySaleRefunded(event: SyncEvent): void {
     .run(new Date().toISOString(), payload.saleId)
   log.info(`SyncService: applied SALE_REFUNDED saleId=${payload.saleId}`)
 }
+
+export function applySaleVoided(event: SyncEvent): void {
+  const payload = event.payload as { saleId: string }
+  const db = getDatabase()
+  db.prepare("UPDATE sales SET status = 'cancelled', updated_at = ? WHERE id = ?")
+    .run(new Date().toISOString(), payload.saleId)
+  log.info(`SyncService: applied SALE_VOIDED saleId=${payload.saleId}`)
+}

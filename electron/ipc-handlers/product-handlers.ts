@@ -7,6 +7,18 @@ import { registerProductQueryHandlers } from './product-handlers-query'
 import { registerProductMutationHandlers } from './product-handlers-mutation'
 import { pushProduct } from '../services/cloud-entity-sync'
 import { resolveActiveShopId, resolveShopIdSync } from '../database/active-shop'
+import { desktopLoadSession } from '../auth/electron-store-session'
+// Phase 04: canonical capability API
+import { can, CAPABILITIES } from '@soostori/auth'
+import type { Member } from '@soostori/auth'
+import type { EmployeeRole } from '@soostori/core'
+
+/** Build a Member for the capability system from the session's employeeId. */
+function getCallerMember(session: { employeeId: string }): Member {
+  const db = getDatabase()
+  const row = db.prepare('SELECT role FROM employees WHERE id = ?').get(session.employeeId) as { role: string } | undefined
+  return { role: (row?.role ?? 'cashier') as EmployeeRole }
+}
 
 export { registerProductQueryHandlers }
 
@@ -15,6 +27,12 @@ export function registerProductHandlers(): void {
   registerProductMutationHandlers()
 
   ipcMain.handle('db:products:create', async (_event, rawData: unknown) => {
+    const session = await desktopLoadSession()
+    if (!session) throw new Error('Not authenticated')
+    // Phase 04: capability enforcement
+    if (!can(getCallerMember(session), CAPABILITIES.PRODUCTS_CREATE)) {
+      throw new Error('Insufficient permissions: products.create required')
+    }
     const data = productCreateSchema.parse(rawData)
     const db = getDatabase()
     const id = uuidv4()
@@ -43,6 +61,12 @@ export function registerProductHandlers(): void {
   })
 
   ipcMain.handle('db:products:update', async (_event, id: string, rawData: unknown) => {
+    const session = await desktopLoadSession()
+    if (!session) throw new Error('Not authenticated')
+    // Phase 04: capability enforcement
+    if (!can(getCallerMember(session), CAPABILITIES.PRODUCTS_UPDATE)) {
+      throw new Error('Insufficient permissions: products.update required')
+    }
     const data = productUpdateSchema.parse(rawData)
     const db = getDatabase()
     const now = new Date().toISOString()
@@ -81,6 +105,12 @@ export function registerProductHandlers(): void {
   })
 
   ipcMain.handle('db:products:delete', async (_event, id: string) => {
+    const session = await desktopLoadSession()
+    if (!session) throw new Error('Not authenticated')
+    // Phase 04: capability enforcement — products.archive is the capability for soft-delete
+    if (!can(getCallerMember(session), CAPABILITIES.PRODUCTS_ARCHIVE)) {
+      throw new Error('Insufficient permissions: products.archive required')
+    }
     const now = new Date().toISOString()
     const shopId = await resolveActiveShopId()
     getDatabase().prepare('UPDATE products SET deleted_at = ?, is_active = 0 WHERE id = ? AND shop_id = ?').run(now, id, shopId)

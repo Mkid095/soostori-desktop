@@ -3,16 +3,18 @@ import { getDatabase } from '../database'
 import { v4 as uuidv4 } from 'uuid'
 import log from 'electron-log'
 import { customerCreateSchema, customerUpdateSchema } from './validation'
-import { hasPermission } from '@soostori/auth'
+// Phase 04: canonical capability API
+import { can, CAPABILITIES } from '@soostori/auth'
+import type { Member } from '@soostori/auth'
 import type { EmployeeRole } from '@soostori/core'
 import { desktopLoadSession } from '../auth/electron-store-session'
 import { resolveActiveShopId } from '../database/active-shop'
 
-/** Look up an employee's role from the local employees table. */
-function getEmployeeRole(employeeId: string): EmployeeRole {
+/** Build a Member for the capability system from an employeeId. */
+function getMember(employeeId: string): Member {
   const db = getDatabase()
   const row = db.prepare('SELECT role FROM employees WHERE id = ?').get(employeeId) as { role: string } | undefined
-  return (row?.role ?? 'cashier') as EmployeeRole
+  return { role: (row?.role ?? 'cashier') as EmployeeRole }
 }
 
 export function registerCustomerHandlers(): void {
@@ -38,9 +40,7 @@ export function registerCustomerHandlers(): void {
   ipcMain.handle('db:customers:create', async (_event, rawData: unknown) => {
     const session = await desktopLoadSession()
     if (!session) throw new Error('Not authenticated')
-    const role = getEmployeeRole(session.employeeId)
-    // D1+D2: use SDK dotted permission vocabulary
-    if (!hasPermission(role, 'customers.create')) throw new Error('Insufficient permissions')
+    if (!can(getMember(session.employeeId), CAPABILITIES.CUSTOMERS_CREATE)) throw new Error('Insufficient permissions')
     const data = customerCreateSchema.parse(rawData)
     const db = getDatabase()
     const id = uuidv4()
@@ -56,9 +56,7 @@ export function registerCustomerHandlers(): void {
   ipcMain.handle('db:customers:update', async (_event, id: string, rawData: unknown) => {
     const session = await desktopLoadSession()
     if (!session) throw new Error('Not authenticated')
-    const role = getEmployeeRole(session.employeeId)
-    // D1+D2: use SDK dotted permission vocabulary
-    if (!hasPermission(role, 'customers.update')) throw new Error('Insufficient permissions')
+    if (!can(getMember(session.employeeId), CAPABILITIES.CUSTOMERS_UPDATE)) throw new Error('Insufficient permissions')
     const data = customerUpdateSchema.parse(rawData)
     const db = getDatabase()
     const now = new Date().toISOString()
@@ -79,9 +77,7 @@ export function registerCustomerHandlers(): void {
   ipcMain.handle('db:customers:delete', async (_event, id: string) => {
     const session = await desktopLoadSession()
     if (!session) throw new Error('Not authenticated')
-    const role = getEmployeeRole(session.employeeId)
-    // D1+D2: use SDK dotted permission vocabulary
-    if (!hasPermission(role, 'customers.delete')) throw new Error('Insufficient permissions')
+    if (!can(getMember(session.employeeId), CAPABILITIES.CUSTOMERS_DELETE)) throw new Error('Insufficient permissions')
     const db = getDatabase()
     const shopId = await resolveActiveShopId()
     db.prepare('UPDATE customers SET is_active = 0 WHERE id = ? AND shop_id = ?').run(id, shopId)

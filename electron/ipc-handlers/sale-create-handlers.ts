@@ -4,6 +4,8 @@
  * Cycle 04 Sub-cycle F: after the SQLite INSERT succeeds, enqueue a
  * SyncEvent onto `defaultSyncEngine` so the LAN/cloud sync layer sees
  * the new sale. This is the Desktop side of the production sync smoke.
+ *
+ * Phase 04: capability enforcement — sales.create required before committing.
  */
 
 import { ipcMain } from 'electron'
@@ -22,8 +24,18 @@ import type { Sale, SyncEvent } from '@soostori/contracts'
 import { asBusinessId, asEmployeeId, asDeviceId } from '@soostori/core'
 import { fromLocalSale, type SalesRow } from '../database/contracts-mapper-2'
 import { buildSaleSyncEvent } from '../database/sync-event-builder'
+// Phase 04: canonical capability API
+import { can, CAPABILITIES } from '@soostori/auth'
+import type { Member } from '@soostori/auth'
+import type { EmployeeRole } from '@soostori/core'
 
 const db = getDatabase()
+
+/** Build a Member for the capability system from the session's employeeId. */
+function getCallerMember(session: { employeeId: string }): Member {
+  const row = db.prepare('SELECT role FROM employees WHERE id = ?').get(session.employeeId) as { role: string } | undefined
+  return { role: (row?.role ?? 'cashier') as EmployeeRole }
+}
 
 export function registerSaleCreateHandlers(): void {
   ipcMain.handle('db:sales:create', async (_event, rawSaleData: unknown) => {
@@ -32,6 +44,13 @@ export function registerSaleCreateHandlers(): void {
     const userId = (saleData as { userId?: string }).userId || 'system'
     const deviceId = (saleData as { deviceId?: string }).deviceId || null
     const saleId = uuidv4()
+
+    // Phase 04: capability enforcement — caller must have sales.create
+    const session = await desktopLoadSession()
+    if (!session) throw new Error('Not authenticated')
+    if (!can(getCallerMember(session), CAPABILITIES.SALES_CREATE)) {
+      throw new Error('Insufficient permissions: sales.create required')
+    }
 
     // Client mode: send to host via LAN for authorization
     if (syncService.getMode() === 'client') {
@@ -99,13 +118,11 @@ export function registerSaleCreateHandlers(): void {
       // SQLite INSERT succeeds. Projects the persisted row to the
       // canonical Sale shape via fromLocalSale so the sync payload is
       // contract-typed.
-      const session = await desktopLoadSession()
       const saleRow = db.prepare(
         'SELECT * FROM sales WHERE id = ? AND shop_id = ?',
       ).get(saleId, shopId) as SalesRow | undefined
       if (saleRow) {
         const sale: Sale = fromLocalSale(saleRow)
-        const session = await desktopLoadSession()
         const syncEvent: SyncEvent = buildSaleSyncEvent(sale, {
           businessId: asBusinessId(sale.businessId),
           originatingDeviceId: asDeviceId(session?.deviceId ?? deviceId ?? 'system'),

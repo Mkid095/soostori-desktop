@@ -23,6 +23,7 @@ export const dbHandlers: DbIpc = {
   getSaleById: (id: string) => ipcRenderer.invoke('db:sales:get', id),
   createSale: (sale: unknown) => ipcRenderer.invoke('db:sales:create', sale),
   refundSale: (saleId: string) => ipcRenderer.invoke('db:sales:refund', saleId),
+  voidSale: (saleId: string) => ipcRenderer.invoke('db:sales:void', saleId),
   getSalesByDateRange: (startDate: string, endDate: string, shopId?: string) =>
     ipcRenderer.invoke('db:sales:listByDateRange', startDate, endDate, shopId),
   getTopProducts: (startDate: string, endDate: string, limit?: number) =>

@@ -27,6 +27,7 @@ export interface DbIpc {
   getSaleById: (id: string) => Promise<unknown | null>
   createSale: (sale: unknown) => Promise<unknown>
   refundSale: (saleId: string) => Promise<{ id: string; status: string }>
+  voidSale: (saleId: string) => Promise<{ id: string; status: string }>
   getSalesByDateRange: (startDate: string, endDate: string, shopId?: string) => Promise<unknown[]>
   getTopProducts: (startDate: string, endDate: string, limit?: number) => Promise<unknown[]>
   // Held Sales

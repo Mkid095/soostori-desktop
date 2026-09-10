@@ -1,3 +1,9 @@
+/**
+ * expense-handlers.ts — Expense IPC handlers.
+ *
+ * Phase 04: capability enforcement on mutations.
+ */
+
 import { ipcMain } from 'electron'
 import { getDatabase } from '../database'
 import { v4 as uuidv4 } from 'uuid'
@@ -6,6 +12,18 @@ import { z } from 'zod'
 import { pushExpense } from '../services/cloud-entity-sync'
 import { resolveActiveShopId } from '../database/active-shop'
 import { fromLocalExpense, type ExpensesRow } from '../database/contracts-mapper-3'
+// Phase 04: canonical capability API
+import { can, CAPABILITIES } from '@soostori/auth'
+import type { Member } from '@soostori/auth'
+import type { EmployeeRole } from '@soostori/core'
+import { desktopLoadSession } from '../auth/electron-store-session'
+
+/** Build a Member for the capability system from the session's employeeId. */
+function getCallerMember(session: { employeeId: string }): Member {
+  const db = getDatabase()
+  const row = db.prepare('SELECT role FROM employees WHERE id = ?').get(session.employeeId) as { role: string } | undefined
+  return { role: (row?.role ?? 'cashier') as EmployeeRole }
+}
 
 interface ExpenseRow {
   id: string
@@ -36,6 +54,12 @@ export function registerExpenseHandlers(): void {
   })
 
   ipcMain.handle('db:expenses:create', async (_event, rawData: unknown) => {
+    const session = await desktopLoadSession()
+    if (!session) throw new Error('Not authenticated')
+    // Phase 04: capability enforcement
+    if (!can(getCallerMember(session), CAPABILITIES.EXPENSES_CREATE)) {
+      throw new Error('Insufficient permissions: expenses.create required')
+    }
     const data = expenseInputSchema.parse(rawData)
     const db = getDatabase()
     const id = uuidv4()
@@ -55,6 +79,12 @@ export function registerExpenseHandlers(): void {
   })
 
   ipcMain.handle('db:expenses:delete', async (_event, id: string) => {
+    const session = await desktopLoadSession()
+    if (!session) throw new Error('Not authenticated')
+    // Phase 04: capability enforcement
+    if (!can(getCallerMember(session), CAPABILITIES.EXPENSES_DELETE)) {
+      throw new Error('Insufficient permissions: expenses.delete required')
+    }
     const db = getDatabase()
     const shopId = await resolveActiveShopId()
     db.prepare('DELETE FROM expenses WHERE id = ? AND shop_id = ?').run(id, shopId)

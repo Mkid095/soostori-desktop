@@ -9,6 +9,8 @@
  *
  * Legacy: stock_movements table is retired from new production writes.
  * Kept for historical reads only.
+ *
+ * Phase 04: capability enforcement — inventory.adjust required.
  */
 
 import { ipcMain } from 'electron'
@@ -17,18 +19,34 @@ import log from 'electron-log'
 import { stockAdjustmentSchema } from './validation'
 import { adjustStock } from '../sdk/inventory-orchestrator'
 import { desktopLoadSession } from '../auth/electron-store-session'
+// Phase 04: canonical capability API
+import { can, CAPABILITIES } from '@soostori/auth'
+import type { Member } from '@soostori/auth'
+import type { EmployeeRole } from '@soostori/core'
+
+/** Build a Member for the capability system from the session's employeeId. */
+function getCallerMember(session: { employeeId: string }): Member {
+  const db = getDatabase()
+  const row = db.prepare('SELECT role FROM employees WHERE id = ?').get(session.employeeId) as { role: string } | undefined
+  return { role: (row?.role ?? 'cashier') as EmployeeRole }
+}
 
 export function registerStockHandlers(): void {
   ipcMain.handle('db:inventory:adjust', async (_event, rawProductId: unknown, rawQuantityChange: unknown, rawReason: unknown) => {
+    const session = await desktopLoadSession()
+    if (!session) throw new Error('Not authenticated')
+    // Phase 04: capability enforcement
+    if (!can(getCallerMember(session), CAPABILITIES.INVENTORY_ADJUST)) {
+      throw new Error('Insufficient permissions: inventory.adjust required')
+    }
+
     const validated = stockAdjustmentSchema.parse({
       productId: rawProductId,
       quantityChange: rawQuantityChange,
       reason: rawReason,
     })
 
-    // Get current user from session
-    const session = await desktopLoadSession()
-    const userId = session?.userId ?? 'system'
+    const userId = session.userId ?? 'system'
 
     // Run through SDK orchestrator with Primary authorization
     const result = await adjustStock({

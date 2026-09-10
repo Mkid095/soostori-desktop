@@ -1,11 +1,13 @@
 /**
  * sale-handlers-mutation.ts — Sale mutation IPC handler registration.
  * Split per ANPAS: create → sale-create-handlers.ts, held-sales → held-sale-handlers.ts.
+ * Phase 04: sale void added (sales.void capability).
  */
 
 import { registerSaleCreateHandlers } from './sale-create-handlers'
 import { registerSaleRefundHandlers } from './sale-refund-handlers'
 import { registerHeldSaleHandlers } from './held-sale-handlers'
+import { registerSaleVoidHandlers } from './sale-void-handlers'
 import { getDatabase } from '../database'
 import log from 'electron-log'
 
@@ -19,5 +21,6 @@ export function registerSaleMutationHandlers(): void {
   registerSaleCreateHandlers()
   registerSaleRefundHandlers()
   registerHeldSaleHandlers()
+  registerSaleVoidHandlers()
   log.info('Sale mutation handlers registered')
 }

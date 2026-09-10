@@ -4,16 +4,18 @@ import { v4 as uuidv4 } from 'uuid'
 import log from 'electron-log'
 import { debtCreateSchema, debtPaymentSchema } from './validation'
 import { z } from 'zod'
-import { hasPermission } from '@soostori/auth'
+// Phase 04: canonical capability API
+import { can, CAPABILITIES } from '@soostori/auth'
+import type { Member } from '@soostori/auth'
 import type { EmployeeRole } from '@soostori/core'
 import { desktopLoadSession } from '../auth/electron-store-session'
 import { resolveActiveShopId } from '../database/active-shop'
 
-/** Look up an employee's role from the local employees table. */
-function getEmployeeRole(employeeId: string): EmployeeRole {
+/** Build a Member for the capability system from an employeeId. */
+function getMember(employeeId: string): Member {
   const db = getDatabase()
   const row = db.prepare('SELECT role FROM employees WHERE id = ?').get(employeeId) as { role: string } | undefined
-  return (row?.role ?? 'cashier') as EmployeeRole
+  return { role: (row?.role ?? 'cashier') as EmployeeRole }
 }
 
 interface DebtRow {
@@ -38,7 +40,7 @@ export function registerDebtHandlers(): void {
     const session = await desktopLoadSession()
     if (!session) throw new Error('Not authenticated')
     // D1+D2: SDK dotted permission vocabulary
-    if (!hasPermission(getEmployeeRole(session.employeeId), 'debts.view')) throw new Error('Insufficient permissions')
+    if (!can(getMember(session.employeeId), CAPABILITIES.DEBTS_VIEW)) throw new Error('Insufficient permissions')
     const db = getDatabase()
     const shopId = await resolveActiveShopId()
     return db.prepare(`
@@ -54,7 +56,7 @@ export function registerDebtHandlers(): void {
     const session = await desktopLoadSession()
     if (!session) throw new Error('Not authenticated')
     // D1+D2: SDK dotted permission vocabulary
-    if (!hasPermission(getEmployeeRole(session.employeeId), 'debts.view')) throw new Error('Insufficient permissions')
+    if (!can(getMember(session.employeeId), CAPABILITIES.DEBTS_VIEW)) throw new Error('Insufficient permissions')
     const db = getDatabase()
     const shopId = await resolveActiveShopId()
     const debt = db.prepare(`
@@ -73,7 +75,7 @@ export function registerDebtHandlers(): void {
     const session = await desktopLoadSession()
     if (!session) throw new Error('Not authenticated')
     // D1+D2: SDK dotted permission vocabulary
-    if (!hasPermission(getEmployeeRole(session.employeeId), 'debts.create')) throw new Error('Insufficient permissions')
+    if (!can(getMember(session.employeeId), CAPABILITIES.DEBTS_CREATE)) throw new Error('Insufficient permissions')
     const data = debtCreateSchema.parse(rawData)
     const db = getDatabase()
     const id = uuidv4()
@@ -90,7 +92,7 @@ export function registerDebtHandlers(): void {
     const session = await desktopLoadSession()
     if (!session) throw new Error('Not authenticated')
     // D1+D2: SDK dotted permission vocabulary
-    if (!hasPermission(getEmployeeRole(session.employeeId), 'debts.update')) throw new Error('Insufficient permissions')
+    if (!can(getMember(session.employeeId), CAPABILITIES.DEBTS_PAYMENT)) throw new Error('Insufficient permissions')
     const validated = debtPaymentSchema.parse({ debtId, amount: rawAmount, paymentMethod: rawPaymentMethod, reference: rawReference })
     const db = getDatabase()
     const now = new Date().toISOString()
@@ -118,7 +120,7 @@ export function registerDebtHandlers(): void {
     const session = await desktopLoadSession()
     if (!session) throw new Error('Not authenticated')
     // D1+D2: SDK dotted permission vocabulary
-    if (!hasPermission(getEmployeeRole(session.employeeId), 'debts.view')) throw new Error('Insufficient permissions')
+    if (!can(getMember(session.employeeId), CAPABILITIES.DEBTS_VIEW)) throw new Error('Insufficient permissions')
     const db = getDatabase()
     const shopId = await resolveActiveShopId()
     const total = db.prepare("SELECT COALESCE(SUM(amount - amount_paid), 0) as val FROM debts WHERE status != 'paid' AND shop_id = ?").get(shopId) as SummaryRow | undefined
@@ -130,7 +132,7 @@ export function registerDebtHandlers(): void {
     const session = await desktopLoadSession()
     if (!session) throw new Error('Not authenticated')
     // D1+D2: SDK dotted permission vocabulary
-    if (!hasPermission(getEmployeeRole(session.employeeId), 'debts.view')) throw new Error('Insufficient permissions')
+    if (!can(getMember(session.employeeId), CAPABILITIES.DEBTS_VIEW)) throw new Error('Insufficient permissions')
     const db = getDatabase()
     const shopId = await resolveActiveShopId()
     const collected = db.prepare("SELECT COALESCE(SUM(amount_paid), 0) as val FROM debts WHERE status IN ('paid', 'partial') AND shop_id = ?").get(shopId) as SummaryRow | undefined
