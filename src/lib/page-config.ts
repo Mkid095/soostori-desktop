@@ -14,4 +14,6 @@ export const PAGE_CONFIG: Record<Page, PageConfig> = {
   settings: { title: 'Settings', subtitle: 'Configure' },
   team: { title: 'Team', subtitle: 'Manage staff' },
   devices: { title: 'Devices', subtitle: 'Terminals' },
+  commissions: { title: 'My Commissions', subtitle: 'Earnings' },
+  business: { title: 'My Businesses', subtitle: 'Switch & manage' },
 }

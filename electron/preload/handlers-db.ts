@@ -135,4 +135,9 @@ export const dbHandlers: DbIpc = {
   syncStop: () => ipcRenderer.invoke('sync:stop'),
   syncGetMode: () => ipcRenderer.invoke('sync:getMode'),
   syncGetAuthorityStatus: () => ipcRenderer.invoke('sync:getAuthorityStatus'),
+  // Business Setup
+  businessSetup: (input) => ipcRenderer.invoke('db:business:setup', input),
+  listBusinessesForUser: () => ipcRenderer.invoke('db:business:listForUser'),
+  setActiveBusiness: (businessId: string) => ipcRenderer.invoke('db:business:setActive', businessId),
+  getActiveBusinessId: () => ipcRenderer.invoke('db:business:getActive'),
 }

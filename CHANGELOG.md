@@ -5,6 +5,59 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 
+## [Unreleased] — Cycle 05 Phase 07 Business Setup (2026-09-10)
+
+### Added
+
+- **Business Setup IPC handler** (`electron/ipc-handlers/business-setup-handlers.ts`): implements `businessSetup()` — find/create Person, create Business, create owner Membership, create BusinessSettings (KES/Africa/Nairobi/KE defaults), create "Uncategorized" default Category. Returns `{ businessId, ownerMembershipId, defaultCategoryId }`. Also exposes `listBusinessesForUser`, `setActiveBusiness`, `getActiveBusinessId`.
+
+- **Business Setup page** (`src/pages/business/BusinessSetupPage.tsx`): RBAC-gated form (owner role or `business.admin` capability). Fields: business name, type (retail/wholesale/supermarket/restaurant/salon/pharmacy/other), country (KE/TZ/UG), currency (KES/TZS/UGX), owner name, owner phone (E.164), owner email (optional). On submit calls `businessSetup()` IPC, shows success card with business ID + category ID.
+
+- **Business List page** (`src/pages/business/BusinessListPage.tsx`): lists all businesses user has membership in, shows name/currency/member count/created date. Active business marked with orange badge. Tap to switch active context via `setActiveBusiness()`.
+
+- **Business Switcher page** (`src/pages/business/BusinessPage.tsx`): combines list + setup modal with FAB "Add Business" button (owner/admin only).
+
+- **useBusinessContext hook** (`src/hooks/useBusinessContext.ts`): manages `activeBusinessId` — loads from store on init, exposes `setActiveBusinessId` for switching.
+
+- **Business nav item**: `nav.business` label (EN: Business, SW: Biashara) in Team group, `Building` Lucide icon, gated behind `owner` role. `business` page type added to SidebarNav + PageRenderer.
+
+- **Preload IPC wiring**: `businessSetup`, `listBusinessesForUser`, `setActiveBusiness`, `getActiveBusinessId` added to `ipc-signatures-db.ts` + `handlers-db.ts`.
+
+### Acceptance
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit` | **clean (0 errors)** — only pre-existing SDK contract error unrelated to this phase |
+
+## [Unreleased] — Cycle 05 Phase 06 Commercial Onboarding (2026-09-10)
+
+### Added
+
+- **My Commissions page** (`src/pages/commissions/CommissionsPage.tsx`): displays enrolled businesses, package amounts, and monthly commission breakdown for the salesperson role. Gate: `team.view` capability. Shows worked example table (600 / 1000 / 2000 KES) and per-business commission cards with the Phase 06 formula.
+
+- **Commission calculator** (`src/lib/commission-calculator.ts`): pure TypeScript implementation of the Phase 06 commission formula — `calculateCommission(packageAmount)` returns `{ companyShare, salespersonShare, influencerShare, excess }`. Influencer gets 50 KES flat; salesperson gets 100 + 75% of excess over 600 KES.
+
+- **`cloud:pullCommissions` IPC + hook**: queries cloud via instant-self InstaQL (`packages` + `businesses` tables) filtered by `salespersonProfileId`. Exposed as `useCommissions(salespersonProfileId)` hook and `electronAPI.cloud.pullCommissions()`.
+
+- **`SalespersonPackage` type** (`electron/preload/ipc-signatures-hw.ts`): `id`, `businessId`, `businessName`, `packageName`, `amount`, `salespersonId`, `isActive`, `createdAt`.
+
+- **Commissions nav item**: `nav.commissions` label in sidebar, `commissions` page type, `TrendingUp` Lucide icon, gated behind `team.view`.
+
+- **`pullCommissions` cloud entity pull** (`electron/services/cloud-entity-commission.ts`): InstaQL query joining `packages` and `businesses` tables, returns `SalespersonPackage[]`.
+
+### Acceptance
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit` | **clean (0 errors)** — only pre-existing SDK contract error unrelated to this phase |
+| `node --test electron/auth/__tests__/operational-auth.test.ts` | **4/4 PASS** |
+
+### Files Changed
+
+`src/pages/commissions/CommissionsPage.tsx` · `src/hooks/useCommissions.ts` · `src/lib/commission-calculator.ts` · `src/lib/page-config.ts` · `src/components/sidebar/SidebarNav.tsx` · `src/components/sidebar/Sidebar.tsx` · `src/pages/PageRenderer.tsx` · `src/lib/i18n/nav.ts` · `src/App.tsx` · `electron/preload/ipc-signatures-hw.ts` · `electron/preload/handlers.ts` · `electron/services/cloud-entity-commission.ts` · `electron/services/cloud-entity-sync.ts` · `electron/ipc-handlers/cloud-data-handlers.ts`
+
+---
+
 ## [Unreleased] — Cycle 05 Phase 05 Real Sync (2026-09-10)
 
 ### Added

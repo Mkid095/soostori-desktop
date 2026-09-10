@@ -1,5 +1,5 @@
 import React from 'react'
-import { ShoppingCart, Package, BarChart3, DollarSign, Bell, Receipt, Users, Monitor, Settings as SettingsIcon } from 'lucide-react'
+import { ShoppingCart, Package, BarChart3, DollarSign, Bell, Receipt, Users, Monitor, Settings as SettingsIcon, TrendingUp, Building } from 'lucide-react'
 import NavItemButton from './NavItemButton'
 import { useTranslation } from '../../lib/useTranslation'
 import { useAuth } from '../../lib/auth-context'
@@ -8,7 +8,7 @@ import type { TranslationKey } from '../../lib/i18n'
 // ============================================================
 // TYPES
 // ============================================================
-type Page = 'pos' | 'inventory' | 'reports' | 'debts' | 'expenses' | 'settings' | 'notifications' | 'team' | 'devices'
+type Page = 'pos' | 'inventory' | 'reports' | 'debts' | 'expenses' | 'settings' | 'notifications' | 'team' | 'devices' | 'commissions' | 'business'
 
 interface NavItem {
   id: Page
@@ -41,6 +41,7 @@ const navGroups: NavGroup[] = [
       { id: 'debts', labelKey: 'nav.debts', icon: DollarSign, permission: 'customers' },
       { id: 'expenses', labelKey: 'nav.expenses', icon: Receipt, permission: 'expenses' },
       { id: 'notifications', labelKey: 'nav.notifications', icon: Bell },
+      { id: 'commissions', labelKey: 'nav.commissions', icon: TrendingUp, permission: 'team' },
     ],
   },
   {
@@ -48,6 +49,7 @@ const navGroups: NavGroup[] = [
     items: [
       { id: 'team', labelKey: 'nav.team', icon: Users, permission: 'team' },
       { id: 'devices', labelKey: 'nav.devices', icon: Monitor, permission: 'devices' },
+      { id: 'business', labelKey: 'nav.business', icon: Building, permission: 'owner' },
     ],
   },
   {

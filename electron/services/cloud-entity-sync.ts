@@ -8,3 +8,4 @@ export { pushCategory, pushAllCategories, pullCategories } from './cloud-entity-
 export { pushCustomer, pullCustomers } from './cloud-entity-customer'
 export { pushSale } from './cloud-entity-sale'
 export { pushExpense } from './cloud-entity-expense'
+export { pullCommissions } from './cloud-entity-commission'

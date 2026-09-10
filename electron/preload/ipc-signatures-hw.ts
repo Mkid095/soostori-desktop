@@ -1,6 +1,17 @@
 // IPC signatures — Hardware, App, Updater
 import type { ReceiptData, UpdateStatusData } from './types'
 
+export interface SalespersonPackage {
+  id: string
+  businessId: string
+  businessName: string
+  packageName: string
+  amount: number
+  salespersonId: string
+  isActive: boolean
+  createdAt: string
+}
+
 export interface HwIpc {
   onBarcodeScanned: (callback: (barcode: string) => void) => () => void
   startSerialScanner: (port: string, baudRate: number) => Promise<void>
@@ -56,6 +67,7 @@ export interface CloudIpc {
   pullCategories: () => Promise<{ success: boolean; count?: number; error?: string }>
   pullCustomers: () => Promise<{ success: boolean; count?: number; error?: string }>
   pullAll: () => Promise<{ success: boolean; counts?: { products: number; categories: number; customers: number }; error?: string }>
+  pullCommissions: (salespersonProfileId: string) => Promise<{ success: boolean; packages?: SalespersonPackage[]; error?: string }>
 }
 
 export interface CloudAuthIpc {

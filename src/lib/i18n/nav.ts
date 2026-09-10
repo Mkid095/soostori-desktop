@@ -14,6 +14,8 @@ export const nav = {
     'nav.system': 'System',
     'nav.team': 'Team',
     'nav.devices': 'Devices',
+    'nav.commissions': 'Commissions',
+    'nav.business': 'Business',
   },
   sw: {
     'nav.store': 'Duka',
@@ -29,5 +31,7 @@ export const nav = {
     'nav.system': 'Mfumo',
     'nav.team': 'Timu',
     'nav.devices': 'Vifaa',
+    'nav.commissions': 'Commissions',
+    'nav.business': 'Biashara',
   },
 } as const

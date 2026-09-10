@@ -6,6 +6,7 @@
 import { ipcMain } from 'electron'
 import * as cloudSync from '../services/cloud-sync'
 import { pullProducts, pullCategories, pullCustomers } from '../services/cloud-entity-sync'
+import { pullCommissions } from '../services/cloud-entity-commission'
 import { dispatchCloudStatus } from './cloud-status-dispatch'
 import log from 'electron-log'
 
@@ -131,6 +132,19 @@ export function registerCloudDataHandlers(): void {
       dispatchCloudStatus('offline')
       log.warn('cloud:pullAll failed', err)
       return { success: false, error: String(err) }
+    }
+  })
+
+  ipcMain.handle('cloud:pullCommissions', async (_event, salespersonProfileId: string) => {
+    dispatchCloudStatus('syncing')
+    try {
+      const packages = await pullCommissions(salespersonProfileId)
+      dispatchCloudStatus('online')
+      return { success: true, packages }
+    } catch (err) {
+      dispatchCloudStatus('offline')
+      log.warn('cloud:pullCommissions failed', err)
+      return { success: false, error: String(err), packages: [] }
     }
   })
 

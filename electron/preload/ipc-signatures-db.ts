@@ -116,4 +116,17 @@ export interface DbIpc {
   syncStop: () => Promise<{ mode: 'offline' }>
   syncGetMode: () => Promise<{ mode: 'host' | 'client' | 'offline' }>
   syncGetAuthorityStatus: () => Promise<{ status: 'online' | 'stale' | 'lost' | 'unknown' }>
+  // Business Setup
+  businessSetup: (input: {
+    businessName: string
+    businessType: 'retail' | 'wholesale' | 'supermarket' | 'restaurant' | 'salon' | 'pharmacy' | 'other'
+    country: string
+    currency: string
+    ownerName: string
+    ownerEmail?: string
+    ownerPhone: string
+  }) => Promise<{ businessId: string; ownerMembershipId: string; defaultCategoryId: string }>
+  listBusinessesForUser: () => Promise<Array<{ id: string; name: string; currency: string; created_at: string; memberCount: number }>>
+  setActiveBusiness: (businessId: string) => Promise<void>
+  getActiveBusinessId: () => Promise<string | null>
 }

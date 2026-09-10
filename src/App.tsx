@@ -79,6 +79,7 @@ const App: React.FC = () => {
       case 'reports': return { kind: 'reports', dateFilter: reportsDateFilter }
       case 'debts': return { kind: 'debts', search: debtSearch }
       case 'expenses': return null
+      case 'commissions': return null
       default: return null
     }
   }, [currentPage, heldSalesCount, inventorySearch, debtSearch, reportsDateFilter])

@@ -16,6 +16,7 @@ import { registerProductHandlers, registerCategoryHandlers, registerSaleHandlers
 import { registerCloudAuthIpcHandlers } from './cloud-auth-ipc-handlers'
 import { registerHardwareHandlers } from './hardware-handlers'
 import { registerAppHandlers } from './app-handlers'
+import { registerBusinessSetupHandlers } from './business-setup-handlers'
 
 export function registerAllIpcHandlers(): void {
   registerProductHandlers()
@@ -41,4 +42,5 @@ export function registerAllIpcHandlers(): void {
   registerHardwareHandlers()
   registerAppHandlers()
   registerSyncServiceHandlers()
+  registerBusinessSetupHandlers()
 }

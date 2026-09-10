@@ -71,4 +71,4 @@ const SoostoriSidebar: React.FC<SoostoriSidebarProps> = ({
 }
 
 export default SoostoriSidebar
-export type { Page }
+export type { Page } from './SidebarNav'

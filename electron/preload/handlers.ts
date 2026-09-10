@@ -18,6 +18,7 @@ const cloudHandlers: ElectronAPI['cloud'] = {
   pullCategories: () => ipcRenderer.invoke('cloud:pullCategories'),
   pullCustomers: () => ipcRenderer.invoke('cloud:pullCustomers'),
   pullAll: () => ipcRenderer.invoke('cloud:pullAll'),
+  pullCommissions: (salespersonProfileId: string) => ipcRenderer.invoke('cloud:pullCommissions', salespersonProfileId),
 }
 
 const cloudAuthHandlers: ElectronAPI['cloudAuth'] = {
