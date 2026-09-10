@@ -5,10 +5,11 @@ import log from 'electron-log'
 // Phase 11.2 Batch A: consume the published @soostori/auth and @soostori/core
 // directly. desktop-adapter was a transitional bridge only.
 import { hashPin, verifyPin } from '@soostori/auth/pin-node'
-import { hasPermission } from '@soostori/auth'
+import { hasPermission, ROLE_PERMISSIONS } from '@soostori/auth'
 import { asUserId, asShopId, asEmployeeId, asDeviceId } from '@soostori/core'
 import type { AuthSession, EmployeeRole } from '@soostori/core'
 import { desktopSaveSession, desktopClearSession, desktopLoadSession } from '../auth/electron-store-session'
+import { setupPin as opSetupPin, verifyPin as opVerifyPin, hasPinEnrolled as opHasPinEnrolled } from '../auth/desktop-operational-auth'
 import { loginSchema, createUserSchema, updateUserSchema } from './validation'
 
 interface ShopUserRow {
@@ -50,13 +51,46 @@ export function registerAuthHandlers(): void {
     }
     await desktopSaveSession(session)
 
-    return { sessionId, user: { id: user.id, shop_id: user.shop_id, name: user.name, role: user.role } }
+    // Step 4: also establish an OperationalAuth session using the SDK.
+    // If a local PIN was previously enrolled on this device, verify it via
+    // OperationalAuth (returns a 24-hour OperationalSession). If not,
+    // enroll one now from the same PIN the user just entered — matches the
+    // canonical two-layer auth model (CloudAuth + OperationalAuth).
+    let operationalEstablished = false
+    try {
+      const enrolled = await opHasPinEnrolled()
+      if (!enrolled) {
+        const setup = await opSetupPin(
+          asEmployeeId(user.id),
+          asShopId(user.shop_id),
+          asDeviceId(data.deviceId),
+          data.pin,
+        )
+        operationalEstablished = setup.ok
+      } else {
+        const verify = await opVerifyPin(
+          asEmployeeId(user.id),
+          asShopId(user.shop_id),
+          asDeviceId(data.deviceId),
+          data.pin,
+        )
+        operationalEstablished = verify.ok
+      }
+    } catch (err) {
+      log.warn('OperationalAuth setup/verify during login failed (non-fatal):', err)
+    }
+
+    return {
+      sessionId,
+      user: { id: user.id, shop_id: user.shop_id, name: user.name, role: user.role },
+      operationalEstablished,
+    }
   })
 
   ipcMain.handle('db:auth:createUser', async (_event, rawData: unknown) => {
     const session = await desktopLoadSession()
     if (!session) throw new Error('Not authenticated')
-    if (!hasPermission(getCallerRole(session), 'team')) throw new Error('Insufficient permissions: team management required')
+    if (!hasPermission(getCallerRole(session), 'employee.create')) throw new Error('Insufficient permissions: employee management required')
     const data = createUserSchema.parse(rawData)
     const db = getDatabase()
     const userId = uuidv4()
@@ -69,7 +103,7 @@ export function registerAuthHandlers(): void {
   ipcMain.handle('db:auth:updateUser', async (_event, rawData: unknown) => {
     const session = await desktopLoadSession()
     if (!session) throw new Error('Not authenticated')
-    if (!hasPermission(getCallerRole(session), 'team')) throw new Error('Insufficient permissions: team management required')
+    if (!hasPermission(getCallerRole(session), 'employee.update')) throw new Error('Insufficient permissions: employee management required')
     const data = updateUserSchema.parse(rawData)
     const db = getDatabase()
     const fields: string[] = []; const values: (string | number | null)[] = []
@@ -85,20 +119,27 @@ export function registerAuthHandlers(): void {
   ipcMain.handle('db:auth:deleteUser', async (_event, userId: string) => {
     const session = await desktopLoadSession()
     if (!session) throw new Error('Not authenticated')
-    if (!hasPermission(getCallerRole(session), 'team')) throw new Error('Insufficient permissions: team management required')
+    if (!hasPermission(getCallerRole(session), 'employee.delete')) throw new Error('Insufficient permissions: employee management required')
     getDatabase().prepare('UPDATE employees SET is_active = 0 WHERE id = ?').run(userId)
     return { success: true }
   })
 
-  ipcMain.handle('db:auth:logout', async (_event, deviceId: string, userId: string) => {
+  // D5: logout handler now reads from a single object payload sent by preload
+  ipcMain.handle('db:auth:logout', async (_event, rawData: unknown) => {
+    const { sessionId, deviceId, userId } = rawData as { sessionId: string; deviceId: string; userId: string }
     const db = getDatabase(); const now = new Date().toISOString()
-    db.prepare('UPDATE device_sessions SET logout_at = ? WHERE device_id = ? AND user_id = ? AND logout_at IS NULL').run(now, deviceId, userId)
-    db.prepare('UPDATE devices SET is_online = 0 WHERE id = ?').run(deviceId)
+    if (sessionId) db.prepare('UPDATE device_sessions SET logout_at = ? WHERE id = ?').run(now, sessionId)
+    if (deviceId) {
+      db.prepare('UPDATE device_sessions SET logout_at = ? WHERE device_id = ? AND user_id = ? AND logout_at IS NULL').run(now, deviceId, userId)
+      db.prepare('UPDATE devices SET is_online = 0 WHERE id = ?').run(deviceId)
+    }
     await desktopClearSession()
     return { success: true }
   })
 
   ipcMain.handle('db:auth:hasPermission', (_event, role: string, permission: string) => {
+    // D1+D2: explicit UNKNOWN_ROLE guard before checking permission
+    if (!ROLE_PERMISSIONS[role as EmployeeRole]) throw new Error('UNKNOWN_ROLE')
     return hasPermission(role as EmployeeRole, permission)
   })
 

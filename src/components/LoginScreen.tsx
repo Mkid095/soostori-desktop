@@ -15,6 +15,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   const [screen, setScreen] = useState<Screen>('select')
   const [users, setUsers] = useState<ShopUser[]>([])
   const [selectedUser, setSelectedUser] = useState<ShopUser | null>(null)
+  const [shopId, setShopId] = useState<string>('')
   const [pin, setPin] = useState('')
   const [err, setErr] = useState('')
   const [att, setAtt] = useState(0)
@@ -39,6 +40,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
     // Load shop then scoped users
     window.electronAPI.db.getShop().then(shop => {
       if (!shop) return
+      setShopId(shop.id)
       return window.electronAPI.db.getUsers(shop.id)
     }).then(allUsers => {
       if (allUsers) setUsers((allUsers as ShopUser[]).filter((u: ShopUser) => u.is_active === 1))
@@ -51,7 +53,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
     setErr('')
     try {
       const deviceId = getDeviceId()
-      const result = await window.electronAPI.db.login(selectedUser.id, pin, deviceId)
+      const result = await window.electronAPI.db.login(selectedUser.id, pin, deviceId, selectedUser.shop_id || shopId)
       onLogin(result.user, result.sessionId, deviceId)
     } catch {
       setAtt(a => a + 1)
