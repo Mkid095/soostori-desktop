@@ -2,6 +2,13 @@ packages:
   - 'packages/*'
   - '../soostori-sdk/packages/*'
 
+# Override @soostori/auth to consume the local SDK source (alpha.6+ build)
+# so Desktop picks up OperationalAuth even though the registry's latest
+# published version is alpha.6 and the orchestrator brief named alpha.8
+# (awaiting joan's npm publish — see C-desktop-status.md).
+overrides:
+  '@soostori/auth': link:../soostori-sdk/packages/auth
+
 allowBuilds:
   '@serialport/bindings-cpp': false
   better-sqlite3: false

@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  '@soostori/auth': link:../soostori-sdk/packages/auth
+
 importers:
 
   .:
@@ -12,25 +15,25 @@ importers:
         specifier: ^12.0.0
         version: 12.0.0
       '@soostori/audit':
-        specifier: 0.1.0-alpha.1
+        specifier: ^0.1.0-alpha.1
         version: 0.1.0-alpha.1
       '@soostori/auth':
-        specifier: 0.1.0-alpha.3
-        version: 0.1.0-alpha.3
+        specifier: link:../soostori-sdk/packages/auth
+        version: link:../soostori-sdk/packages/auth
       '@soostori/business':
         specifier: workspace:*
         version: link:../soostori-sdk/packages/business
       '@soostori/cloud':
-        specifier: 0.1.0-alpha.1
-        version: 0.1.0-alpha.1
+        specifier: ^0.1.0-alpha.4
+        version: 0.1.0-alpha.4
       '@soostori/core':
         specifier: workspace:*
         version: link:../soostori-sdk/packages/core
       '@soostori/customers':
-        specifier: 0.1.0-alpha.1
+        specifier: ^0.1.0-alpha.1
         version: 0.1.0-alpha.1
       '@soostori/debts':
-        specifier: 0.1.0-alpha.1
+        specifier: ^0.1.0-alpha.1
         version: 0.1.0-alpha.1
       '@soostori/desktop-adapter':
         specifier: workspace:*
@@ -45,22 +48,22 @@ importers:
         specifier: workspace:*
         version: link:../soostori-sdk/packages/inventory
       '@soostori/notifications':
-        specifier: 0.1.0-alpha.1
+        specifier: ^0.1.0-alpha.1
         version: 0.1.0-alpha.1
       '@soostori/offline':
-        specifier: 0.1.0-alpha.1
+        specifier: ^0.1.0-alpha.1
         version: 0.1.0-alpha.1
       '@soostori/products':
-        specifier: 0.1.0-alpha.1
+        specifier: ^0.1.0-alpha.1
         version: 0.1.0-alpha.1
       '@soostori/sales':
-        specifier: 0.1.0-alpha.1
+        specifier: ^0.1.0-alpha.1
         version: 0.1.0-alpha.1
       '@soostori/storage':
         specifier: ^0.1.0-alpha.1
         version: 0.1.0-alpha.1
       '@soostori/subscription':
-        specifier: 0.1.0-alpha.1
+        specifier: ^0.1.0-alpha.1
         version: 0.1.0-alpha.1
       '@tanstack/react-query':
         specifier: ^5.62.0
@@ -269,7 +272,7 @@ importers:
   ../soostori-sdk/packages/contract-tests:
     dependencies:
       '@soostori/auth':
-        specifier: workspace:*
+        specifier: link:../auth
         version: link:../auth
       '@soostori/cloud':
         specifier: workspace:*
@@ -328,7 +331,7 @@ importers:
   ../soostori-sdk/packages/desktop-adapter:
     dependencies:
       '@soostori/auth':
-        specifier: workspace:*
+        specifier: link:../auth
         version: link:../auth
       '@soostori/business':
         specifier: workspace:*
@@ -1537,11 +1540,8 @@ packages:
   '@soostori/audit@0.1.0-alpha.1':
     resolution: {integrity: sha512-8eLH39P0HVRBKer9p+Oebf1T9eadl5u0ICKnVv9J+hjLa0xhuKlzJ5imhysjIW5wtzNelUXIx33N/hY9hqotRQ==}
 
-  '@soostori/auth@0.1.0-alpha.3':
-    resolution: {integrity: sha512-x5bY0/B8NjSvJbtSJ/JC8Fl2OQhGLW3g4fkQa6+1cGgdp9RX9aicEaCP77GNhN3phzY0mNE80XxN2nG8FFBktA==}
-
-  '@soostori/cloud@0.1.0-alpha.1':
-    resolution: {integrity: sha512-BV1gN72+Qa6LpA9gbljISaXaDEOWSOYRZT4+WxrS1XEMqPgSGgMYxBNUxD6yT1HXFPfT+0rFEYZUBI8et4jnjw==}
+  '@soostori/cloud@0.1.0-alpha.4':
+    resolution: {integrity: sha512-ay6IoOHc8c5/AU4PxKi76CgFvB7dUs9wZ7pp3lqi4UJj6aaupmV241vIt+BYl8HgAmOSXWnPT5eKiAD82ubcSg==}
 
   '@soostori/core@0.1.0-alpha.1':
     resolution: {integrity: sha512-KFNAp3mJLBgd8jpyAW3VqLQ0OSjJgrt6YkjzMwUuKnBUvfkaC/QzS5etxbzpN1lVYw9pRK/kAxo2onXsXv1ELA==}
@@ -1569,9 +1569,6 @@ packages:
 
   '@soostori/sales@0.1.0-alpha.1':
     resolution: {integrity: sha512-bctygKioQg5qInlhHQXbIsJxzSCRONm9b2Gf6hHAdrFA0pc7M/Xa/okK9p5cIvUxkFj62ItMW4qb6s1G+OZmyQ==}
-
-  '@soostori/schema@0.1.0-alpha.1':
-    resolution: {integrity: sha512-gatRXpQB2N21kqOdSRMr/8GUCPL3Wtby/tSGvMVEYfmCft1IdcIvUbN72lv+CrAImlzduM3YvAPTg5SSNCZRXw==}
 
   '@soostori/schema@0.1.0-alpha.2':
     resolution: {integrity: sha512-bjvqRSFi/2oP9Bha0NYdBe1ALcAx0GT5/C2c92wYvMvYecnH8wrkp7H/66OCTE+QcKR4BxtuAwarm1wUHiW/cA==}
@@ -4549,15 +4546,10 @@ snapshots:
       '@soostori/events': 0.1.0-alpha.1
       zod: 3.25.76
 
-  '@soostori/auth@0.1.0-alpha.3':
+  '@soostori/cloud@0.1.0-alpha.4':
     dependencies:
-      '@soostori/core': link:../soostori-sdk/packages/core
-      zod: 3.25.76
-
-  '@soostori/cloud@0.1.0-alpha.1':
-    dependencies:
-      '@soostori/core': 0.1.0-alpha.1
-      '@soostori/schema': 0.1.0-alpha.1
+      '@soostori/core': 0.1.0-alpha.2
+      '@soostori/schema': 0.1.0-alpha.2
       zod: 3.25.76
 
   '@soostori/core@0.1.0-alpha.1':
@@ -4608,11 +4600,6 @@ snapshots:
       '@soostori/core': 0.1.0-alpha.1
       '@soostori/events': 0.1.0-alpha.1
       '@soostori/products': 0.1.0-alpha.1
-      zod: 3.25.76
-
-  '@soostori/schema@0.1.0-alpha.1':
-    dependencies:
-      '@soostori/core': 0.1.0-alpha.1
       zod: 3.25.76
 
   '@soostori/schema@0.1.0-alpha.2':
