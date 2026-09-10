@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid'
 import log from 'electron-log'
 import { z } from 'zod'
 import { pushExpense } from '../services/cloud-entity-sync'
+import { resolveActiveShopId } from '../database/active-shop'
 
 interface ExpenseRow {
   id: string
@@ -22,26 +23,30 @@ const expenseInputSchema = z.object({
 })
 
 export function registerExpenseHandlers(): void {
-  ipcMain.handle('db:expenses:list', () => {
+  ipcMain.handle('db:expenses:list', async () => {
     const db = getDatabase()
-    return db.prepare('SELECT * FROM expenses ORDER BY date DESC, created_at DESC').all()
+    const shopId = await resolveActiveShopId()
+    return db.prepare('SELECT * FROM expenses WHERE shop_id = ? ORDER BY date DESC, created_at DESC').all(shopId)
   })
 
-  ipcMain.handle('db:expenses:create', (_event, rawData: unknown) => {
+  ipcMain.handle('db:expenses:create', async (_event, rawData: unknown) => {
     const data = expenseInputSchema.parse(rawData)
     const db = getDatabase()
     const id = uuidv4()
     const now = new Date().toISOString()
+    const shopId = await resolveActiveShopId()
     db.prepare(`
-      INSERT INTO expenses (id, amount, category, note, date, created_at)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(id, data.amount, data.category, data.note || '', data.date, now)
+      INSERT INTO expenses (id, amount, category, note, date, shop_id, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(id, data.amount, data.category, data.note || '', data.date, shopId, now)
     pushExpense(id).catch(() => {})
-    return db.prepare('SELECT * FROM expenses WHERE id = ?').get(id) as ExpenseRow
+    return db.prepare('SELECT * FROM expenses WHERE id = ? AND shop_id = ?').get(id, shopId) as ExpenseRow
   })
 
-  ipcMain.handle('db:expenses:delete', (_event, id: string) => {
-    getDatabase().prepare('DELETE FROM expenses WHERE id = ?').run(id)
+  ipcMain.handle('db:expenses:delete', async (_event, id: string) => {
+    const db = getDatabase()
+    const shopId = await resolveActiveShopId()
+    db.prepare('DELETE FROM expenses WHERE id = ? AND shop_id = ?').run(id, shopId)
   })
 
   log.info('Expense IPC handlers registered')

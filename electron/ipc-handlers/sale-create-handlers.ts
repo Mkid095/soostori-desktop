@@ -12,13 +12,14 @@ import { commitSale } from '../sdk/sale-orchestrator'
 import { pushSale } from '../services/cloud-entity-sync'
 import { syncService } from '../sync/sync-service'
 import { notify } from '../services/notification-service'
+import { resolveActiveShopId } from '../database/active-shop'
 
 const db = getDatabase()
 
 export function registerSaleCreateHandlers(): void {
   ipcMain.handle('db:sales:create', async (_event, rawSaleData: unknown) => {
     const saleData = saleCreateSchema.parse(rawSaleData)
-    const shopId = (saleData as { shopId?: string }).shopId || 'default'
+    const shopId = (saleData as { shopId?: string }).shopId || await resolveActiveShopId()
     const userId = (saleData as { userId?: string }).userId || 'system'
     const deviceId = (saleData as { deviceId?: string }).deviceId || null
     const saleId = uuidv4()
@@ -49,12 +50,12 @@ export function registerSaleCreateHandlers(): void {
         customerIdNumber: saleData.customerIdNumber,
       })
 
-      // Low-stock notifications via SDK engine
+      // Low-stock notifications via SDK engine (scoped to current shop)
       for (const item of saleData.items || []) {
         if (!item.productId) continue
         const product = db.prepare(
-          'SELECT name, current_stock, track_inventory, low_stock_threshold FROM products WHERE id = ?',
-        ).get(item.productId) as { name: string; current_stock: number; track_inventory: number | null; low_stock_threshold: number | null } | undefined
+          'SELECT name, current_stock, track_inventory, low_stock_threshold FROM products WHERE id = ? AND shop_id = ?',
+        ).get(item.productId, shopId) as { name: string; current_stock: number; track_inventory: number | null; low_stock_threshold: number | null } | undefined
         if (product?.track_inventory && product?.low_stock_threshold != null &&
             product.current_stock <= product.low_stock_threshold && product.current_stock >= 0) {
           notify('stock.low', {
@@ -66,21 +67,21 @@ export function registerSaleCreateHandlers(): void {
         }
       }
 
-      // Debt record
+      // Debt record — stamp shop_id from active session
       if (saleData.paymentMethod === 'debt') {
         let customerId = saleData.customerId || null
         if (!customerId && (saleData.customerName || saleData.customerPhone)) {
           const custId = uuidv4()
           getDatabase().prepare(
-            `INSERT INTO customers (id, name, phone, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
-          ).run(custId, saleData.customerName || 'Unknown', saleData.customerPhone || null,
+            `INSERT INTO customers (id, name, phone, shop_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+          ).run(custId, saleData.customerName || 'Unknown', saleData.customerPhone || null, shopId,
             new Date().toISOString(), new Date().toISOString())
           customerId = custId
         }
         if (customerId) {
           getDatabase().prepare(
-            `INSERT INTO debts (id, customer_id, sale_id, amount, amount_paid, status, notes, created_at, updated_at) VALUES (?, ?, ?, ?, 0, 'pending', ?, ?, ?)`,
-          ).run(uuidv4(), customerId, saleId, saleData.totalAmount, saleData.note || null,
+            `INSERT INTO debts (id, customer_id, sale_id, amount, amount_paid, status, notes, shop_id, created_at, updated_at) VALUES (?, ?, ?, ?, 0, 'pending', ?, ?, ?, ?)`,
+          ).run(uuidv4(), customerId, saleId, saleData.totalAmount, saleData.note || null, shopId,
             new Date().toISOString(), new Date().toISOString())
         }
       }
@@ -117,13 +118,14 @@ export function registerSaleRefundHandlers(): void {
     const session = await desktopLoadSession()
     const userId = session?.userId ?? 'system'
     const db = getDatabase()
-    const sale = db.prepare('SELECT * FROM sales WHERE id = ?').get(saleId) as {
+    const shopId = await resolveActiveShopId()
+    const sale = db.prepare('SELECT * FROM sales WHERE id = ? AND shop_id = ?').get(saleId, shopId) as {
       id: string; status: string; items_summary: string | null
     } | undefined
     if (!sale) throw new Error('Sale not found')
     if (sale.status === 'refunded') throw new Error('Sale already refunded')
 
-    const items = db.prepare('SELECT * FROM sale_items WHERE sale_id = ?').all(saleId) as Array<{
+    const items = db.prepare('SELECT * FROM sale_items WHERE sale_id = ? AND shop_id = ?').all(saleId, shopId) as Array<{
       product_id: string | null; quantity: number; product_name: string
     }>
 
@@ -136,8 +138,8 @@ export function registerSaleRefundHandlers(): void {
       }
     }
 
-    db.prepare("UPDATE sales SET status = 'refunded', updated_at = ? WHERE id = ?")
-      .run(new Date().toISOString(), saleId)
+    db.prepare("UPDATE sales SET status = 'refunded', updated_at = ? WHERE id = ? AND shop_id = ?")
+      .run(new Date().toISOString(), saleId, shopId)
     // Broadcast SALE_REFUNDED so all LAN devices mark the sale refunded
     syncService.sendLocalMutation('SALE_REFUNDED', { saleId })
     log.info(`Sale ${saleId} refunded by ${userId}`)

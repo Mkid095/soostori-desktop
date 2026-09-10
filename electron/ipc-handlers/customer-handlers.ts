@@ -6,6 +6,7 @@ import { customerCreateSchema, customerUpdateSchema } from './validation'
 import { hasPermission } from '@soostori/auth'
 import type { EmployeeRole } from '@soostori/core'
 import { desktopLoadSession } from '../auth/electron-store-session'
+import { resolveActiveShopId } from '../database/active-shop'
 
 /** Look up an employee's role from the local employees table. */
 function getEmployeeRole(employeeId: string): EmployeeRole {
@@ -22,14 +23,16 @@ export function registerCustomerHandlers(): void {
     db.exec(`ALTER TABLE customers ADD COLUMN id_number TEXT`)
   }
 
-  ipcMain.handle('db:customers:list', () => {
+  ipcMain.handle('db:customers:list', async () => {
     const db = getDatabase()
-    return db.prepare('SELECT * FROM customers WHERE is_active = 1 ORDER BY name ASC').all()
+    const shopId = await resolveActiveShopId()
+    return db.prepare('SELECT * FROM customers WHERE is_active = 1 AND shop_id = ? ORDER BY name ASC').all(shopId)
   })
 
-  ipcMain.handle('db:customers:get', (_event, id: string) => {
+  ipcMain.handle('db:customers:get', async (_event, id: string) => {
     const db = getDatabase()
-    return db.prepare('SELECT * FROM customers WHERE id = ?').get(id)
+    const shopId = await resolveActiveShopId()
+    return db.prepare('SELECT * FROM customers WHERE id = ? AND shop_id = ?').get(id, shopId)
   })
 
   ipcMain.handle('db:customers:create', async (_event, rawData: unknown) => {
@@ -42,11 +45,12 @@ export function registerCustomerHandlers(): void {
     const db = getDatabase()
     const id = uuidv4()
     const now = new Date().toISOString()
+    const shopId = await resolveActiveShopId()
     db.prepare(`
-      INSERT INTO customers (id, name, phone, email, address, notes, id_number, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(id, data.name, data.phone || null, data.email || null, data.address || null, data.notes || null, data.idNumber || null, now, now)
-    return db.prepare('SELECT * FROM customers WHERE id = ?').get(id)
+      INSERT INTO customers (id, name, phone, email, address, notes, id_number, shop_id, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, data.name, data.phone || null, data.email || null, data.address || null, data.notes || null, data.idNumber || null, shopId, now, now)
+    return db.prepare('SELECT * FROM customers WHERE id = ? AND shop_id = ?').get(id, shopId)
   })
 
   ipcMain.handle('db:customers:update', async (_event, id: string, rawData: unknown) => {
@@ -58,6 +62,7 @@ export function registerCustomerHandlers(): void {
     const data = customerUpdateSchema.parse(rawData)
     const db = getDatabase()
     const now = new Date().toISOString()
+    const shopId = await resolveActiveShopId()
     const fields: string[] = []
     const values: (string | null)[] = []
     if (data.name !== undefined) { fields.push('name = ?'); values.push(data.name) }
@@ -66,9 +71,9 @@ export function registerCustomerHandlers(): void {
     if (data.address !== undefined) { fields.push('address = ?'); values.push(data.address || null) }
     if (data.notes !== undefined) { fields.push('notes = ?'); values.push(data.notes || null) }
     if (data.idNumber !== undefined) { fields.push('id_number = ?'); values.push(data.idNumber || null) }
-    fields.push('updated_at = ?'); values.push(now); values.push(id)
-    db.prepare(`UPDATE customers SET ${fields.join(', ')} WHERE id = ?`).run(...values)
-    return db.prepare('SELECT * FROM customers WHERE id = ?').get(id)
+    fields.push('updated_at = ?'); values.push(now, id, shopId)
+    db.prepare(`UPDATE customers SET ${fields.join(', ')} WHERE id = ? AND shop_id = ?`).run(...values)
+    return db.prepare('SELECT * FROM customers WHERE id = ? AND shop_id = ?').get(id, shopId)
   })
 
   ipcMain.handle('db:customers:delete', async (_event, id: string) => {
@@ -78,7 +83,8 @@ export function registerCustomerHandlers(): void {
     // D1+D2: use SDK dotted permission vocabulary
     if (!hasPermission(role, 'customers.delete')) throw new Error('Insufficient permissions')
     const db = getDatabase()
-    db.prepare('UPDATE customers SET is_active = 0 WHERE id = ?').run(id)
+    const shopId = await resolveActiveShopId()
+    db.prepare('UPDATE customers SET is_active = 0 WHERE id = ? AND shop_id = ?').run(id, shopId)
   })
 
   log.info('Customer IPC handlers registered')

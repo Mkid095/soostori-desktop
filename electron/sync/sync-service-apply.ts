@@ -100,13 +100,13 @@ export async function applySaleConfirmed(event: SyncEvent): Promise<void> {
     now, now,
   )
 
-  // Insert sale items
+  // Insert sale items (scope by shop_id so cross-tenant queries stay isolated)
   const itemStmt = db.prepare(`
-    INSERT INTO sale_items (id, sale_id, product_id, product_name, quantity, unit_price, discount, total_price, created_at)
-    VALUES (?, ?, ?, ?, ?, 0, 0, 0, ?)
+    INSERT INTO sale_items (id, sale_id, product_id, product_name, quantity, unit_price, discount, total_price, shop_id, created_at)
+    VALUES (?, ?, ?, ?, ?, 0, 0, 0, ?, ?)
   `)
   for (const item of payload.items ?? []) {
-    itemStmt.run(uuidv4(), payload.saleId, item.productId, 'Unknown', item.quantity, now)
+    itemStmt.run(uuidv4(), payload.saleId, item.productId, 'Unknown', item.quantity, payload.shopId ?? shopId, now)
   }
 
   // Use StockMovementLedger to apply sale items — same ledger used by local sales
@@ -139,12 +139,13 @@ export function applyProductEvent(event: SyncEvent): void {
     ? (event.payload as { id: string }).id
     : null
   if (!id) return
+  const shopIdValue = (event.payload as { shopId?: string })?.shopId ?? shopId ?? 'default'
   if (event.eventType === 'PRODUCT_CREATED') {
     const p = event.payload as { id: string; name: string; selling_price: number; current_stock?: number }
     db.prepare(`
-      INSERT OR IGNORE INTO products (id, name, selling_price, current_stock, stock_quantity, track_inventory, is_active)
-      VALUES (?, ?, ?, ?, ?, 1, 1)
-    `).run(id, p.name ?? 'Unknown', p.selling_price ?? 0, p.current_stock ?? 0, p.current_stock ?? 0)
+      INSERT OR IGNORE INTO products (id, name, selling_price, current_stock, stock_quantity, track_inventory, is_active, shop_id)
+      VALUES (?, ?, ?, ?, ?, 1, 1, ?)
+    `).run(id, p.name ?? 'Unknown', p.selling_price ?? 0, p.current_stock ?? 0, p.current_stock ?? 0, shopIdValue)
   } else if (event.eventType === 'PRODUCT_UPDATED') {
     const p = event.payload as { id: string; name?: string; selling_price?: number; current_stock?: number }
     const updates: string[] = []
@@ -153,11 +154,11 @@ export function applyProductEvent(event: SyncEvent): void {
     if (p.selling_price !== undefined) { updates.push('selling_price = ?'); values.push(p.selling_price) }
     if (p.current_stock !== undefined) { updates.push('current_stock = ?'); values.push(p.current_stock) }
     if (updates.length > 0) {
-      values.push(id)
-      db.prepare(`UPDATE products SET ${updates.join(', ')} WHERE id = ?`).run(...values)
+      values.push(id, shopIdValue)
+      db.prepare(`UPDATE products SET ${updates.join(', ')} WHERE id = ? AND shop_id = ?`).run(...values)
     }
   } else if (event.eventType === 'PRODUCT_DELETED') {
-    db.prepare(`UPDATE products SET is_active = 0 WHERE id = ?`).run(id)
+    db.prepare('UPDATE products SET is_active = 0 WHERE id = ? AND shop_id = ?').run(id, shopIdValue)
   }
   log.info(`SyncService: applied ${event.eventType} id=${id}`)
 }

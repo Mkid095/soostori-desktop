@@ -6,6 +6,7 @@ import { productCreateSchema, productUpdateSchema } from './validation'
 import { registerProductQueryHandlers } from './product-handlers-query'
 import { registerProductMutationHandlers } from './product-handlers-mutation'
 import { pushProduct } from '../services/cloud-entity-sync'
+import { resolveActiveShopId, resolveShopIdSync } from '../database/active-shop'
 
 export { registerProductQueryHandlers }
 
@@ -13,18 +14,19 @@ export function registerProductHandlers(): void {
   registerProductQueryHandlers()
   registerProductMutationHandlers()
 
-  ipcMain.handle('db:products:create', (_event, rawData: unknown) => {
+  ipcMain.handle('db:products:create', async (_event, rawData: unknown) => {
     const data = productCreateSchema.parse(rawData)
     const db = getDatabase()
     const id = uuidv4()
     const now = new Date().toISOString()
+    const shopId = await resolveActiveShopId()
     db.prepare(`
       INSERT INTO products (id, category_id, name, sku, barcode, description, image_url, cost_price, selling_price,
         discount_price, unit, stock_quantity, low_stock_threshold, track_inventory, has_variants,
         parent_variant_id, expiry_date, metadata, is_active, distributor_name, distributor_phone,
         barcode_generated, allow_single_unit_sale, units_per_package, box_buying_price,
-        bulk_selling_price, group_prices, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        bulk_selling_price, group_prices, shop_id, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(id, data.categoryId || null, data.name, data.sku || null, data.barcode || null,
       data.description || null, data.imageUrl || null, data.costPrice ?? 0, data.sellingPrice,
       data.discountPrice ?? null, data.unit || 'piece', data.stockQuantity ?? 0,
@@ -34,16 +36,17 @@ export function registerProductHandlers(): void {
       data.barcodeGenerated ? 1 : 0,
       data.allowSingleUnitSale !== undefined ? (data.allowSingleUnitSale ? 1 : 0) : 1,
       data.unitsPerPackage ?? null, data.boxBuyingPrice ?? null, data.bulkSellingPrice ?? null,
-      data.groupPrices ? JSON.stringify(data.groupPrices) : null, now, now)
+      data.groupPrices ? JSON.stringify(data.groupPrices) : null, shopId, now, now)
     // Push to cloud (fire-and-forget)
     pushProduct(id).catch(() => {})
-    return db.prepare('SELECT * FROM products WHERE id = ?').get(id)
+    return db.prepare('SELECT * FROM products WHERE id = ? AND shop_id = ?').get(id, shopId)
   })
 
-  ipcMain.handle('db:products:update', (_event, id: string, rawData: unknown) => {
+  ipcMain.handle('db:products:update', async (_event, id: string, rawData: unknown) => {
     const data = productUpdateSchema.parse(rawData)
     const db = getDatabase()
     const now = new Date().toISOString()
+    const shopId = await resolveActiveShopId()
     const fields: string[] = []
     const values: (string | number | null)[] = []
     if (data.name !== undefined) { fields.push('name = ?'); values.push(data.name) }
@@ -71,15 +74,16 @@ export function registerProductHandlers(): void {
     if (data.bulkSellingPrice !== undefined) { fields.push('bulk_selling_price = ?'); values.push(data.bulkSellingPrice ?? null) }
     if (data.groupPrices !== undefined) { fields.push('group_prices = ?'); values.push(data.groupPrices ? JSON.stringify(data.groupPrices) : null) }
     fields.push('updated_at = ?')
-    values.push(now, id)
-    db.prepare(`UPDATE products SET ${fields.join(', ')} WHERE id = ?`).run(...values)
+    values.push(now, id, shopId)
+    db.prepare(`UPDATE products SET ${fields.join(', ')} WHERE id = ? AND shop_id = ?`).run(...values)
     pushProduct(id).catch(() => {})
-    return db.prepare('SELECT * FROM products WHERE id = ?').get(id)
+    return db.prepare('SELECT * FROM products WHERE id = ? AND shop_id = ?').get(id, shopId)
   })
 
-  ipcMain.handle('db:products:delete', (_event, id: string) => {
+  ipcMain.handle('db:products:delete', async (_event, id: string) => {
     const now = new Date().toISOString()
-    getDatabase().prepare('UPDATE products SET deleted_at = ?, is_active = 0 WHERE id = ?').run(now, id)
+    const shopId = await resolveActiveShopId()
+    getDatabase().prepare('UPDATE products SET deleted_at = ?, is_active = 0 WHERE id = ? AND shop_id = ?').run(now, id, shopId)
     pushProduct(id).catch(() => {})
   })
 
