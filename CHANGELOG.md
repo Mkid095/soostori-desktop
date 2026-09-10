@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased] — Cycle 03 (2025-09-10)
+
+### Added
+
+- **`@soostori/auth` OperationalAuth integration**: New `electron/auth/desktop-operational-auth.ts` (101 lines) wires the SDK's `OperationalAuth` class to `ElectronPlatformAuthAdapter.getSecureStorage()` and `randomString()`. Singleton accessor `getOpAuth()` plus named exports `setupPin`, `verifyPin`, `changePin`, `hasPinEnrolled`, `clearPin`, `isWithinOfflineEntitlement`, `isSessionExpired`, `getOpAuthLockState`. Uses SDK's PBKDF2 `hashPin`/`verifyPin` from `@soostori/auth/pin-node` — no copy-paste crypto.
+- **`db:auth:login` now also establishes an OperationalAuth session**: After the existing CloudAuth-style PIN verification, the login handler calls `opSetupPin` (first-time) or `opVerifyPin` (subsequent). Response shape extended with `operationalEstablished: boolean`. Matches the canonical two-layer auth model (CloudAuth → OperationalAuth).
+- **OperationalAuth integration test**: `electron/auth/__tests__/operational-auth.test.ts` (97 lines) — 4 tests using Node 22 built-in `node:test` + `tsx`. Covers setupPin→verifyPin happy path, wrong-PIN rejection, changePin invalidation, clearPin removal. All 4 PASS.
+- **`pnpm-workspace.yaml` override for `@soostori/auth`**: Routes the SDK auth package through local source (`link:../soostori-sdk/packages/auth`) so Desktop consumes OperationalAuth even before npm alpha.8 publishes. See C-desktop-status.md for the rationale and blocker.
+
+### Changed
+
+- **`@soostori/auth` bumped from `0.1.0-alpha.3` to `^0.1.0-alpha.6`** — latest published version with OperationalAuth. Registry-only check: alpha.7 and alpha.8 are NOT published (verified via `npm view`). Local SDK source has OperationalAuth compiled into `dist/` at alpha.6; the workspace override routes Desktop to that local build.
+- **`@soostori/cloud` bumped to `^0.1.0-alpha.4`** (latest published). All other `@soostori/*` pins now use `^` (caret) for consistent minor-resolution behaviour.
+- **`src/components/LoginScreen.tsx`** now passes `shopId` to `db:auth:login` and tracks it via local state from `getShop()`.
+
+### Fixed
+
+- **D1+D2 (RBAC permission strings — short form → SDK dotted vocabulary)**: Replaced `'team'` → `'employee.create'` / `'employee.update'` / `'employee.delete'` in `electron/ipc-handlers/auth-handlers.ts`. Replaced `'customers'` → `'customers.create'` / `'customers.update'` / `'customers.delete'` in `electron/ipc-handlers/customer-handlers.ts`. Replaced `'debt'` → `'debts.view'` / `'debts.create'` / `'debts.update'` across all 6 handler sites in `electron/ipc-handlers/debt-handlers.ts`. Added `UNKNOWN_ROLE` guard in `db:auth:hasPermission` (auth-handlers.ts:107) using the exported `ROLE_PERMISSIONS` map.
+- **D3 (`db:auth:login` payload shape)**: `electron/preload/handlers-db.ts` now sends ONE object `{userId, pin, deviceId, shopId}` matching the handler's `loginSchema.parse(rawData)` Zod contract. Signature in `ipc-signatures-db.ts` updated to accept the new `shopId` arg.
+- **D4 (`db:auth:createUser` payload shape)**: Preload now sends `shopId` + `createdBy` so the Zod `createUserSchema` accepts the payload. Renderer (`LoginScreen`) and `TeamSettings` call sites must pass these fields.
+- **D5 (`db:auth:logout` payload shape)**: Preload now sends ONE object `{sessionId, deviceId, userId}`. Handler reads from object (was reading positional `(deviceId, userId)` — sessionId was dropped).
+- **D6 (`db:shop:create` field name)**: Handler now reads `data.name` instead of `data.shopName`. SetupWizard UI already sends `name: shopName.trim()`. Chose the handler-fix side to keep the IPC signature stable.
+- **D7 (`db:invites:accept` payload shape)**: Preload now sends ONE object `{code, userName, pin, deviceId}` matching the handler's existing payload type.
+- **OperationalAuth wrapper signature mismatch**: First wrapper pass passed my own `verifyPin(employeeId, shopId, deviceId, pin)` to the SDK's `verifyPin(pin, hashHex, saltHex) => boolean` slot — TS2440. Fixed by passing the SDK's `verifyPin` from `@soostori/auth/pin-node` directly.
+
+### Blockers
+
+- **`@soostori/auth@0.1.0-alpha.8` not on npm**: The Cycle 03 brief named alpha.8 as the target. Verified via `npm view @soostori/auth versions` that the registry only has alpha.1–alpha.6. The local SDK source already includes OperationalAuth at alpha.6 (which is what's compiled into `dist/`). The workspace `link:` override gives Desktop the same code, but if a different environment installs Desktop without the workspace (e.g., a CI runner without `soostori-sdk`), `^0.1.0-alpha.6` will resolve to alpha.6 (which has OperationalAuth). Waiting on joan to publish alpha.7/alpha.8 to npm to fully align with the brief.
+
 ## [Unreleased]
 
 ### Added
