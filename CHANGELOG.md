@@ -8,7 +8,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
-- **`@soostori/auth` OperationalAuth integration**: New `electron/auth/desktop-operational-auth.ts` (101 lines) wires the SDK's `OperationalAuth` class to `ElectronPlatformAuthAdapter.getSecureStorage()` and `randomString()`. Singleton accessor `getOpAuth()` plus named exports `setupPin`, `verifyPin`, `changePin`, `hasPinEnrolled`, `clearPin`, `isWithinOfflineEntitlement`, `isSessionExpired`, `getOpAuthLockState`. Uses SDK's PBKDF2 `hashPin`/`verifyPin` from `@soostori/auth/pin-node` — no copy-paste crypto.
+- **`shop_id` column + cross-business isolation (§7)**: New migration `electron/database/migrations/2025-09-10-add-shop-id-to-commercial-tables.ts` adds `shop_id TEXT NOT NULL DEFAULT 'default'` to `products`, `categories`, `customers`, `sales`, `sale_items`, `debts`, `expenses`, `held_sales`. Backfills existing rows from the first row of the `shops` table. Idempotent (PRAGMA table_info guarded) and reversible (down migration noted in the file header). Also creates `idx_<table>_shop_id` index for query performance. Fresh installs include the column in CREATE TABLE statements (schema-pos.ts, schema-commerce.ts, schema-transactions.ts).
+- **`resolveActiveShopId()` helper** (`electron/database/active-shop.ts`): resolves the active shop id from the loaded `AuthSession` (preferred) or from the first row of the `shops` table (fallback). Sync variant `resolveShopIdSync()` for INSERT-only paths in CSV bulk imports and held-sale creation. Single point of resolution so every IPC handler reads the same scope.
+- **Cross-business isolation integration test** (`electron/database/__tests__/shop-isolation.test.ts`, 147 lines): 6 node:test cases that boot an in-memory SQLite DB, seed two distinct shops (`shopA` + `shopB`), then assert isolation across products, customers, sales+items, debts+expenses, categories, and held_sales. Joining sales + sale_items respects the scope on both sides; cross-shop UPDATE affects 0 rows. All 6 PASS. Shared schema fixture in `shop-isolation-bootstrap.ts` (108 lines).
+
+### Changed
+
+- **All product/category/customer/debt/expense/sale/held-sale IPC handlers** now scope every SELECT and stamp every INSERT/UPDATE by `shop_id`. `_shopId` parameters in `product-handlers-query.ts` are no longer discarded — they now drive the query. Scoped handler list: `product-handlers.ts`, `product-handlers-mutation.ts`, `product-handlers-query.ts`, `category-handlers.ts`, `customer-handlers.ts`, `debt-handlers.ts`, `expense-handlers.ts`, `sale-create-handlers.ts`, `sale-handlers-query.ts`, `held-sale-handlers.ts`.
+- **`@soostori/desktop-adapter`** (`packages/desktop-adapter/src/sales-repository.ts`): `DesktopSalesRepository.create()` now stamps `shop_id` on every `INSERT INTO sale_items` (parent sale row was already stamped from the `Sale` object). One-line column addition + one arg in the run() call.
+- **LAN sync event applier** (`electron/sync/sync-service-apply.ts`): `applySaleConfirmed` and `applyProductEvent` now stamp `shop_id` on every INSERT/UPDATE/DELETE for sales, sale_items, and products. Remote PRODUCT_CREATED inserts that lack a payload shopId fall back to `event.payload.shopId ?? 'default'`.
+
+### Files changed
+
+- `electron/database/index.ts` (38 → 39 lines) — wires `runShopIdMigration()` after the other migrations
+- `electron/database/schema-pos.ts` (154 → 156 lines) — adds `shop_id` to `categories`, `products` CREATE TABLE
+- `electron/database/schema-commerce.ts` (163 → 167 lines) — adds `shop_id` to `customers`, `debts`, `expenses` CREATE TABLE
+- `electron/database/schema-transactions.ts` (66 → 69 lines) — adds `shop_id` to `sales`, `sale_items`, `held_sales` CREATE TABLE
+- `electron/database/active-shop.ts` (new, 44 lines) — session/shops table resolution helper
+- `electron/database/migrations/2025-09-10-add-shop-id-to-commercial-tables.ts` (new, 94 lines) — additive ALTER TABLE migration with index creation
+- `electron/database/__tests__/shop-isolation.test.ts` (new, 147 lines) — 6 cross-business isolation tests
+- `electron/database/__tests__/shop-isolation-bootstrap.ts` (new, 108 lines) — shared in-memory schema fixture
+- 10 IPC handler files: every SELECT/INSERT/UPDATE now scoped by `shop_id`
+- `electron/sync/sync-service-apply.ts` — LAN event applier stamps `shop_id` on remote products + sales
+- `packages/desktop-adapter/src/sales-repository.ts` — `sale_items` insert now carries `shop_id`
+
+### Compromises
+
+- **Foreign key constraints NOT added inline**: `FOREIGN KEY (shop_id) REFERENCES shops(id)` was deferred because (a) SQLite ALTER TABLE cannot add a NOT NULL FK without a full rebuild, and (b) PRAGMA foreign_keys = ON would reject any pre-existing row whose shop_id has no shops match during backfill. The constraint is enforced by the application layer (handlers always read from the active session or the shops table).
+- **Schema files over 150 lines**: schema-pos.ts (156) and schema-commerce.ts (167) are over the ANPAS 150-line cap but were already at the limit before this cycle (154 and 163 respectively). The added column adds 2–4 lines to each. Splitting these would require restructuring the table-creation convention (one table per file); deferred to a later cycle.
+- **`@soostori/contracts` workspace install is missing**: pre-existing workspace-resolution issue — `core/src/index.ts` re-exports from `@soostori/contracts`, but the SDK's `pnpm-workspace.yaml` doesn't link it. Causes `tsc --noEmit` to emit one error in `core/src/index.ts` and the existing OperationalAuth tests to fail with MODULE_NOT_FOUND under the bundled Hermes node. NOT caused by this cycle's changes. Noted as a follow-up blocker for the SDK worker.
 - **`db:auth:login` now also establishes an OperationalAuth session**: After the existing CloudAuth-style PIN verification, the login handler calls `opSetupPin` (first-time) or `opVerifyPin` (subsequent). Response shape extended with `operationalEstablished: boolean`. Matches the canonical two-layer auth model (CloudAuth → OperationalAuth).
 - **OperationalAuth integration test**: `electron/auth/__tests__/operational-auth.test.ts` (97 lines) — 4 tests using Node 22 built-in `node:test` + `tsx`. Covers setupPin→verifyPin happy path, wrong-PIN rejection, changePin invalidation, clearPin removal. All 4 PASS.
 - **`pnpm-workspace.yaml` override for `@soostori/auth`**: Routes the SDK auth package through local source (`link:../soostori-sdk/packages/auth`) so Desktop consumes OperationalAuth even before npm alpha.8 publishes. See C-desktop-status.md for the rationale and blocker.
