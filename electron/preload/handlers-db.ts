@@ -71,20 +71,24 @@ export const dbHandlers: DbIpc = {
   createShop: (data: { name: string; currency: string; ownerName: string; ownerPin: string }) =>
     ipcRenderer.invoke('db:shop:create', data),
   getUsers: (shopId: string) => ipcRenderer.invoke('db:shop:getUsers', shopId),
-  login: (userId: string, pin: string, deviceId: string) =>
-    ipcRenderer.invoke('db:auth:login', userId, pin, deviceId),
-  createUser: (data: { name: string; pin: string; role: string }) =>
+  // D3: login sends one object so the handler's Zod schema parses correctly
+  login: (userId: string, pin: string, deviceId: string, shopId: string) =>
+    ipcRenderer.invoke('db:auth:login', { userId, pin, deviceId, shopId }),
+  // D4: createUser sends shopId + createdBy so the Zod schema accepts the payload
+  createUser: (data: { name: string; pin: string; role: string; shopId: string; createdBy: string }) =>
     ipcRenderer.invoke('db:auth:createUser', data),
   updateUser: (id: string, data: { name?: string; pin?: string; role?: string }) =>
     ipcRenderer.invoke('db:auth:updateUser', id, data),
   deleteUser: (id: string) => ipcRenderer.invoke('db:auth:deleteUser', id),
+  // D5: logout sends one object so the handler can read all three fields
   logout: (sessionId: string, deviceId: string, userId: string) =>
-    ipcRenderer.invoke('db:auth:logout', sessionId, deviceId, userId),
+    ipcRenderer.invoke('db:auth:logout', { sessionId, deviceId, userId }),
   // Invitations
   createInvite: (data: { shopId: string; employeeName: string; role: string; createdBy: string; deviceName?: string }) =>
     ipcRenderer.invoke('db:invites:create', data),
+  // D7: accepts the payload shape the handler already expects
   acceptInvite: (code: string, userName: string, pin: string, deviceId: string) =>
-    ipcRenderer.invoke('db:invites:accept', code, userName, pin, deviceId),
+    ipcRenderer.invoke('db:invites:accept', { code, userName, pin, deviceId }),
   listInvites: () => ipcRenderer.invoke('db:invites:list'),
   // Devices
   listDevices: (shopId: string) => ipcRenderer.invoke('db:devices:list', shopId),

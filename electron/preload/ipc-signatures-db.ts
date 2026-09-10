@@ -69,13 +69,17 @@ export interface DbIpc {
   createShop: (data: { name: string; currency: string; ownerName: string; ownerPin: string }) => Promise<Shop>
   getUsers: (shopId: string) => Promise<ShopUser[]>
   getDeviceId: () => Promise<{ deviceId: string }>
-  login: (userId: string, pin: string, deviceId: string) => Promise<{ user: ShopUser; sessionId: string }>
-  createUser: (data: { name: string; pin: string; role: string }) => Promise<ShopUser>
+  // D3: login accepts one object matching the handler's Zod loginSchema
+  login: (userId: string, pin: string, deviceId: string, shopId: string) => Promise<{ user: ShopUser; sessionId: string; operationalEstablished: boolean }>
+  // D4: createUser payload now includes shopId + createdBy
+  createUser: (data: { name: string; pin: string; role: string; shopId: string; createdBy: string }) => Promise<ShopUser>
   updateUser: (id: string, data: { name?: string; pin?: string; role?: string }) => Promise<ShopUser>
   deleteUser: (id: string) => Promise<void>
+  // D5: logout accepts one object
   logout: (sessionId: string, deviceId: string, userId: string) => Promise<{ success: boolean }>
   // Invitations
   createInvite: (data: { shopId: string; employeeName: string; role: string; createdBy: string; deviceName?: string }) => Promise<Invitation>
+  // D7: accepts one object matching the handler's payload shape
   acceptInvite: (code: string, userName: string, pin: string, deviceId: string) => Promise<{ userId: string; shopId: string }>
   listInvites: () => Promise<Invitation[]>
   // Devices
