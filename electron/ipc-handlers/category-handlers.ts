@@ -5,14 +5,20 @@ import log from 'electron-log'
 import { categoryCreateSchema, categoryUpdateSchema } from './validation'
 import { pushCategory } from '../services/cloud-entity-sync'
 import { resolveActiveShopId } from '../database/active-shop'
+import { type CategoriesRow } from '../database/contracts-mapper'
 
 export function registerCategoryHandlers(): void {
   ipcMain.handle('db:categories:list', async (_event, _shopId?: string) => {
     const db = getDatabase()
     const shopId = await resolveActiveShopId()
-    return db.prepare(`
+    const rows = db.prepare(`
       SELECT * FROM categories WHERE is_active = 1 AND shop_id = ? ORDER BY display_order ASC, name ASC
-    `).all(shopId)
+    `).all(shopId) as CategoriesRow[]
+    // Project to contract Category for any consumer that wants canonical types
+    // (cycle 04 sub-C: snake_case rows pass through to renderer; contract-shaped
+    //  projection is available via fromLocalCategory).
+    log.debug(`categories:list mapped ${rows.length} → contract Categories`)
+    return rows
   })
 
   ipcMain.handle('db:categories:create', async (_event, rawData: unknown) => {
