@@ -4,6 +4,62 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+
+## [Unreleased] — Cycle 05 Phase 04 RBAC (2026-09-10)
+
+### Added
+
+- **Phase 04 RBAC — capability enforcement in IPC handlers**: All role-level `hasPermission` checks replaced with canonical `can(member, capability)` from `@soostori/auth` SDK (`CAPABILITIES.*` constants). Every mutation IPC handler now calls the capability check before executing.
+
+  | Handler | Capability enforced |
+  |---|---|
+  | `db:auth:createUser` | `team.update` |
+  | `db:auth:updateUser` | `team.update` |
+  | `db:auth:deleteUser` | `team.remove` |
+  | `db:customers:create` | `customers.create` |
+  | `db:customers:update` | `customers.update` |
+  | `db:customers:delete` | `customers.delete` |
+  | `db:debts:*` | `debts.view`, `debts.create`, `debts.payment` |
+  | `db:expenses:create` | `expenses.create` |
+  | `db:expenses:delete` | `expenses.delete` |
+  | `db:products:create` | `products.create` |
+  | `db:products:update` | `products.update` |
+  | `db:products:delete` | `products.archive` |
+  | `db:sales:create` | `sales.create` |
+  | `db:sales:refund` | `sales.refund` |
+  | `db:sales:void` | `sales.void` |
+  | `db:inventory:adjust` | `inventory.adjust` |
+
+- **`db:sales:void` IPC handler** (`electron/ipc-handlers/sale-void-handlers.ts`): new handler that voids a completed sale (status → 'cancelled') and restores stock. Enforces `sales.void` capability. Broadcasts `SALE_VOIDED` LAN event.
+
+- **Sync LAN event `SALE_VOIDED`**: added to `ClientMessageType` and `ServerEventType` in `sync/types.ts`. `applySaleVoided()` added to `sync-service-apply.ts`; wired in `sync-service.ts`.
+
+- **`db:auth:hasPermission` → `db:auth:can`**: IPC channel renamed to use canonical capability vocabulary.
+
+- **`Member` object pattern**: every handler now uses `getCallerMember(session)` returning `{ role: EmployeeRole }` for the SDK's `can()` function.
+
+### Changed
+
+- All `hasPermission(role, 'permission-string')` calls replaced with `can(getCallerMember(session), CAPABILITIES.*)`.
+
+### Cloud Verification
+
+- **instant-self MCP** confirmed `membership.permissions` field exists (null = use role default, compatible with SDK's `memberCapabilityOverrides` model). Test `$users` seeded.
+- No `role === 'owner'` remain in `electron/` tree.
+
+### Acceptance
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit` | **clean (0 errors)** |
+| `node --test electron/auth/__tests__/operational-auth.test.ts` | **4/4 PASS** |
+
+### Files Changed
+
+`electron/ipc-handlers/auth-handlers.ts` · `customer-handlers.ts` · `debt-handlers.ts` · `expense-handlers.ts` · `product-handlers.ts` · `sale-create-handlers.ts` · `sale-refund-handlers.ts` · `sale-void-handlers.ts` · `stock-handlers.ts` · `sale-handlers-mutation.ts` · `electron/preload/handlers-db.ts` · `electron/preload/ipc-signatures-db.ts` · `electron/sync/sync-service.ts` · `electron/sync/sync-service-apply.ts` · `electron/sync/types.ts`
+
+---
+
 ## [Unreleased] — Cycle 04 Sub-cycle F (2026-09-10)
 
 ### Added
