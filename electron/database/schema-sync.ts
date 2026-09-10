@@ -105,6 +105,9 @@ export function createSyncTables(): void {
   `)
   database.exec(`CREATE INDEX IF NOT EXISTS idx_sync_conflicts_status ON sync_conflicts(status)`)
 
+  // Phase 05: products.version column for version-based conflict detection
+  migrateProductsVersionColumn(database)
+
   // Cross-device sale record — written by host after SALE_CONFIRMED, by client after local commit
   database.exec(`
     CREATE TABLE IF NOT EXISTS sync_sales (
@@ -152,5 +155,13 @@ function migrateInventoryTransactionsTable(database: import('better-sqlite3').Da
   }
   if (!existing.includes('timestamp')) {
     database.exec('ALTER TABLE inventory_transactions ADD COLUMN timestamp TEXT')
+  }
+}
+
+function migrateProductsVersionColumn(database: import('better-sqlite3').Database): void {
+  const cols = database.prepare("PRAGMA table_info(products)").all() as { name: string }[]
+  const existing = cols.map(c => c.name)
+  if (!existing.includes('version')) {
+    database.exec('ALTER TABLE products ADD COLUMN version INTEGER DEFAULT 1')
   }
 }

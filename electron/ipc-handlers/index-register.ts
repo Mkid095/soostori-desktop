@@ -9,6 +9,7 @@ import { registerProductHandlers, registerCategoryHandlers, registerSaleHandlers
   registerAuditHandlers,
   registerSyncSaleHandlers, registerSyncQueueHandlers,
   registerSyncConflictHandlers, registerSyncServiceHandlers,
+  registerSyncIpcHandlers,
   registerCloudHandlers,
   registerCloudAuthHandlers,
 } from './index'
@@ -33,6 +34,7 @@ export function registerAllIpcHandlers(): void {
   registerSyncSaleHandlers()
   registerSyncQueueHandlers()
   registerSyncConflictHandlers()
+  registerSyncIpcHandlers()
   registerCloudHandlers()
   registerCloudAuthHandlers()
   registerCloudAuthIpcHandlers()

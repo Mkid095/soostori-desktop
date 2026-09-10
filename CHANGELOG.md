@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 
+## [Unreleased] — Cycle 05 Phase 05 Real Sync (2026-09-10)
+
+### Added
+
+- **Real `RealSyncEngine` class** (`electron/sync/sync-engine.ts`): replaces NoOpSyncEngine with a real FIDScript sync engine. Implements `enqueue()` (writes to local `sync_events` table, idempotent on `idempotencyKey`), `pull()` (queries cloud via `CloudClient` InstaQL, filters by `businessId`, respects cursor), and `apply()` (applies `product` events to local SQLite with version-based conflict detection and business isolation). Singleton via `getRealSyncEngine()`.
+
+- **`db:sync:pull` IPC handler** (`electron/ipc-handlers/sync-ipc-handlers.ts`): calls `RealSyncEngine.pull(cursor)` and returns `SyncEvent[]`. Guards on `INSTANT_APP_ID` presence.
+
+- **`db:sync:apply` IPC handler** (`electron/ipc-handlers/sync-ipc-handlers.ts`): accepts `SyncEvent[]`, applies each via `RealSyncEngine.apply()`. Returns array of `{ idempotencyKey, state }` results.
+
+- **30-second sync timer worker** (`electron/services/sync-timer-worker.ts`): `startSyncTimerWorker()` / `stopSyncTimerWorker()`. Polls FIDScript cloud every 30 seconds when online (`cloudToken` present, `isOfflineMode` false). Pulls events, applies them to local SQLite, dispatches sync status.
+
+- **Immediate pull after `createSale`** (`electron/ipc-handlers/sale-create-handlers.ts`): after `commitSale()` succeeds and `defaultSyncEngine.enqueue()` fires, a background `pull()` is triggered to receive any pending cloud events (simulates cloud→desktop push on a local mutation).
+
+- **`products.version` column migration** (`electron/database/schema-sync.ts`): `migrateProductsVersionColumn()` adds `version INTEGER DEFAULT 1` to `products` table for version-based last-writer-wins conflict detection in `apply()`.
+
+- **`CloudClient` injection on startup** (`electron/main.ts`): after database init, creates a `CloudClient` with the stored `cloudToken` and injects it into `RealSyncEngine` via `setCloudClient()`. Starts `startSyncTimerWorker()` when `INSTANT_APP_ID` is set.
+
+### Acceptance
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit` | **clean (0 errors)** |
+| `node --test electron/auth/__tests__/operational-auth.test.ts` | **4/4 PASS** (Cycle 04 preserved) |
+| Database test failures (ESM module resolution) | Pre-existing — `contract-mapper-helpers.ts` and `shop-isolation-bootstrap.ts` fail to resolve as ESM modules in Node 22; unrelated to Phase 05 changes |
+
+### Files Changed
+
+`electron/sync/sync-engine.ts` · `electron/ipc-handlers/sync-ipc-handlers.ts` · `electron/services/sync-timer-worker.ts` · `electron/database/schema-sync.ts` · `electron/main.ts` · `electron/ipc-handlers/sale-create-handlers.ts` · `electron/ipc-handlers/index.ts` · `electron/ipc-handlers/index-register.ts`
+
+---
+
 ## [Unreleased] — Cycle 05 Phase 04 RBAC (2026-09-10)
 
 ### Added

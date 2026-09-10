@@ -21,13 +21,16 @@ import { resolveActiveShopId } from '../database/active-shop'
 import { desktopLoadSession } from '../auth/electron-store-session'
 import { defaultSyncEngine } from '@soostori/contracts'
 import type { Sale, SyncEvent } from '@soostori/contracts'
-import { asBusinessId, asEmployeeId, asDeviceId } from '@soostori/core'
+import { asBusinessId, asEmployeeId, asDeviceId, type SyncCursorId } from '@soostori/core'
 import { fromLocalSale, type SalesRow } from '../database/contracts-mapper-2'
 import { buildSaleSyncEvent } from '../database/sync-event-builder'
 // Phase 04: canonical capability API
 import { can, CAPABILITIES } from '@soostori/auth'
 import type { Member } from '@soostori/auth'
 import type { EmployeeRole } from '@soostori/core'
+import { getRealSyncEngine } from '../sync/sync-engine'
+import { CloudClient } from '@soostori/cloud'
+import { getSyncStore } from '../services/store'
 
 const db = getDatabase()
 
@@ -130,6 +133,31 @@ export function registerSaleCreateHandlers(): void {
           clientSequence: Date.now(),
         })
         defaultSyncEngine.enqueue(syncEvent).catch(() => {})
+
+        // Phase 05: trigger immediate cloud pull to receive any pending events
+        const appId = process.env.INSTANT_APP_ID
+        if (appId) {
+          const token = getSyncStore().get('cloudToken') as string | undefined
+          const cloud = new CloudClient({ appId, token })
+          const engine = getRealSyncEngine()
+          engine.setCloudClient(cloud)
+          const cursorId = `cursor-${shopId}` as SyncCursorId
+          const cursor = {
+            cursorId,
+            deviceId: asDeviceId(session?.deviceId ?? deviceId ?? 'local'),
+            businessId: asBusinessId(shopId),
+            lastServerReceivedAt: null,
+            lastOriginatingDeviceId: null,
+            lastClientSequence: null,
+            lastSyncAt: new Date().toISOString(),
+          }
+          engine.pull(cursor).then(events => {
+            if (events.length > 0) {
+              log.info(`Sale create: received ${events.length} cloud events`)
+              events.forEach(e => engine.apply(null, e))
+            }
+          }).catch(() => {})
+        }
       }
 
       log.info(`Sale committed via SDK: ${saleId}, total: ${saleData.totalAmount}`)

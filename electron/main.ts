@@ -15,6 +15,9 @@ import { syncService } from './sync/sync-service'
 import { startQueueReplay } from './services/queue-replay'
 import { createMainWindow, getMainWindow } from './app-window'
 import { setupAppLifecycle } from './app-lifecycle'
+import { getRealSyncEngine } from './sync/sync-engine'
+import { startSyncTimerWorker } from './services/sync-timer-worker'
+import { CloudClient } from '@soostori/cloud'
 
 log.transports.file.level = 'info'
 log.transports.console.level = 'debug'
@@ -62,6 +65,17 @@ app.whenReady().then(async () => {
     startHeartbeatService()
     startQueueReplay()
     verifySubscription().catch(() => {})
+
+    // Phase 05: inject CloudClient into RealSyncEngine and start 30s timer
+    const appId = process.env.INSTANT_APP_ID
+    if (appId) {
+      const token = getSyncStore().get('cloudToken') as string | undefined
+      const cloudClient = new CloudClient({ appId, token })
+      const engine = getRealSyncEngine()
+      engine.setCloudClient(cloudClient)
+      startSyncTimerWorker()
+      log.info('RealSyncEngine: injected and timer worker started')
+    }
 
     setupAppLifecycle(() => {
       const w = createMainWindow()
