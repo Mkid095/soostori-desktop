@@ -20,17 +20,18 @@ export default defineConfig({
       },
     },
     resolve: {
-      alias: {
-        '@soostori/core': `${SDK}/core/src/index.ts`,
-        '@soostori/devices': `${SDK}/devices/src/index.ts`,
-        '@soostori/events': `${SDK}/events/src/index.ts`,
-        '@soostori/inventory': `${SDK}/inventory/src/index.ts`,
-        '@soostori/business': `${SDK}/business/src/index.ts`,
-        '@soostori/desktop-adapter': `${SDK}/desktop-adapter/src/index.ts`,
-        '@soostori/sales': `${SDK}/business/sales/src/index.ts`,
-        '@soostori/updates': `${SDK}/updates/src/index.ts`,
-      },
-    },
+          alias: {
+            '@soostori/core': `${SDK}/core/src/index.ts`,
+            '@soostori/contracts': `${SDK}/contracts/src/index.ts`,
+            '@soostori/devices': `${SDK}/devices/src/index.ts`,
+            '@soostori/events': `${SDK}/events/src/index.ts`,
+            '@soostori/inventory': `${SDK}/inventory/src/index.ts`,
+            '@soostori/business': `${SDK}/business/src/index.ts`,
+            '@soostori/desktop-adapter': `${SDK}/desktop-adapter/src/index.ts`,
+            '@soostori/sales': `${SDK}/business/sales/src/index.ts`,
+            '@soostori/updates': `${SDK}/updates/src/index.ts`,
+          },
+        },
   },
   preload: {
     build: {

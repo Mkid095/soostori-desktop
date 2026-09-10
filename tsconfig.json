@@ -25,6 +25,9 @@
       "@soostori/core": [
         "C:/Users/Administrator/Documents/GitHub/soostori-sdk/packages/core/src/index.ts"
       ],
+      "@soostori/contracts": [
+        "C:/Users/Administrator/Documents/GitHub/soostori-sdk/packages/contracts/src/index.ts"
+      ],
       "@soostori/auth": [
         "C:/Users/Administrator/Documents/GitHub/soostori-sdk/packages/auth/src/index.ts"
       ],
