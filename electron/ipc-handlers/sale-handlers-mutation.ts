@@ -3,7 +3,8 @@
  * Split per ANPAS: create → sale-create-handlers.ts, held-sales → held-sale-handlers.ts.
  */
 
-import { registerSaleCreateHandlers, registerSaleRefundHandlers } from './sale-create-handlers'
+import { registerSaleCreateHandlers } from './sale-create-handlers'
+import { registerSaleRefundHandlers } from './sale-refund-handlers'
 import { registerHeldSaleHandlers } from './held-sale-handlers'
 import { getDatabase } from '../database'
 import log from 'electron-log'

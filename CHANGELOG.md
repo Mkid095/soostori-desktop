@@ -4,6 +4,37 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased] — Cycle 04 Sub-cycle F (2026-09-10)
+
+### Added
+
+- **`createSale` → `defaultSyncEngine.enqueue()` wiring** (`electron/ipc-handlers/sale-create-handlers.ts`): after the SQLite INSERT via `commitSale()` succeeds, the handler now reads the persisted row, projects it to the canonical `Sale` via `fromLocalSale()` from `contracts-mapper-2`, builds a `SyncEvent<Sale>` via the new pure helper `buildSaleSyncEvent()` (`electron/database/sync-event-builder.ts`), and calls `defaultSyncEngine.enqueue(event).catch(() => {})` (errors swallowed — push to cloud is best-effort, retry comes from the queue's own state machine).
+- **`Sale` SyncEvent builder** (`electron/database/sync-event-builder.ts` 44L): pure factory that constructs a `SyncEvent<Sale>` from a `Sale` projection + a `{ businessId, originatingDeviceId, originatingEmployeeId, clientSequence }` context. Uses the SDK contract exactly: `id` UUIDv4, `idempotencyKey: sale.idempotencyKey`, `entityKind: 'sale'`, `entityId: sale.id`, `operation: 'create'`, `clientSequence: caller-supplied monotonic`, `clientCreatedAt: ISO8601`, `entityVersion: sale.version`, `payload: sale`, `state: 'pending'`. Kept separate so it is unit-testable without instantiating the IPC handler, the SQLite database, or the sales orchestrator.
+- **Sync-engine smoke test** (`electron/database/__tests__/sync-engine-desktop.test.ts`): 3 node:test cases — (1) `defaultSyncEngine.pending` length grows by exactly one after `enqueue()`, (2) the captured `SyncEvent` has `entityKind === 'sale'`, `operation === 'create'`, `state === 'pending'`, `entityVersion` matches `sale.version`, and `payload` is the full Sale projection, (3) `NoOpSyncEngineClass.reset()` clears the queue. Mocks the SQLite write by running against an in-memory DB seeded via the existing `bootstrapContractMapperSchema` fixture.
+
+### Changed
+
+- **Extracted `registerSaleRefundHandlers`** to its own module `electron/ipc-handlers/sale-refund-handlers.ts` (48L, zero behavior change vs. previous home). Importer `sale-handlers-mutation.ts` now pulls it from the new file. Required so `sale-create-handlers.ts` could absorb the SyncEvent wiring while staying ≤150 lines (now 139L).
+
+### Acceptance
+
+| Gate | Result |
+|---|---|
+| `./node_modules/.bin/tsc --noEmit` | clean |
+| `node --test electron/database/__tests__/contract-mapper.test.ts` | **7/7 PASS** (Cycle 04 Sub-cycle C preserved) |
+| `node --test electron/database/__tests__/shop-isolation.test.ts` | **6/6 PASS** (Cycle 03 Sub-G preserved) |
+| `node --test electron/database/__tests__/sync-engine-desktop.test.ts` | **3/3 PASS** (new) |
+| `node --test electron/auth/__tests__/operational-auth.test.ts` | **4/4 PASS** (Cycle 03 Sub-C preserved) |
+| **Combined total** | **20/20 PASS** (17 existing preserved + 3 new) |
+| 150-line cap on every source file | **PASS** — `sale-create-handlers.ts` 139, `sale-refund-handlers.ts` 48, `sync-event-builder.ts` 44 |
+| No `helpers.ts` / `common.ts` / `utils.ts` | **PASS** — `sync-event-builder.ts` is purpose-named |
+
+### Notes
+
+- The Sub-cycle E stub `NoOpSyncEngineClass` exposes `pending: readonly QueuedSyncEvent[]`, `size: number`, and `reset(): void` for test inspection. Tests cast `defaultSyncEngine` (`SyncEngine` interface) to `NoOpSyncEngineClass` to read the queue.
+- Real sync engine (cursor pull, version compare, replay, LAN host routing for stock events) is deliberately deferred — same as the Sub-cycle E stub. The Sub-cycle F deliverable is the wire, not the engine.
+- `commitSale()` runs first, then the SyncEvent is built from the *persisted* row (`SELECT * FROM sales WHERE id = ?`). If `commitSale` throws (e.g. `STOCK_AUTHORIZATION_ERROR`), no event is enqueued — at-most-once by construction.
+
 ## [Unreleased] — Cycle 04 Sub-cycle C (2025-09-10)
 
 ### Added

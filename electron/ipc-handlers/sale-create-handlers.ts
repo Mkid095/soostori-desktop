@@ -1,6 +1,9 @@
 /**
- * sale-create-handlers.ts — Sale creation IPC handlers (host path).
- * Part of sale-handlers-mutation split per ANPAS.
+ * sale-create-handlers.ts — Sale creation IPC handler (host path).
+ *
+ * Cycle 04 Sub-cycle F: after the SQLite INSERT succeeds, enqueue a
+ * SyncEvent onto `defaultSyncEngine` so the LAN/cloud sync layer sees
+ * the new sale. This is the Desktop side of the production sync smoke.
  */
 
 import { ipcMain } from 'electron'
@@ -13,6 +16,12 @@ import { pushSale } from '../services/cloud-entity-sync'
 import { syncService } from '../sync/sync-service'
 import { notify } from '../services/notification-service'
 import { resolveActiveShopId } from '../database/active-shop'
+import { desktopLoadSession } from '../auth/electron-store-session'
+import { defaultSyncEngine } from '@soostori/contracts'
+import type { Sale, SyncEvent } from '@soostori/contracts'
+import { asBusinessId, asEmployeeId, asDeviceId } from '@soostori/core'
+import { fromLocalSale, type SalesRow } from '../database/contracts-mapper-2'
+import { buildSaleSyncEvent } from '../database/sync-event-builder'
 
 const db = getDatabase()
 
@@ -86,6 +95,26 @@ export function registerSaleCreateHandlers(): void {
         }
       }
 
+      // Sub-cycle F: enqueue SyncEvent onto defaultSyncEngine after the
+      // SQLite INSERT succeeds. Projects the persisted row to the
+      // canonical Sale shape via fromLocalSale so the sync payload is
+      // contract-typed.
+      const session = await desktopLoadSession()
+      const saleRow = db.prepare(
+        'SELECT * FROM sales WHERE id = ? AND shop_id = ?',
+      ).get(saleId, shopId) as SalesRow | undefined
+      if (saleRow) {
+        const sale: Sale = fromLocalSale(saleRow)
+        const session = await desktopLoadSession()
+        const syncEvent: SyncEvent = buildSaleSyncEvent(sale, {
+          businessId: asBusinessId(sale.businessId),
+          originatingDeviceId: asDeviceId(session?.deviceId ?? deviceId ?? 'system'),
+          originatingEmployeeId: asEmployeeId(session?.userId ?? userId),
+          clientSequence: Date.now(),
+        })
+        defaultSyncEngine.enqueue(syncEvent).catch(() => {})
+      }
+
       log.info(`Sale committed via SDK: ${saleId}, total: ${saleData.totalAmount}`)
       pushSale(saleId).catch(() => {})
       db.prepare(`INSERT INTO audit_logs (id, shop_id, user_id, device_id, action, entity_type, entity_id, payload, created_at) VALUES (?, ?, ?, ?, 'sale_completed', 'sale', ?, ?, datetime('now'))`)
@@ -108,41 +137,4 @@ export function registerSaleCreateHandlers(): void {
   })
 
   log.info('Sale create IPC handlers registered')
-}
-
-import { desktopLoadSession } from '../auth/electron-store-session'
-import { adjustStock } from '../sdk/inventory-orchestrator'
-
-export function registerSaleRefundHandlers(): void {
-  ipcMain.handle('db:sales:refund', async (_event, saleId: string) => {
-    const session = await desktopLoadSession()
-    const userId = session?.userId ?? 'system'
-    const db = getDatabase()
-    const shopId = await resolveActiveShopId()
-    const sale = db.prepare('SELECT * FROM sales WHERE id = ? AND shop_id = ?').get(saleId, shopId) as {
-      id: string; status: string; items_summary: string | null
-    } | undefined
-    if (!sale) throw new Error('Sale not found')
-    if (sale.status === 'refunded') throw new Error('Sale already refunded')
-
-    const items = db.prepare('SELECT * FROM sale_items WHERE sale_id = ? AND shop_id = ?').all(saleId, shopId) as Array<{
-      product_id: string | null; quantity: number; product_name: string
-    }>
-
-    for (const item of items) {
-      if (!item.product_id) continue
-      try {
-        await adjustStock({ productId: item.product_id, quantity: item.quantity, reason: `refund:${saleId}`, userId })
-      } catch (err) {
-        throw Object.assign(new Error(`Refund blocked: Primary Device must be ONLINE. Restore stock manually if needed.`), { code: 'STOCK_AUTHORIZATION_ERROR' })
-      }
-    }
-
-    db.prepare("UPDATE sales SET status = 'refunded', updated_at = ? WHERE id = ? AND shop_id = ?")
-      .run(new Date().toISOString(), saleId, shopId)
-    // Broadcast SALE_REFUNDED so all LAN devices mark the sale refunded
-    syncService.sendLocalMutation('SALE_REFUNDED', { saleId })
-    log.info(`Sale ${saleId} refunded by ${userId}`)
-    return { id: saleId, status: 'refunded' }
-  })
 }
