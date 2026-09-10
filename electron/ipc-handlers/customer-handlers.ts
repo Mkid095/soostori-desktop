@@ -36,7 +36,8 @@ export function registerCustomerHandlers(): void {
     const session = await desktopLoadSession()
     if (!session) throw new Error('Not authenticated')
     const role = getEmployeeRole(session.employeeId)
-    if (!hasPermission(role, 'customers')) throw new Error('Insufficient permissions')
+    // D1+D2: use SDK dotted permission vocabulary
+    if (!hasPermission(role, 'customers.create')) throw new Error('Insufficient permissions')
     const data = customerCreateSchema.parse(rawData)
     const db = getDatabase()
     const id = uuidv4()
@@ -52,7 +53,8 @@ export function registerCustomerHandlers(): void {
     const session = await desktopLoadSession()
     if (!session) throw new Error('Not authenticated')
     const role = getEmployeeRole(session.employeeId)
-    if (!hasPermission(role, 'customers')) throw new Error('Insufficient permissions')
+    // D1+D2: use SDK dotted permission vocabulary
+    if (!hasPermission(role, 'customers.update')) throw new Error('Insufficient permissions')
     const data = customerUpdateSchema.parse(rawData)
     const db = getDatabase()
     const now = new Date().toISOString()
@@ -73,7 +75,8 @@ export function registerCustomerHandlers(): void {
     const session = await desktopLoadSession()
     if (!session) throw new Error('Not authenticated')
     const role = getEmployeeRole(session.employeeId)
-    if (!hasPermission(role, 'customers')) throw new Error('Insufficient permissions')
+    // D1+D2: use SDK dotted permission vocabulary
+    if (!hasPermission(role, 'customers.delete')) throw new Error('Insufficient permissions')
     const db = getDatabase()
     db.prepare('UPDATE customers SET is_active = 0 WHERE id = ?').run(id)
   })
