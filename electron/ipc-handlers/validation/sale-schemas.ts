@@ -16,7 +16,7 @@ export const saleCreateSchema = z.object({
   discountAmount: z.number().min(0).optional(),
   taxAmount: z.number().min(0).optional(),
   totalAmount: z.number().min(0),
-  paymentMethod: z.enum(['cash', 'mpesa', 'card', 'transfer', 'debt']),
+  paymentMethod: z.enum(['cash', 'mpesa', 'debt']),
   paidAmount: z.number().min(0).optional(),
   note: z.string().optional(),
   status: z.enum(['pending', 'completed', 'cancelled', 'refunded']).optional(),
@@ -24,6 +24,9 @@ export const saleCreateSchema = z.object({
   customerName: z.string().optional(),
   customerPhone: z.string().optional(),
   customerIdNumber: z.string().optional(),
+  shopId: z.string().optional(),
+  userId: z.string().optional(),
+  deviceId: z.string().optional(),
   items: z.array(saleItemSchema).min(1, 'At least one item is required'),
 })
 
@@ -45,5 +48,16 @@ export const heldSaleCreateSchema = z.object({
   })),
   paymentMethod: z.string().optional(),
 })
+
+export const saleRefundSchema = z.object({
+  saleId: z.string(),
+  reason: z.string().optional(),
+  items: z.array(z.object({
+    productId: z.string(),
+    quantity: z.number().int().positive(),
+  })).optional(), // If omitted, refund all items
+})
+
+export type SaleRefundInput = z.infer<typeof saleRefundSchema>
 
 export type HeldSaleCreateInput = z.infer<typeof heldSaleCreateSchema>

@@ -1,26 +1,22 @@
 /**
- * sale-handlers-mutation.ts — Sale mutation IPC handler registration.
- * Split per ANPAS: create → sale-create-handlers.ts, held-sales → held-sale-handlers.ts.
- * Phase 04: sale void added (sales.void capability).
+ * Sale mutation handlers — delegates to focused handler modules.
+ *
+ * Architecture (ANPAS):
+ *   - sale-handlers-mutation.ts   → registration orchestration only (thin)
+ *   - sale-create-handler.ts      → db:sales:create logic
+ *   - sale-refund-handler.ts      → db:sales:refund logic
+ *   - held-sale-handlers.ts       → held-sales CRUD
+ *   - sale-stock-helpers.ts       → shared stock mutation helpers
  */
 
-import { registerSaleCreateHandlers } from './sale-create-handlers'
-import { registerSaleRefundHandlers } from './sale-refund-handlers'
-import { registerHeldSaleHandlers } from './held-sale-handlers'
-import { registerSaleVoidHandlers } from './sale-void-handlers'
-import { getDatabase } from '../database'
 import log from 'electron-log'
+import { registerHeldSaleHandlers } from './held-sale-handlers'
+import { registerSaleCreateHandler } from './sale-create-handler'
+import { registerSaleRefundHandler } from './sale-refund-handler'
 
 export function registerSaleMutationHandlers(): void {
-  // Ensure migration columns exist
-  const db = getDatabase()
-  const tableInfo = db.prepare(`PRAGMA table_info(sales)`).all() as Array<{ name: string }>
-  if (!tableInfo.some(c => c.name === 'items_summary')) db.exec(`ALTER TABLE sales ADD COLUMN items_summary TEXT`)
-  if (!tableInfo.some(c => c.name === 'customer_id_number')) db.exec(`ALTER TABLE sales ADD COLUMN customer_id_number TEXT`)
-
-  registerSaleCreateHandlers()
-  registerSaleRefundHandlers()
   registerHeldSaleHandlers()
-  registerSaleVoidHandlers()
+  registerSaleCreateHandler()
+  registerSaleRefundHandler()
   log.info('Sale mutation handlers registered')
 }
