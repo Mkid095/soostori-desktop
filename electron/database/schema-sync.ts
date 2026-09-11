@@ -139,6 +139,40 @@ export function createSyncTables(): void {
   database.exec(`CREATE INDEX IF NOT EXISTS idx_sync_sales_shop ON sync_sales(shop_id)`)
   database.exec(`CREATE INDEX IF NOT EXISTS idx_sync_sales_status ON sync_sales(status)`)
 
+  // Phase 18: Partner platform sync tables.
+  // commissionLedger events from cloud — idempotent on idempotency_key.
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS sync_partner_commissions (
+      id              TEXT PRIMARY KEY,
+      salesperson_id   TEXT NOT NULL,
+      influencer_id   TEXT,
+      business_id     TEXT NOT NULL,
+      subscription_id TEXT NOT NULL,
+      amount          REAL NOT NULL DEFAULT 0,
+      role            TEXT NOT NULL DEFAULT 'salesperson',
+      created_at      TEXT NOT NULL,
+      idempotency_key TEXT NOT NULL UNIQUE,
+      synced_at       TEXT NOT NULL
+    )
+  `)
+  database.exec(`CREATE INDEX IF NOT EXISTS idx_partner_commissions_salesperson ON sync_partner_commissions(salesperson_id)`)
+  database.exec(`CREATE INDEX IF NOT EXISTS idx_partner_commissions_idemokey ON sync_partner_commissions(idempotency_key)`)
+
+  // Phase 18: salespersonProfile events from cloud.
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS sync_partner_profiles (
+      id               TEXT PRIMARY KEY,
+      user_id          TEXT NOT NULL,
+      enrolled_count   INTEGER NOT NULL DEFAULT 0,
+      active_count     INTEGER NOT NULL DEFAULT 0,
+      total_earnings   REAL NOT NULL DEFAULT 0,
+      recent_earnings  REAL NOT NULL DEFAULT 0,
+      status           TEXT NOT NULL DEFAULT 'active',
+      synced_at        TEXT NOT NULL
+    )
+  `)
+  database.exec(`CREATE INDEX IF NOT EXISTS idx_partner_profiles_user ON sync_partner_profiles(user_id)`)
+
   database.exec(`CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode)`)
   database.exec(`CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id)`)
   database.exec(`CREATE INDEX IF NOT EXISTS idx_products_active ON products(is_active)`)

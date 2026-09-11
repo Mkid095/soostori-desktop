@@ -18,6 +18,7 @@ import { useDashboardSummary } from '../../hooks/useReports'
 import { useRecentSales } from '../../hooks/useSales'
 import { formatCurrency } from '../../lib/formatting-currency'
 import { useTranslation } from '../../lib/useTranslation'
+import { PartnerWidget } from './PartnerWidget'
 
 // ── Stat card ────────────────────────────────────────────────────────────────
 
@@ -261,6 +262,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToReport }) => 
           </div>
         )}
       </Section>
+
+      {/* ── Partner Earnings (Phase 18 commission.view_own) ────────────── */}
+      <PartnerWidget />
 
       {/* ── Reconciliation note ─────────────────────────────────── */}
       <div className="mt-auto rounded-xl border border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-4 py-2">

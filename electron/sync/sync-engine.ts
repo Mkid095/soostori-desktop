@@ -736,6 +736,119 @@ export class RealSyncEngine {
       return { state: 'applied', entityVersion: p.version ?? event.entityVersion }
     }
 
+    // ── commissionLedger ──────────────────────────────────────────────────
+    // Phase 18: commission.created events from cloud.
+    // Idempotent on idempotencyKey — duplicate replays cannot create duplicate earnings.
+    if (event.entityKind === 'commissionLedger') {
+      const cl = event.payload as {
+        id?: string
+        salespersonId?: string
+        influencerId?: string | null
+        businessId?: string
+        subscriptionId?: string
+        amount?: number
+        role?: 'salesperson' | 'influencer'
+        createdAt?: string
+        idempotencyKey?: string
+      }
+      const ledgerId = cl.id ?? event.entityId
+      if (!ledgerId) {
+        this.processedKeys.add(event.idempotencyKey)
+        this.persistProcessedKey(event.idempotencyKey, event.id, event.originatingDeviceId as string)
+        return { state: 'no_op' }
+      }
+
+      // Idempotency: skip if already recorded (unique idempotency key prevents duplicates)
+      const existing = db.prepare(
+        'SELECT id FROM sync_partner_commissions WHERE idempotency_key = ?'
+      ).get(event.idempotencyKey)
+      if (existing) {
+        this.processedKeys.add(event.idempotencyKey)
+        return { state: 'no_op' }
+      }
+
+      db.prepare(`
+        INSERT OR IGNORE INTO sync_partner_commissions
+          (id, salesperson_id, influencer_id, business_id, subscription_id,
+           amount, role, created_at, idempotency_key, synced_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        ledgerId,
+        cl.salespersonId ?? '',
+        cl.influencerId ?? null,
+        cl.businessId ?? event.businessId,
+        cl.subscriptionId ?? '',
+        cl.amount ?? 0,
+        cl.role ?? 'salesperson',
+        cl.createdAt ?? new Date().toISOString(),
+        event.idempotencyKey,
+        new Date().toISOString(),
+      )
+      this.processedKeys.add(event.idempotencyKey)
+      this.persistProcessedKey(event.idempotencyKey, event.id, event.originatingDeviceId as string)
+      return { state: 'applied' }
+    }
+
+    // ── salespersonProfile ─────────────────────────────────────────────────
+    // Phase 18: salesperson profile updates from cloud (enrolled businesses count etc.)
+    if (event.entityKind === 'salespersonProfile') {
+      const sp = event.payload as {
+        id?: string
+        userId?: string
+        enrolledCount?: number
+        activeCount?: number
+        totalEarnings?: number
+        recentEarnings?: number
+        status?: string
+        idempotencyKey?: string
+      }
+      const profileId = sp.id ?? event.entityId
+      if (!profileId) {
+        this.processedKeys.add(event.idempotencyKey)
+        this.persistProcessedKey(event.idempotencyKey, event.id, event.originatingDeviceId as string)
+        return { state: 'no_op' }
+      }
+
+      // Upsert — update if exists, insert if not
+      const existing = db.prepare(
+        'SELECT id FROM sync_partner_profiles WHERE id = ?'
+      ).get(profileId)
+      if (existing) {
+        const updates: string[] = []
+        const vals: unknown[] = []
+        if (sp.enrolledCount !== undefined) { updates.push('enrolled_count = ?'); vals.push(sp.enrolledCount) }
+        if (sp.activeCount !== undefined) { updates.push('active_count = ?'); vals.push(sp.activeCount) }
+        if (sp.totalEarnings !== undefined) { updates.push('total_earnings = ?'); vals.push(sp.totalEarnings) }
+        if (sp.recentEarnings !== undefined) { updates.push('recent_earnings = ?'); vals.push(sp.recentEarnings) }
+        if (sp.status !== undefined) { updates.push('status = ?'); vals.push(sp.status) }
+        updates.push('synced_at = ?')
+        vals.push(new Date().toISOString())
+        vals.push(profileId)
+        if (updates.length > 1) { // at least synced_at + one field
+          db.prepare(`UPDATE sync_partner_profiles SET ${updates.join(', ')} WHERE id = ?`).run(...vals)
+        }
+      } else {
+        db.prepare(`
+          INSERT OR IGNORE INTO sync_partner_profiles
+            (id, user_id, enrolled_count, active_count, total_earnings,
+             recent_earnings, status, synced_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          profileId,
+          sp.userId ?? '',
+          sp.enrolledCount ?? 0,
+          sp.activeCount ?? 0,
+          sp.totalEarnings ?? 0,
+          sp.recentEarnings ?? 0,
+          sp.status ?? 'active',
+          new Date().toISOString(),
+        )
+      }
+      this.processedKeys.add(event.idempotencyKey)
+      this.persistProcessedKey(event.idempotencyKey, event.id, event.originatingDeviceId as string)
+      return { state: 'applied' }
+    }
+
     this.processedKeys.add(event.idempotencyKey)
     return { state: 'no_op' }
   }

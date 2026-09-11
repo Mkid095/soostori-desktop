@@ -7,6 +7,7 @@ import { ipcMain } from 'electron'
 import * as cloudSync from '../services/cloud-sync'
 import { pullProducts, pullCategories, pullCustomers } from '../services/cloud-entity-sync'
 import { pullCommissions } from '../services/cloud-entity-commission'
+import { emitConversionQualified } from '../sync/partner-event-emitter'
 import { dispatchCloudStatus } from './cloud-status-dispatch'
 import log from 'electron-log'
 
@@ -139,6 +140,18 @@ export function registerCloudDataHandlers(): void {
     dispatchCloudStatus('syncing')
     try {
       const packages = await pullCommissions(salespersonProfileId)
+      // Phase 18: emit conversion.qualified for each active enrolled business
+      for (const pkg of packages) {
+        if (pkg.isActive) {
+          await emitConversionQualified({
+            businessId: pkg.businessId,
+            businessName: pkg.businessName,
+            salespersonId: salespersonProfileId,
+            packageId: pkg.id,
+            packageAmount: pkg.amount,
+          })
+        }
+      }
       dispatchCloudStatus('online')
       return { success: true, packages }
     } catch (err) {
