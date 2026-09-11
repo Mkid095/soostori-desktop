@@ -19,6 +19,7 @@ import { getRealSyncEngine } from './sync/sync-engine'
 import { startSyncTimerWorker } from './services/sync-timer-worker'
 import { createTray, updateTrayBadgeCount } from './tray-manager'
 import { desktopLoadSession } from './auth/electron-store-session'
+import { startCallbackServer } from './services/callback-server'
 import { CloudClient } from '@soostori/cloud'
 
 log.transports.file.level = 'info'
@@ -62,6 +63,7 @@ app.whenReady().then(async () => {
     setMainWindow(win)
     setupAutoUpdater(win)
     createTray()
+    startCallbackServer()
     // Poll unread count for tray badge
     const pollUnread = () => {
       try {

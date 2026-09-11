@@ -139,4 +139,9 @@ export interface DbIpc {
   getNotificationPreferences: () => Promise<NotificationPrefRecord[]>
   setNotificationPreference: (data: { eventType: string; channel: string; enabled: boolean }) => Promise<{ ok: boolean }>
   getUnreadNotificationCount: () => Promise<number>
+  // M-Pesa STK Push
+  mpesaStkPush: (phone: string, amount: number, accountRef: string) =>
+    Promise<{ success: boolean; id?: string; checkoutRequestId?: string; error?: string }>
+  mpesaPollSTK: (id: string, checkoutRequestId: string) =>
+    Promise<{ success: boolean; status?: 'pending' | 'completed' | 'failed' | 'timeout'; error?: string }>
 }

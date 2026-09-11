@@ -6,7 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Refactored
+
+- **Phase 18 ANPAS compliance — file splits**: Split two over-sized files to meet the 150-line limit.
+  - `electron/services/mpesa-stk-push.ts` (200→143 lines): extracted all TypeScript interfaces/types to new `electron/services/mpesa-stk-types.ts` (22 lines); `initiateSTKPush()` and `pollSTKStatus()` remain in the service file; `onSTKCallback` moved to `callback-server.ts` where it is called directly.
+  - `src/pages/pos/components/MpesaPaymentView.tsx` (278→150 lines): extracted `MpesaPaymentForm.tsx` (98 lines, phone input + amount display + Send button), `MpesaSTKPoller.tsx` (137 lines, polling state machine idle→polling→completed/failed/timeout); `MpesaPaymentView.tsx` is now the dialog shell that composes both.
+
 ### Fixed
+
+- **Heartbeat service structural fix** (`electron/services/heartbeat-service.ts`): The `try` block containing `reportHeartbeat()` was incorrectly nested inside the `if (isCloudOnline())` call — causing `await` to be evaluated as a bare expression, breaking the tick function's catch block and causing a stray `}`. Restructured to proper `if { await ... }` block inside the `try`. Also fixed subscription check `verifySubscription()` to be inside the `try` block so errors are caught.
 
 - **Phase 17 — notification tsc fixes and line cap compliance** (`electron/ipc-handlers/notification-queries.ts`, `notification-handlers.ts`, `electron/services/desktop-notification-popup.ts`, `desktop-notifications.ts`, `src/components/notifications/NotificationItem.tsx`, `src/pages/notifications/notifications-filter-bar.tsx`): `getUserId()` and `resolveShopId()` are now `async` with `await` on `desktopLoadSession()` / `resolveActiveShopId()`. `NotificationItem.tsx` line 94 uses `String(message ?? label ?? '')` to guard `string|undefined`. `notification-handlers.ts` (171→111 lines) split into `notification-queries.ts` (query helpers) and `notification-handlers.ts` (IPC registration). `NotificationsPage.tsx` (167→136 lines) filter bar extracted to `notifications-filter-bar.tsx`. `desktop-notifications.ts` (160→59 lines) `showDesktopNotification()` extracted to `desktop-notification-popup.ts`. All files under 150-line ANPAS limit.
 
@@ -17,6 +25,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - **Phase 16.1 conflict visibility** (`electron/services/sync-timer-worker.ts`): `version_older` results from `apply()` are now recorded to `sync_conflicts` table with reason `STALE_VERSION`, making cloud-side newer-version events visible to managers.
 
 ### Added
+
+- **Phase 18 M-Pesa STK Push** (`electron/services/mpesa-stk-push.ts`, `electron/services/callback-server.ts`, `electron/ipc-handlers/mpesa-handlers.ts`, `electron/database/schema-sync.ts`, `electron/main.ts`, `src/pages/pos/components/MpesaPaymentView.tsx`): PayHero STK Push integration — `initiateSTKPush()`, `pollSTKStatus()`, `onSTKCallback()` in `mpesa-stk-push.ts`; Node.js HTTP callback server on port 18793 (`callback-server.ts`) for PayHero webhooks; `stk_push_state` SQLite table added to `schema-sync.ts`; IPC handlers in `mpesa-handlers.ts` wired to `db:mpesa:stkPush` / `db:mpesa:pollSTK` / `db:mpesa:onCallback`; `startCallbackServer()` called in `main.ts` startup; `MpesaPaymentView.tsx` rewritten with STK flow (phone input → "Send Payment Request" button → spinner polling every 3s up to 20 attempts → auto-confirm on `'completed'` / manual fallback on `'failed'`/`'timeout'`).
+
+- **Phase 18 Cloud Audit Trail** (`electron/services/audit-logger.ts`, `electron/ipc-handlers/sale-create-handler.ts`, `electron/ipc-handlers/debt-handlers.ts`, `electron/ipc-handlers/expense-handlers.ts`, `electron/ipc-handlers/product-handlers-mutation.ts`, `electron/ipc-handlers/stock-handlers.ts`, `electron/ipc-handlers/settings-handlers.ts`, `electron/sync/sync-engine.ts`): SQLite-backed `audit_logs` table wired to all mutation handlers — `audit.saleCreated()`, `audit.productCreated()`, `audit.productUpdated()`, `audit.productArchived()`, `audit.debtCreated()`, `audit.debtPaymentRecorded()`, `audit.debtSettled()`, `audit.expenseCreated()`, `audit.stockAdjusted()`, `audit.shopSettingsUpdated()`. `audit_log` entity kind added to `RealSyncEngine.apply()` so cloud-sourced audit events replay to the desktop `audit_logs` table.
+
+- **Phase 18 Subscription Enforcement Parity** (`electron/services/subscription-enforcer.ts`, `electron/ipc-handlers/sale-create-handler.ts`, `electron/ipc-handlers/debt-handlers.ts`, `electron/ipc-handlers/expense-handlers.ts`): `enforceSubscriptionOrThrow()` added — throws descriptive error if subscription expired, grace period active, or subscription invalid. Wired to `db:sales:create`, `db:debts:create`, `db:expenses:create` as the first check after auth.
+
+- **Phase 18 Commission Sync from Cloud** (`electron/ipc-handlers/cloud-data-handlers.ts`, `electron/sync/sync-engine.ts`, `electron/database/schema-sync.ts`): `cloud:pullCommissions` IPC handler calls `pullCommissions(salespersonProfileId)` and emits `conversion.qualified` events for each active enrolled business. `commissionLedger` and `salespersonProfile` entity kinds already exist in `RealSyncEngine.apply()` for replaying cloud commission events to local SQLite (`sync_partner_commissions` / `sync_partner_profiles` tables). `useCommissions.ts` hook already exists for renderer-side cloud pull.
 
 - **Phase 17 Notifications**: Full notifications layer per the Phase 17 brief:
   - `electron/database/schema-notifications.ts`: SQLite `notifications` table (id, business_id, user_id, event_type, payload JSON, priority, created_at, read_at) and `notification_preferences` table (user_id, event_type, channel, enabled). Wired into `createTables()`.

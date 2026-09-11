@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid'
 import log from 'electron-log'
 import { productCreateSchema } from './validation'
 import { resolveShopIdSync } from '../database/active-shop'
+import { audit } from '../services/audit-logger'
 
 interface CsvProductRow {
   name: string
@@ -59,6 +60,7 @@ export function registerProductMutationHandlers(): void {
     })
 
     insertMany()
+    audit.productCreated(`bulk:${createdCount}`, shopId, 'system', { count: createdCount })
     log.info(`Bulk created ${createdCount} products via CSV import (shop_id=${shopId})`)
     return { createdCount }
   })

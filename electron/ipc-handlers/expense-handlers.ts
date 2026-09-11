@@ -20,6 +20,8 @@ import { can, CAPABILITIES } from '@soostori/auth'
 import type { Member } from '@soostori/auth'
 import type { DeviceId, EmployeeRole } from '@soostori/core'
 import { desktopLoadSession } from '../auth/electron-store-session'
+import { audit } from '../services/audit-logger'
+import { enforceSubscriptionOrThrow } from '../services/subscription-enforcer'
 import type { Expense } from '@soostori/contracts'
 
 function getCallerMember(session: { employeeId: string }): Member {
@@ -76,6 +78,7 @@ export function registerExpenseHandlers(): void {
     if (!can(getCallerMember(session), CAPABILITIES.EXPENSES_CREATE)) {
       throw new Error('Insufficient permissions: expenses.create required')
     }
+    enforceSubscriptionOrThrow()
     const data = expenseInputSchema.parse(rawData)
     const db = getDatabase()
     const id = uuidv4()
@@ -88,6 +91,10 @@ export function registerExpenseHandlers(): void {
     pushExpense(id).catch(() => {})
     const created = db.prepare('SELECT * FROM expenses WHERE id = ? AND shop_id = ?').get(id, shopId) as ExpenseRow
     enqueueExpenseEvent('create', id).catch(() => {})
+    audit.expenseCreated(id, shopId, session.employeeId, {
+      amount: data.amount,
+      category: data.category,
+    })
     log.info(`expenses:create ${created.id}`)
     return created
   })
@@ -116,6 +123,7 @@ export function registerExpenseHandlers(): void {
     db.prepare("UPDATE expenses SET status = 'approved' WHERE id = ? AND shop_id = ?").run(id, shopId)
     const updated = db.prepare('SELECT * FROM expenses WHERE id = ? AND shop_id = ?').get(id, shopId) as ExpenseRow
     enqueueExpenseEvent('update', id).catch(() => {})
+    audit.expenseCreated(id, shopId, session.employeeId, { ...existing, _action: 'approved' })
     log.info(`expenses:approve ${id}`)
     return updated
   })

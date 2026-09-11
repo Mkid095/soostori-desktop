@@ -6,9 +6,12 @@ import { saleCreateSchema } from './validation'
 import { syncService } from '../sync/sync-service'
 import { pushSale } from '../services/cloud-entity-sync'
 import { applySaleStockDeduction, type SaleStockDelta } from './sale-stock-helpers'
+import { audit } from '../services/audit-logger'
+import { enforceSubscriptionOrThrow } from '../services/subscription-enforcer'
 
 export function registerSaleCreateHandler(): void {
   ipcMain.handle('db:sales:create', (_event, rawSaleData: unknown) => {
+    enforceSubscriptionOrThrow()
     const saleData = saleCreateSchema.parse(rawSaleData)
     const shopId = saleData.shopId || 'default'
     const userId = saleData.userId || 'system'
@@ -93,13 +96,11 @@ export function registerSaleCreateHandler(): void {
 
     log.info(`Sale created: ${saleId}, total: ${saleData.totalAmount}, payment: ${dbPaymentMethod}`)
 
-    // Audit log
-    const auditPayload = JSON.stringify({ saleId, total: saleData.totalAmount, payment: dbPaymentMethod, itemsCount })
-    try {
-      database.prepare(`INSERT INTO audit_logs (id, shop_id, user_id, device_id, action, entity_type, entity_id, payload, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-        .run(uuidv4(), shopId, userId, deviceId, 'sale_created', 'sale', saleId, auditPayload, now)
-    } catch { log.warn('Failed to write sale audit log') }
+    audit.saleCreated(saleId, shopId, userId, {
+      total: saleData.totalAmount,
+      payment: dbPaymentMethod,
+      itemsCount,
+    })
 
     pushSale(saleId).catch(() => {})
     return database.prepare('SELECT * FROM sales WHERE id = ?').get(saleId)

@@ -34,6 +34,8 @@ import {
 } from '@soostori/core'
 import type { SyncEvent } from '@soostori/contracts'
 import { fromLocalDebt, fromLocalDebtPayment, type DebtRow, type DebtPaymentRow } from '../database/contracts-mapper-2'
+import { audit } from '../services/audit-logger'
+import { enforceSubscriptionOrThrow } from '../services/subscription-enforcer'
 
 // ── Member builder ─────────────────────────────────────────────────────────────
 
@@ -187,6 +189,7 @@ export function registerDebtHandlers(): void {
     if (!can(getMember(session.employeeId), CAPABILITIES.DEBTS_CREATE)) {
       throw new Error('Insufficient permissions')
     }
+    enforceSubscriptionOrThrow()
 
     const data = debtCreateSchema.parse(rawData)
     const shopId = await resolveActiveShopId()
@@ -226,6 +229,11 @@ export function registerDebtHandlers(): void {
     }
 
     log.info(`Debt created: ${debtId}, amount=${data.amount}, customer=${data.customerId}`)
+
+    audit.debtCreated(debtId, shopId, session.employeeId, {
+      amount: data.amount,
+      customerId: data.customerId ?? null,
+    })
     return {
       ...debt,
       amount_paid: 0,
@@ -311,6 +319,16 @@ export function registerDebtHandlers(): void {
     }
 
     log.info(`Debt payment recorded: debt=${debtId}, payment=${paymentId}, amount=${validated.amount}, outstanding=${balance}`)
+
+    audit.debtPaymentRecorded(debtId, shopId, session.employeeId, {
+      paymentId,
+      amount: validated.amount,
+      method: validated.paymentMethod,
+    })
+
+    if (newStatus === 'paid') {
+      audit.debtSettled(debtId, shopId, session.employeeId)
+    }
     return {
       debtId,
       amountPaid,

@@ -736,6 +736,58 @@ export class RealSyncEngine {
       return { state: 'applied', entityVersion: p.version ?? event.entityVersion }
     }
 
+    // ── audit_log ─────────────────────────────────────────────────────────
+    // Phase 18: audit events from cloud (Mobile/Web writes, Desktop replays).
+    // Feeds the audit_logs table from cloud-sourced events.
+    if ((event.entityKind as string) === 'audit_log') {
+      const al = event.payload as {
+        id?: string
+        action?: string
+        entity_type?: string | null
+        entity_id?: string | null
+        user_id?: string | null
+        device_id?: string | null
+        shop_id?: string | null
+        payload?: string | null
+        created_at?: string
+      }
+      const auditId = al.id ?? event.entityId
+      if (!auditId) {
+        this.processedKeys.add(event.idempotencyKey)
+        this.persistProcessedKey(event.idempotencyKey, event.id, event.originatingDeviceId as string)
+        return { state: 'no_op' }
+      }
+
+      // Idempotent on idempotencyKey
+      const existing = db.prepare(
+        'SELECT id FROM audit_logs WHERE idempotency_key = ?'
+      ).get(event.idempotencyKey)
+      if (existing) {
+        this.processedKeys.add(event.idempotencyKey)
+        return { state: 'no_op' }
+      }
+
+      db.prepare(`
+        INSERT OR IGNORE INTO audit_logs
+          (id, shop_id, user_id, device_id, action, entity_type, entity_id, payload, created_at, idempotency_key)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        auditId,
+        al.shop_id ?? event.businessId,
+        al.user_id ?? null,
+        al.device_id ?? null,
+        al.action ?? 'cloud_event',
+        al.entity_type ?? null,
+        al.entity_id ?? null,
+        al.payload ?? null,
+        al.created_at ?? new Date().toISOString(),
+        event.idempotencyKey,
+      )
+      this.processedKeys.add(event.idempotencyKey)
+      this.persistProcessedKey(event.idempotencyKey, event.id, event.originatingDeviceId as string)
+      return { state: 'applied' }
+    }
+
     // ── commissionLedger ──────────────────────────────────────────────────
     // Phase 18: commission.created events from cloud.
     // Idempotent on idempotencyKey — duplicate replays cannot create duplicate earnings.

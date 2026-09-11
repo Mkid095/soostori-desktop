@@ -173,6 +173,21 @@ export function createSyncTables(): void {
   `)
   database.exec(`CREATE INDEX IF NOT EXISTS idx_partner_profiles_user ON sync_partner_profiles(user_id)`)
 
+  // Phase 18: M-Pesa STK Push state — tracks pending/completed/failed/timeout pushes
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS stk_push_state (
+      id                   TEXT PRIMARY KEY,
+      checkout_request_id   TEXT NOT NULL,
+      phone                TEXT NOT NULL,
+      amount               REAL NOT NULL,
+      status               TEXT NOT NULL DEFAULT 'pending',
+      created_at          TEXT NOT NULL,
+      completed_at        TEXT
+    )
+  `)
+  database.exec(`CREATE INDEX IF NOT EXISTS idx_stk_state_checkout ON stk_push_state(checkout_request_id)`)
+  database.exec(`CREATE INDEX IF NOT EXISTS idx_stk_state_status ON stk_push_state(status)`)
+
   database.exec(`CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode)`)
   database.exec(`CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id)`)
   database.exec(`CREATE INDEX IF NOT EXISTS idx_products_active ON products(is_active)`)

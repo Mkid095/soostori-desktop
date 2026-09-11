@@ -144,3 +144,29 @@ export function markSubscriptionSuccess(): void {
   const store = getSyncStore()
   store.set('subscriptionLastSuccess', new Date().toISOString())
 }
+
+/**
+ * Throws a descriptive Error if the current subscription state is not valid.
+ * Call this before any monetizable operation (sale, refund, etc.).
+ */
+export function enforceSubscriptionOrThrow(): void {
+  const state = _state
+  if (!state) return // Not yet initialized — allow through, initial check will catch it
+
+  if (state.valid) return
+
+  if (state.isExpired) {
+    const msg = state.expiresAt
+      ? `Subscription expired on ${new Date(state.expiresAt).toLocaleDateString()}. Please renew to continue.`
+      : 'Subscription has expired. Please renew to continue.'
+    throw new Error(msg)
+  }
+
+  if (state.isInGracePeriod) {
+    const msg = `Subscription grace period active. ${state.graceDaysRemaining} day${state.graceDaysRemaining === 1 ? '' : 's'} remaining to renew.`
+    throw new Error(msg)
+  }
+
+  // Fallback: blocked for unspecified reason
+  throw new Error('Subscription is not active. Please check your subscription status.')
+}

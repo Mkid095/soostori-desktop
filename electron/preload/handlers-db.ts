@@ -136,4 +136,9 @@ export const dbHandlers: DbIpc = {
   setNotificationPreference: (data: { eventType: string; channel: string; enabled: boolean }) =>
     ipcRenderer.invoke('notificationPreferences:set', data),
   getUnreadNotificationCount: () => ipcRenderer.invoke('notifications:unreadCount'),
+  // M-Pesa STK Push
+  mpesaStkPush: (phone: string, amount: number, accountRef: string) =>
+    ipcRenderer.invoke('mpesa:stkPush', phone, amount, accountRef),
+  mpesaPollSTK: (id: string, checkoutRequestId: string) =>
+    ipcRenderer.invoke('mpesa:pollSTK', id, checkoutRequestId),
 }

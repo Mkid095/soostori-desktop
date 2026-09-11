@@ -3,6 +3,8 @@ import { getDatabase } from '../database'
 import log from 'electron-log'
 import { shopSettingsSchema } from './validation'
 import { hashPin, verifyPin } from '@soostori/auth/pin-node'
+import { desktopLoadSession } from '../auth/electron-store-session'
+import { audit } from '../services/audit-logger'
 
 export function registerSettingsHandlers(): void {
   ipcMain.handle('db:shop-settings:get', () => {
@@ -10,10 +12,12 @@ export function registerSettingsHandlers(): void {
     return db.prepare('SELECT * FROM shop_settings WHERE id = ?').get('default')
   })
 
-  ipcMain.handle('db:shop-settings:update', (_event, rawSettings: unknown) => {
+  ipcMain.handle('db:shop-settings:update', async (_event, rawSettings: unknown) => {
+    const session = await desktopLoadSession()
     const settings = shopSettingsSchema.parse(rawSettings)
     const db = getDatabase()
     const now = new Date().toISOString()
+    const employeeId = session?.employeeId ?? 'unknown'
 
     const fields: string[] = []
     const values: (string | number | null)[] = []
@@ -38,6 +42,7 @@ export function registerSettingsHandlers(): void {
     values.push('default')
 
     db.prepare(`UPDATE shop_settings SET ${fields.join(', ')} WHERE id = ?`).run(...values)
+    audit.shopSettingsUpdated('default', employeeId, { updatedFields: fields })
     return db.prepare('SELECT * FROM shop_settings WHERE id = ?').get('default')
   })
 

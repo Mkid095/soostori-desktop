@@ -6,7 +6,7 @@
 import { getDatabase } from '../database'
 import { getSyncStore } from './store'
 import { reportHeartbeat, verifySubscription } from './cloud-service'
-import { isCloudReachable } from './cloud-sync-service'
+import { isCloudOnline } from './cloud-sync-service'
 import log from 'electron-log'
 
 let _timer: ReturnType<typeof setInterval> | null = null
@@ -34,8 +34,7 @@ async function tick(): Promise<void> {
   const device = db.prepare('SELECT last_sale_at FROM devices WHERE id = ?').get(info.deviceId) as { last_sale_at: string | null } | undefined
 
   try {
-    const reachable = await isCloudReachable()
-    if (reachable) {
+    if (isCloudOnline()) {
       await reportHeartbeat({
         deviceId: info.deviceId,
         shopId: info.shopId,

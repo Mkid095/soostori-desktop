@@ -23,6 +23,7 @@ import { registerHardwareHandlers } from './hardware-handlers'
 import { registerAppHandlers } from './app-handlers'
 import { registerBusinessSetupHandlers } from './business-setup-handlers'
 import { registerNotificationHandlers } from './notification-handlers'
+import { registerMpesaHandlers } from './mpesa-handlers'
 
 export function registerAllIpcHandlers(): void {
   registerProductHandlers()
@@ -54,4 +55,5 @@ export function registerAllIpcHandlers(): void {
   registerReportHandlers()
   registerTeamHandlers()
   registerNotificationHandlers()
+  registerMpesaHandlers()
 }

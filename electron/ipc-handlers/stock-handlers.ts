@@ -41,6 +41,7 @@ import {
   type StockSyncEventContext,
 } from '../database/sync-event-builder'
 import { asBusinessId, asDeviceId, asEmployeeId } from '@soostori/core'
+import { audit } from '../services/audit-logger'
 
 function getCallerMember(session: { employeeId: string }): Member {
   const db = getDatabase()
@@ -112,6 +113,13 @@ export function registerStockHandlers(): void {
     }
 
     dispatchLowStockAlert(validated.productId)
+
+    audit.stockAdjusted(validated.productId, shopId, session.employeeId, {
+      previousQuantity: result.previousQuantity,
+      newQuantity: result.newQuantity,
+      change: result.quantityChange,
+      reason: validated.reason,
+    })
 
     return {
       productId: validated.productId,
