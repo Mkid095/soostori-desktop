@@ -85,6 +85,33 @@ export function exposeElectronAPI(): void {
       ipcRenderer.on('notification:rendered', handler)
       return () => ipcRenderer.removeListener('notification:rendered', handler)
     },
+    // Tray → renderer: user clicked an OS notification
+    onNotificationClicked: (callback: (data: { id: string; eventType: string; data?: Record<string, unknown> }) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, data: { id: string; eventType: string; data?: Record<string, unknown> }) => {
+        window.dispatchEvent(new CustomEvent('soostori:notification-clicked', { detail: data }))
+        callback(data)
+      }
+      ipcRenderer.on('notification:clicked', handler)
+      return () => ipcRenderer.removeListener('notification:clicked', handler)
+    },
+    // Tray → renderer: open notifications panel
+    onOpenNotifications: (callback: () => void) => {
+      const handler = () => {
+        window.dispatchEvent(new CustomEvent('soostori:open-notifications'))
+        callback()
+      }
+      ipcRenderer.on('notification:openNotifications', handler)
+      return () => ipcRenderer.removeListener('notification:openNotifications', handler)
+    },
+    // Tray → renderer: mark all read
+    onMarkAllNotificationsRead: (callback: () => void) => {
+      const handler = () => {
+        window.dispatchEvent(new CustomEvent('soostori:mark-all-notifications-read'))
+        callback()
+      }
+      ipcRenderer.on('notification:markAllRead', handler)
+      return () => ipcRenderer.removeListener('notification:markAllRead', handler)
+    },
     cloudAuthSdk: null,
   } as ElectronAPI)
 }

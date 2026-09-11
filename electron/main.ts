@@ -17,6 +17,8 @@ import { createMainWindow, getMainWindow } from './app-window'
 import { setupAppLifecycle } from './app-lifecycle'
 import { getRealSyncEngine } from './sync/sync-engine'
 import { startSyncTimerWorker } from './services/sync-timer-worker'
+import { createTray, updateTrayBadgeCount } from './tray-manager'
+import { desktopLoadSession } from './auth/electron-store-session'
 import { CloudClient } from '@soostori/cloud'
 
 log.transports.file.level = 'info'
@@ -59,6 +61,21 @@ app.whenReady().then(async () => {
     const win = createMainWindow()
     setMainWindow(win)
     setupAutoUpdater(win)
+    createTray()
+    // Poll unread count for tray badge
+    const pollUnread = () => {
+      try {
+        const db = getDatabase()
+        const session = desktopLoadSession?.() ?? {}
+        const uid = session.employeeId ?? getEmployeeId?.() ?? 'system'
+        const row = db.prepare(
+          `SELECT COUNT(*) as n FROM notifications WHERE user_id = ? AND read_at IS NULL`
+        ).get(uid) as { n: number } | undefined
+        updateTrayBadgeCount(row?.n ?? 0)
+      } catch {}
+    }
+    pollUnread()
+    setInterval(pollUnread, 30_000)
 
     configureSyncTaskService(orchDeviceId)
     startSyncTaskService()

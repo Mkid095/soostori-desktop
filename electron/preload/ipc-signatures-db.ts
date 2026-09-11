@@ -5,6 +5,27 @@ import type {
   ExpenseRow, ExpenseInput
 } from './types'
 
+export type NotificationPriority = 'low' | 'normal' | 'high' | 'urgent'
+
+export interface NotificationRecord {
+  id: string
+  business_id: string
+  user_id: string
+  event_type: string
+  payload: Record<string, unknown>
+  priority: NotificationPriority
+  created_at: string
+  read_at: string | null
+}
+
+export interface NotificationPrefRecord {
+  id: string
+  user_id: string
+  event_type: string
+  channel: string
+  enabled: boolean
+}
+
 export interface DbIpc {
   // Products
   getProducts: (shopId?: string) => Promise<unknown[]>
@@ -108,4 +129,14 @@ export interface DbIpc {
   syncStop: () => Promise<void>
   syncGetMode: () => Promise<'host' | 'client' | 'offline'>
   syncGetAuthorityStatus: () => Promise<{ status: 'online' | 'stale' | 'lost' | 'unknown' }>
+  // Notifications
+  listNotifications: (opts?: { limit?: number; offset?: number; eventType?: string; unreadOnly?: boolean }) =>
+    Promise<{ items: NotificationRecord[]; total: number; hasMore: boolean }>
+  markNotificationRead: (id: string) => Promise<{ ok: boolean }>
+  markAllNotificationsRead: () => Promise<{ ok: boolean }>
+  createNotification: (data: { eventType: string; payload?: Record<string, unknown>; priority?: string; userId?: string }) =>
+    Promise<{ id: string }>
+  getNotificationPreferences: () => Promise<NotificationPrefRecord[]>
+  setNotificationPreference: (data: { eventType: string; channel: string; enabled: boolean }) => Promise<{ ok: boolean }>
+  getUnreadNotificationCount: () => Promise<number>
 }

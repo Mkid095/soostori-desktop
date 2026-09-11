@@ -1,63 +1,145 @@
-import React from 'react'
-import { Bell, Check, CircleAlert, CloudOff, Download, Info, Trash2, Wifi, X } from 'lucide-react'
-import { useNotifications, type NotificationKind } from '../../hooks/useNotifications'
+/**
+ * NotificationsPage.tsx — Phase 17 SQLite-backed notifications page.
+ *
+ * Uses IPC (notifications:list / notifications:markRead / notifications:markAllRead)
+ * instead of localStorage. Shows all notification types with event-type icons,
+ * unread badge, mark-read, filter by type, and unread count.
+ */
+
+import React, { useCallback, useEffect, useState } from 'react'
+import { Bell, Check, Trash2, Filter, CircleAlert } from 'lucide-react'
 import { useTranslation } from '../../lib/useTranslation'
+import NotificationItem from '../../components/notifications/NotificationItem'
+import type { NotificationRecord } from '../../../electron/preload/ipc-signatures-db'
 
-const iconFor = (kind: NotificationKind) => {
-  if (kind === 'offline') return <CloudOff size={16} className="text-amber-500 shrink-0" />
-  if (kind === 'online') return <Wifi size={16} className="text-emerald-500 shrink-0" />
-  if (kind === 'update_available') return <Download size={16} className="text-blue-500 shrink-0" />
-  if (kind === 'low_stock') return <CircleAlert size={16} className="text-red-500 shrink-0" />
-  return <Info size={16} className="text-slate-400 shrink-0" />
-}
-
-const labelFor = (kind: NotificationKind, t: (k: string) => string) => {
-  if (kind === 'offline') return t('not.offline')
-  if (kind === 'online') return t('not.online')
-  if (kind === 'update_available') return t('not.updateAvailable')
-  if (kind === 'low_stock') return t('not.lowStock')
-  if (kind === 'sync_complete') return t('not.syncComplete')
-  return t('not.notification')
-}
+const EVENT_TYPES = [
+  { value: '', label: 'All' },
+  { value: 'sale.created', label: 'Sales' },
+  { value: 'debt.payment_recorded', label: 'Debt' },
+  { value: 'inventory.low_stock', label: 'Stock' },
+  { value: 'team.member_added', label: 'Team' },
+  { value: 'commission.created', label: 'Commission' },
+  { value: 'expense.created', label: 'Expense' },
+]
 
 const NotificationsPage: React.FC = () => {
   const { t } = useTranslation()
-  const { notifications, dismiss, markAllRead, clearAll, unreadCount } = useNotifications()
+  const [notifications, setNotifications] = useState<NotificationRecord[]>([])
+  const [total, setTotal] = useState(0)
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [filter, setFilter] = useState('')
+  const [loading, setLoading] = useState(true)
 
-  const formatDate = (ts: number) => {
-    const d = new Date(ts)
-    return d.toLocaleDateString('en-KE', { day: 'numeric', month: 'short' }) + ' ' +
-      d.toLocaleTimeString('en-KE', { hour: 'numeric', minute: '2-digit' })
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await window.electronAPI.db.listNotifications({
+        limit: 100,
+        eventType: filter || undefined,
+      })
+      setNotifications(res.items)
+      setTotal(res.total)
+      const count = await window.electronAPI.db.getUnreadNotificationCount()
+      setUnreadCount(count)
+    } catch (err) {
+      console.error('Failed to load notifications', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [filter])
+
+  useEffect(() => { load() }, [load])
+
+  // Also reload when a sync event fires a notification
+  useEffect(() => {
+    const handler = () => { load() }
+    window.addEventListener('soostori:notification', handler)
+    return () => window.removeEventListener('soostori:notification', handler)
+  }, [load])
+
+  const handleMarkRead = async (id: string) => {
+    await window.electronAPI.db.markNotificationRead(id)
+    setNotifications(prev =>
+      prev.map(n => n.id === id ? { ...n, read_at: new Date().toISOString() } : n)
+    )
+    setUnreadCount(prev => Math.max(0, prev - 1))
+  }
+
+  const handleDismiss = async (id: string) => {
+    // Remove locally (no delete IPC — dismiss = mark read + archive)
+    const n = notifications.find(n => n.id === id)
+    if (n && !n.read_at) {
+      await window.electronAPI.db.markNotificationRead(id)
+      setUnreadCount(prev => Math.max(0, prev - 1))
+    }
+    setNotifications(prev => prev.filter(n => n.id !== id))
+  }
+
+  const handleMarkAllRead = async () => {
+    await window.electronAPI.db.markAllNotificationsRead()
+    setNotifications(prev => prev.map(n => ({ ...n, read_at: new Date().toISOString() })))
+    setUnreadCount(0)
   }
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-bg-primary">
+      {/* Header */}
       <header className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-bg-secondary px-4 py-3 dark:border-slate-700">
         <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-orange text-white">
+          <div className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-brand-orange text-white">
             <Bell size={14} />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-black text-white">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
           </div>
           <div>
             <h1 className="text-sm font-bold text-slate-800 dark:text-slate-100">{t('not.notifications')}</h1>
-            <p className="text-[10px] text-slate-400">{unreadCount > 0 ? `${unreadCount} unread` : t('not.allCaughtUp')}</p>
+            <p className="text-[10px] text-slate-400">
+              {unreadCount > 0 ? `${unreadCount} unread · ${total} total` : `${total} total`}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           {unreadCount > 0 && (
-            <button onClick={markAllRead} className="flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700">
+            <button
+              onClick={handleMarkAllRead}
+              className="flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+            >
               <Check size={12} />{t('not.markAllRead')}
-            </button>
-          )}
-          {notifications.length > 0 && (
-            <button onClick={clearAll} className="flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-100 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-950/60">
-              <Trash2 size={12} />{t('not.clearAll')}
             </button>
           )}
         </div>
       </header>
 
+      {/* Filter bar */}
+      <div className="flex shrink-0 items-center gap-2 border-b border-slate-100 bg-bg-secondary px-4 py-2 dark:border-slate-700">
+        <Filter size={12} className="text-slate-400 shrink-0" />
+        <div className="flex gap-1 overflow-x-auto">
+          {EVENT_TYPES.map(et => (
+            <button
+              key={et.value}
+              onClick={() => setFilter(et.value)}
+              className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold transition-colors ${
+                filter === et.value
+                  ? 'bg-brand-orange text-white'
+                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
+              }`}
+            >
+              {et.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* List */}
       <div className="flex-1 overflow-y-auto">
-        {notifications.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-24">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-brand-orange" />
+          </div>
+        ) : notifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
               <Bell size={28} className="text-slate-300 dark:text-slate-600" />
@@ -67,21 +149,13 @@ const NotificationsPage: React.FC = () => {
           </div>
         ) : (
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
-            {notifications.map((n) => (
-              <div key={n.id} className={`flex gap-3 px-4 py-4 ${n.read ? 'opacity-60' : ''}`}>
-                <div className="mt-0.5">{iconFor(n.kind)}</div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{n.message || labelFor(n.kind, t)}</p>
-                  <p className="mt-0.5 text-xs text-slate-400">{formatDate(n.timestamp)}</p>
-                </div>
-                <button
-                  onClick={() => dismiss(n.id)}
-                  aria-label={t('action.dismiss')}
-                  className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded text-slate-300 transition-colors hover:bg-slate-100 hover:text-slate-500 dark:hover:bg-slate-800"
-                >
-                  <X size={12} />
-                </button>
-              </div>
+            {notifications.map(n => (
+              <NotificationItem
+                key={n.id}
+                notification={n}
+                onMarkRead={handleMarkRead}
+                onDismiss={handleDismiss}
+              />
             ))}
           </div>
         )}

@@ -22,6 +22,7 @@ import { registerCloudAuthIpcHandlers } from './cloud-auth-ipc-handlers'
 import { registerHardwareHandlers } from './hardware-handlers'
 import { registerAppHandlers } from './app-handlers'
 import { registerBusinessSetupHandlers } from './business-setup-handlers'
+import { registerNotificationHandlers } from './notification-handlers'
 
 export function registerAllIpcHandlers(): void {
   registerProductHandlers()
@@ -52,4 +53,5 @@ export function registerAllIpcHandlers(): void {
   registerDashboardHandlers()
   registerReportHandlers()
   registerTeamHandlers()
+  registerNotificationHandlers()
 }

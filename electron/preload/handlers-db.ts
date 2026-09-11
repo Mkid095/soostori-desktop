@@ -125,4 +125,15 @@ export const dbHandlers: DbIpc = {
   syncStop: () => ipcRenderer.invoke('sync:stop'),
   syncGetMode: () => ipcRenderer.invoke('sync:getMode'),
   syncGetAuthorityStatus: () => ipcRenderer.invoke('sync:getAuthorityStatus'),
+  // Notifications
+  listNotifications: (opts?: { limit?: number; offset?: number; eventType?: string; unreadOnly?: boolean }) =>
+    ipcRenderer.invoke('notifications:list', opts),
+  markNotificationRead: (id: string) => ipcRenderer.invoke('notifications:markRead', id),
+  markAllNotificationsRead: () => ipcRenderer.invoke('notifications:markAllRead'),
+  createNotification: (data: { eventType: string; payload?: Record<string, unknown>; priority?: string; userId?: string }) =>
+    ipcRenderer.invoke('notifications:create', data),
+  getNotificationPreferences: () => ipcRenderer.invoke('notificationPreferences:get'),
+  setNotificationPreference: (data: { eventType: string; channel: string; enabled: boolean }) =>
+    ipcRenderer.invoke('notificationPreferences:set', data),
+  getUnreadNotificationCount: () => ipcRenderer.invoke('notifications:unreadCount'),
 }

@@ -11,6 +11,7 @@ import { resolveActiveShopId } from '../database/active-shop'
 import { getSyncStore } from '../services/store'
 import { dispatchSyncStatus } from '../sync/sync-service-core'
 import { setCloudOnline } from './cloud-sync-service'
+import { notifyFromSyncEvent } from './desktop-notifications'
 import type { SyncEvent, SyncCursor } from '@soostori/contracts'
 import { asDeviceId, asBusinessId, type SyncCursorId } from '@soostori/core'
 
@@ -87,6 +88,15 @@ async function runCloudPull(): Promise<void> {
         }
       }
       log.info(`SyncTimerWorker: applied ${events.length} events`)
+      // Phase 17: fire notifications for key business events
+      for (const event of events) {
+        const notifEvent = mapSyncEventToNotification(event)
+        if (notifEvent) {
+          notifyFromSyncEvent(notifEvent).catch(err =>
+            log.warn('SyncTimerWorker: notification dispatch failed', err)
+          )
+        }
+      }
     }
 
     const newSyncAt = new Date().toISOString()
@@ -140,4 +150,59 @@ export function stopSyncTimerWorker(): void {
     _timer = null
     log.info('SyncTimerWorker: stopped')
   }
+}
+
+/**
+ * Maps a SyncEvent (Phase 16) to a Phase 17 DesktopNotificationInput.
+ * Only fires for user-visible business events that warrant a notification.
+ */
+function mapSyncEventToNotification(event: SyncEvent): {
+  name: string
+  payload: Record<string, unknown>
+  priority: 'low' | 'normal' | 'high' | 'urgent'
+} | null {
+  const { entityKind, operation, payload } = event
+  const p = payload as Record<string, unknown> ?? {}
+
+  // Sale events
+  if (entityKind === 'sale' && operation === 'create') {
+    return { name: 'sale.created', payload: p, priority: 'normal' }
+  }
+  if (entityKind === 'sale' && operation === 'refund') {
+    return { name: 'sale.refunded', payload: p, priority: 'high' }
+  }
+
+  // Debt events
+  if (entityKind === 'debt' && operation === 'create') {
+    return { name: 'debt.created', payload: p, priority: 'normal' }
+  }
+  if (entityKind === 'debt' && operation === 'payment') {
+    return { name: 'debt.payment_recorded', payload: p, priority: 'normal' }
+  }
+  if (entityKind === 'debt' && operation === 'settle') {
+    return { name: 'debt.settled', payload: p, priority: 'normal' }
+  }
+
+  // Expense events
+  if (entityKind === 'expense' && operation === 'create') {
+    return { name: 'expense.created', payload: p, priority: 'low' }
+  }
+
+  // Inventory events
+  if (entityKind === 'inventory' && operation === 'low_stock') {
+    return { name: 'inventory.low_stock', payload: p, priority: 'high' }
+  }
+  if (entityKind === 'inventory' && operation === 'receive') {
+    return { name: 'inventory.received', payload: p, priority: 'low' }
+  }
+  if (entityKind === 'inventory' && operation === 'adjust') {
+    return { name: 'inventory.adjusted', payload: p, priority: 'low' }
+  }
+
+  // Commission events
+  if (entityKind === 'commission' && operation === 'create') {
+    return { name: 'commission.created', payload: p, priority: 'high' }
+  }
+
+  return null
 }

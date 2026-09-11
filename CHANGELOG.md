@@ -16,6 +16,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- **Phase 17 Notifications**: Full notifications layer per the Phase 17 brief:
+  - `electron/database/schema-notifications.ts`: SQLite `notifications` table (id, business_id, user_id, event_type, payload JSON, priority, created_at, read_at) and `notification_preferences` table (user_id, event_type, channel, enabled). Wired into `createTables()`.
+  - `electron/ipc-handlers/notification-handlers.ts`: IPC handlers for `notifications:list`, `notifications:markRead`, `notifications:markAllRead`, `notifications:create`, `notifications:unreadCount`, `notificationPreferences:get`, `notificationPreferences:set`.
+  - `electron/preload/ipc-signatures-db.ts`: Added `NotificationRecord`, `NotificationPrefRecord`, `NotificationPriority` types and DB IPC methods for notifications.
+  - `electron/preload/handlers.ts` + `ipc-signatures.ts`: Preload bridge with `onNotificationClicked`, `onOpenNotifications`, `onMarkAllNotificationsRead` in addition to existing `onNotification`.
+  - `src/pages/notifications/NotificationsPage.tsx` (rewritten): SQLite-backed page via IPC, filter by event type, unread badge with live count, mark-all-read.
+  - `src/components/notifications/NotificationItem.tsx`: Single notification row with event-type icons, read/unread state, mark-read and dismiss actions.
+  - `electron/services/desktop-notifications.ts`: `showDesktopNotification()` — Electron `Notification` API popup when app is backgrounded OR priority is urgent/high. Persists to SQLite. `notifyFromSyncEvent()` maps SyncEvent → DesktopNotificationInput.
+  - `electron/services/sync-timer-worker.ts`: After applying pulled cloud events, `mapSyncEventToNotification()` fires OS + in-app notifications for sale, debt, inventory, commission events.
+  - `electron/tray-manager.ts`: System tray icon (orange square), left-click shows window, right-click context menu with Show/Notifications/Mark All Read/Quit. `updateTrayBadgeCount()` polls every 30s.
+  - `electron/main.ts`: `createTray()` called on startup; 30s poll for unread count badge.
+  - Per-event-type priority: `urgent` → always popup; `high` → popup if backgrounded; `normal/low` → badge only.
+
 - **Bidirectional sync — client sends mutations to host**: `db:sales:create` now routes to host via `syncService.sendSalePending()` when in client mode (returns optimistically with `status: 'pending'`); host mode writes directly to `sales`, `sync_sales`, `inventory_transactions`, and `stock_movements` atomically. `sync-service-messages.ts` extracted for `sendSalePending` and `sendLocalMutation`. `db:sales:create` fixed to use `COALESCE(current_stock, stock_quantity)` for stock deduction and keep both columns in sync. Added `sync_sales` table to `schema-sync.ts` (was referenced but not created).
 
 - **Cloud sync wired to InstantDB** (`electron/services/instant-api.ts`): Low-level HTTP client for Instaml tx + InstaQL query against `apiinstant.fidscript.com`. `electron/services/cloud-sync.ts`: `pushSyncEvents()`, `pushShopSettings()`, `pullShopSettings()`, `pushDeviceHeartbeat()`, `checkCloudSubscription()`, `pushFullSnapshot()`. `electron/ipc-handlers/cloud-handlers.ts`: 7 IPC endpoints (`cloud:syncEvents`, `cloud:syncShopSettings`, `cloud:pullShopSettings`, `cloud:heartbeat`, `cloud:subscription`, `cloud:fullSync`, `cloud:health`, `cloud:reconnect`). All dispatch sync status events so `SyncIndicator` in TitleBar updates in real time. `electron/services/sync-task-service.ts`: background cycle every 2 min — pushes events, pulls settings, heartbeat. `src/hooks/useCloudSync.ts`: renderer hook with health/subscription/sync state. `.env` sets `INSTANT_APP_ID=0808ca7d-b0ba-4541-8906-48f7d0403950`.
