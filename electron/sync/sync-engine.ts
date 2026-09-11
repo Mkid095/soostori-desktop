@@ -62,6 +62,37 @@ export class RealSyncEngine {
     }
   }
 
+  /**
+   * Persist the sync cursor to SQLite so it survives restarts.
+   * On crash after pull/apply, the next pull will re-read from the same point.
+   */
+  persistCursor(deviceId: string, businessId: string, lastSyncAt: string): void {
+    try {
+      this.db.prepare(`
+        INSERT OR REPLACE INTO sync_cursor (device_id, business_id, cursor_id, last_sync_at)
+        VALUES (?, ?, ?, ?)
+      `).run(deviceId, businessId, `cursor-${businessId}`, lastSyncAt)
+    } catch (err) {
+      log.warn('RealSyncEngine: failed to persist cursor', err)
+    }
+  }
+
+  /**
+   * Load the persisted cursor for a (deviceId, businessId) pair.
+   * Returns null if no cursor has been stored yet.
+   */
+  loadCursor(deviceId: string, businessId: string): string | null {
+    try {
+      const row = this.db.prepare(
+        'SELECT last_sync_at FROM sync_cursor WHERE device_id = ? AND business_id = ?'
+      ).get(deviceId, businessId) as { last_sync_at: string } | undefined
+      return row?.last_sync_at ?? null
+    } catch (err) {
+      log.warn('RealSyncEngine: failed to load cursor', err)
+      return null
+    }
+  }
+
   /** Inject the cloud client once auth is established. */
   setCloudClient(client: CloudClient): void {
     this.cloud = client
@@ -411,6 +442,240 @@ export class RealSyncEngine {
     }
 
     // ── debtPayment ────────────────────────────────────────────────────────
+    // ── sale ───────────────────────────────────────────────────────────────
+    if (event.entityKind === 'sale') {
+      const s = event.payload as {
+        id?: string
+        status?: string
+        total_amount?: number
+        subtotal?: number
+        discount_amount?: number
+        tax_amount?: number
+        paid_amount?: number
+        payment_method?: string
+        note?: string | null
+        customer_id?: string | null
+        customer_id_number?: string | null
+        type?: string
+        items_summary?: string | null
+        version?: number
+        idempotency_key?: string
+      }
+      const saleId = s.id ?? event.entityId
+      if (!saleId) {
+        this.processedKeys.add(event.idempotencyKey)
+        this.persistProcessedKey(event.idempotencyKey, event.id, event.originatingDeviceId as string)
+        return { state: 'no_op' }
+      }
+
+      if (event.operation === 'delete' || event.operation === 'tombstone') {
+        db.prepare(
+          "UPDATE sales SET status = 'cancelled', updated_at = ? WHERE id = ? AND shop_id = ?"
+        ).run(new Date().toISOString(), saleId, event.businessId)
+        this.processedKeys.add(event.idempotencyKey)
+        this.persistProcessedKey(event.idempotencyKey, event.id, event.originatingDeviceId as string)
+        return { state: 'applied' }
+      }
+
+      if (event.operation === 'update') {
+        // version check — skip if cloud event is older than local
+        const existingSale = db.prepare(
+          'SELECT id FROM sales WHERE id = ?'
+        ).get(saleId)
+        if (existingSale) {
+          // sale exists — check if we already have a more recent version
+          // For now apply updates blindly since sales table has no version col
+          const updates: string[] = ['updated_at = ?']
+          const vals: unknown[] = [new Date().toISOString()]
+          if (s.status !== undefined) { updates.push('status = ?'); vals.push(s.status) }
+          if (s.paid_amount !== undefined) { updates.push('paid_amount = ?'); vals.push(s.paid_amount) }
+          if (s.note !== undefined) { updates.push('note = ?'); vals.push(s.note) }
+          vals.push(saleId)
+          db.prepare(`UPDATE sales SET ${updates.join(', ')} WHERE id = ?`).run(...vals)
+        }
+        this.processedKeys.add(event.idempotencyKey)
+        this.persistProcessedKey(event.idempotencyKey, event.id, event.originatingDeviceId as string)
+        return { state: 'applied' }
+      }
+
+      // create — idempotent on sale.id
+      const existingSale = db.prepare('SELECT id FROM sales WHERE id = ?').get(saleId)
+      if (existingSale) {
+        this.processedKeys.add(event.idempotencyKey)
+        this.persistProcessedKey(event.idempotencyKey, event.id, event.originatingDeviceId as string)
+        return { state: 'no_op' }
+      }
+      db.prepare(`
+        INSERT OR IGNORE INTO sales
+          (id, type, status, subtotal, discount_amount, tax_amount, total_amount,
+           paid_amount, payment_method, note, customer_id, customer_id_number,
+           shop_id, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        saleId,
+        s.type ?? 'retail',
+        s.status ?? 'completed',
+        s.subtotal ?? 0,
+        s.discount_amount ?? 0,
+        s.tax_amount ?? 0,
+        s.total_amount ?? 0,
+        s.paid_amount ?? 0,
+        s.payment_method ?? 'cash',
+        s.note ?? null,
+        s.customer_id ?? null,
+        s.customer_id_number ?? null,
+        event.businessId,
+        new Date().toISOString(),
+        new Date().toISOString(),
+      )
+      this.processedKeys.add(event.idempotencyKey)
+      this.persistProcessedKey(event.idempotencyKey, event.id, event.originatingDeviceId as string)
+      return { state: 'applied' }
+    }
+
+    // ── expense ───────────────────────────────────────────────────────────
+    if (event.entityKind === 'expense') {
+      const ex = event.payload as {
+        id?: string
+        amount?: number
+        category?: string
+        note?: string | null
+        date?: string
+        status?: string
+        paid_at?: string | null
+        idempotency_key?: string
+      }
+      const expenseId = ex.id ?? event.entityId
+      if (!expenseId) {
+        this.processedKeys.add(event.idempotencyKey)
+        this.persistProcessedKey(event.idempotencyKey, event.id, event.originatingDeviceId as string)
+        return { state: 'no_op' }
+      }
+
+      if (event.operation === 'update') {
+        const existingExp = db.prepare(
+          'SELECT id FROM expenses WHERE id = ? AND shop_id = ?'
+        ).get(expenseId, event.businessId)
+        if (existingExp) {
+          const updates: string[] = ['amount = COALESCE(?, amount)', 'category = COALESCE(?, category)']
+          const vals: unknown[] = [ex.amount ?? null, ex.category ?? null]
+          if (ex.note !== undefined) { updates.push('note = ?'); vals.push(ex.note) }
+          if (ex.status !== undefined) { updates.push('status = ?'); vals.push(ex.status) }
+          if (ex.paid_at !== undefined) { updates.push('paid_at = ?'); vals.push(ex.paid_at) }
+          vals.push(expenseId)
+          db.prepare(`UPDATE expenses SET ${updates.join(', ')} WHERE id = ?`).run(...vals)
+        }
+        this.processedKeys.add(event.idempotencyKey)
+        this.persistProcessedKey(event.idempotencyKey, event.id, event.originatingDeviceId as string)
+        return { state: 'applied' }
+      }
+
+      // create
+      const existingExp = db.prepare(
+        'SELECT id FROM expenses WHERE id = ? AND shop_id = ?'
+      ).get(expenseId, event.businessId)
+      if (existingExp) {
+        this.processedKeys.add(event.idempotencyKey)
+        this.persistProcessedKey(event.idempotencyKey, event.id, event.originatingDeviceId as string)
+        return { state: 'no_op' }
+      }
+      db.prepare(`
+        INSERT OR IGNORE INTO expenses
+          (id, amount, category, note, date, shop_id, status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        expenseId,
+        ex.amount ?? 0,
+        ex.category ?? 'other',
+        ex.note ?? '',
+        ex.date ?? new Date().toISOString().split('T')[0],
+        event.businessId,
+        ex.status ?? 'pending',
+        new Date().toISOString(),
+      )
+      this.processedKeys.add(event.idempotencyKey)
+      this.persistProcessedKey(event.idempotencyKey, event.id, event.originatingDeviceId as string)
+      return { state: 'applied' }
+    }
+
+    // ── category ──────────────────────────────────────────────────────────
+    if (event.entityKind === 'category') {
+      const cat = event.payload as {
+        id?: string
+        name?: string
+        description?: string | null
+        icon?: string | null
+        color?: string | null
+        display_order?: number
+        is_active?: boolean
+        idempotency_key?: string
+      }
+      const categoryId = cat.id ?? event.entityId
+      if (!categoryId) {
+        this.processedKeys.add(event.idempotencyKey)
+        this.persistProcessedKey(event.idempotencyKey, event.id, event.originatingDeviceId as string)
+        return { state: 'no_op' }
+      }
+
+      if (event.operation === 'delete' || event.operation === 'tombstone') {
+        db.prepare(
+          'UPDATE categories SET is_active = 0 WHERE id = ? AND shop_id = ?'
+        ).run(categoryId, event.businessId)
+        this.processedKeys.add(event.idempotencyKey)
+        this.persistProcessedKey(event.idempotencyKey, event.id, event.originatingDeviceId as string)
+        return { state: 'applied' }
+      }
+
+      if (event.operation === 'update') {
+        const existingCat = db.prepare(
+          'SELECT id FROM categories WHERE id = ?'
+        ).get(categoryId)
+        if (existingCat) {
+          const updates: string[] = ['updated_at = ?']
+          const vals: unknown[] = [new Date().toISOString()]
+          if (cat.name !== undefined) { updates.push('name = ?'); vals.push(cat.name) }
+          if (cat.description !== undefined) { updates.push('description = ?'); vals.push(cat.description) }
+          if (cat.icon !== undefined) { updates.push('icon = ?'); vals.push(cat.icon) }
+          if (cat.color !== undefined) { updates.push('color = ?'); vals.push(cat.color) }
+          if (cat.display_order !== undefined) { updates.push('display_order = ?'); vals.push(cat.display_order) }
+          if (cat.is_active !== undefined) { updates.push('is_active = ?'); vals.push(cat.is_active ? 1 : 0) }
+          vals.push(categoryId)
+          db.prepare(`UPDATE categories SET ${updates.join(', ')} WHERE id = ?`).run(...vals)
+        }
+        this.processedKeys.add(event.idempotencyKey)
+        this.persistProcessedKey(event.idempotencyKey, event.id, event.originatingDeviceId as string)
+        return { state: 'applied' }
+      }
+
+      // create
+      const existingCat = db.prepare('SELECT id FROM categories WHERE id = ?').get(categoryId)
+      if (existingCat) {
+        this.processedKeys.add(event.idempotencyKey)
+        this.persistProcessedKey(event.idempotencyKey, event.id, event.originatingDeviceId as string)
+        return { state: 'no_op' }
+      }
+      db.prepare(`
+        INSERT OR IGNORE INTO categories
+          (id, name, description, icon, color, display_order, is_active, shop_id, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        categoryId,
+        cat.name ?? 'Unknown',
+        cat.description ?? null,
+        cat.icon ?? null,
+        cat.color ?? '#6366f1',
+        cat.display_order ?? 0,
+        cat.is_active !== undefined ? (cat.is_active ? 1 : 0) : 1,
+        event.businessId,
+        new Date().toISOString(),
+        new Date().toISOString(),
+      )
+      this.processedKeys.add(event.idempotencyKey)
+      this.persistProcessedKey(event.idempotencyKey, event.id, event.originatingDeviceId as string)
+      return { state: 'applied' }
+    }
+
+    // ── debtPayment ───────────────────────────────────────────────────────
     if (event.entityKind === 'debtPayment') {
       const p = event.payload as {
         id?: string; debt_id?: string; amount?: number

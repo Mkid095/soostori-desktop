@@ -172,12 +172,15 @@ export function registerSaleCreateHandlers(): void {
           const cloud = new CloudClient({ appId, token })
           const engine = getRealSyncEngine()
           engine.setCloudClient(cloud)
+          const localDeviceId = session?.deviceId ?? deviceId ?? 'local'
           const cursorId = `cursor-${shopId}` as SyncCursorId
+          // Load persisted cursor for incremental pull
+          const persistedSyncAt = engine.loadCursor(localDeviceId, shopId)
           const cursor = {
             cursorId,
-            deviceId: asDeviceId(session?.deviceId ?? deviceId ?? 'local'),
+            deviceId: asDeviceId(localDeviceId),
             businessId: asBusinessId(shopId),
-            lastServerReceivedAt: null,
+            lastServerReceivedAt: persistedSyncAt,
             lastOriginatingDeviceId: null,
             lastClientSequence: null,
             lastSyncAt: new Date().toISOString(),
@@ -186,8 +189,10 @@ export function registerSaleCreateHandlers(): void {
             if (events.length > 0) {
               log.info(`Sale create: received ${events.length} cloud events`)
               events.forEach(e => engine.apply(null, e))
+              // Persist cursor after applying
+              engine.persistCursor(localDeviceId, shopId, new Date().toISOString())
             }
-          }).catch(() => {})
+          }).catch(() => { })
         }
       }
 

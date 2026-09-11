@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Phase 16.1 sync correctness** (`electron/sync/sync-engine.ts`): Added `sale`, `expense`, `category` entity kinds to `apply()` — these were silently dropped when pulled from cloud, breaking Mobile→Desktop and Web→Desktop round-trip. Sale events idempotently upsert to `sales` table. Expense events idempotently upsert to `expenses`. Category events support create/update/delete/tombstone.
+
+- **Phase 16.1 cursor durability** (`electron/database/schema-sync.ts`, `electron/sync/sync-engine.ts`, `electron/services/sync-timer-worker.ts`): Added `sync_cursor` table with `(device_id, business_id)` primary key. `RealSyncEngine.persistCursor()` / `loadCursor()` store/retrieve last sync point in SQLite. Timer worker loads persisted cursor on startup — crash between pull and cursor update no longer causes duplicate event re-fetch.
+
+- **Phase 16.1 conflict visibility** (`electron/services/sync-timer-worker.ts`): `version_older` results from `apply()` are now recorded to `sync_conflicts` table with reason `STALE_VERSION`, making cloud-side newer-version events visible to managers.
+
 ### Added
 
 - **Bidirectional sync — client sends mutations to host**: `db:sales:create` now routes to host via `syncService.sendSalePending()` when in client mode (returns optimistically with `status: 'pending'`); host mode writes directly to `sales`, `sync_sales`, `inventory_transactions`, and `stock_movements` atomically. `sync-service-messages.ts` extracted for `sendSalePending` and `sendLocalMutation`. `db:sales:create` fixed to use `COALESCE(current_stock, stock_quantity)` for stock deduction and keep both columns in sync. Added `sync_sales` table to `schema-sync.ts` (was referenced but not created).

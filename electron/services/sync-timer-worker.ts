@@ -6,6 +6,7 @@
 import log from 'electron-log'
 import { CloudClient } from '@soostori/cloud'
 import { getRealSyncEngine } from '../sync/sync-engine'
+import { getDatabase } from '../database'
 import { resolveActiveShopId } from '../database/active-shop'
 import { getSyncStore } from '../services/store'
 import { dispatchSyncStatus } from '../sync/sync-service-core'
@@ -34,16 +35,21 @@ async function runCloudPull(): Promise<void> {
   try {
     const shopId = await resolveActiveShopId()
     const token = getSyncStore().get('cloudToken') as string | undefined
+    const deviceId = getSyncStore().get('deviceId') as string || 'local'
     const cloud = new CloudClient({ appId: APP_ID, token })
 
     const engine = getRealSyncEngine()
     engine.setCloudClient(cloud)
 
+    // Load persisted cursor (survives restart mid-sync)
+    const persistedSyncAt = engine.loadCursor(deviceId, shopId)
+    const lastSyncAt = persistedSyncAt ?? _lastSyncAt ?? null
+
     const cursor: SyncCursor = {
       cursorId: `cursor-${shopId}` as SyncCursorId,
-      deviceId: asDeviceId(getSyncStore().get('deviceId') as string || 'local'),
+      deviceId: asDeviceId(deviceId),
       businessId: asBusinessId(shopId),
-      lastServerReceivedAt: _lastSyncAt ?? null,
+      lastServerReceivedAt: lastSyncAt,
       lastOriginatingDeviceId: null,
       lastClientSequence: null,
       lastSyncAt: new Date().toISOString(),
@@ -54,12 +60,39 @@ async function runCloudPull(): Promise<void> {
 
     if (events.length > 0) {
       for (const event of events) {
-        await engine.apply(null, event)
+        const result = await engine.apply(null, event)
+        // Record version_older conflicts to sync_conflicts for visibility
+        if (result.state === 'version_older') {
+          try {
+            const { v4: uuidv4 } = await import('uuid')
+            const conflictId = uuidv4()
+            getDatabase().prepare(`
+              INSERT OR IGNORE INTO sync_conflicts
+                (id, shop_id, sale_id, device_id, employee_id, reason, payload, status, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+            `).run(
+              conflictId,
+              shopId,
+              event.entityKind === 'sale' ? event.entityId : null,
+              event.originatingDeviceId ?? 'unknown',
+              event.originatingEmployeeId ?? 'system',
+              'STALE_VERSION',
+              JSON.stringify({ eventEntityVersion: result.eventEntityVersion, localEntityVersion: result.localEntityVersion, entityKind: event.entityKind, entityId: event.entityId }),
+              new Date().toISOString(),
+            )
+            log.info(`SyncTimerWorker: recorded STALE_VERSION conflict for ${event.entityKind}:${event.entityId}`)
+          } catch (err) {
+            log.warn('SyncTimerWorker: failed to record version_older conflict', err)
+          }
+        }
       }
       log.info(`SyncTimerWorker: applied ${events.length} events`)
     }
 
-    _lastSyncAt = new Date().toISOString()
+    const newSyncAt = new Date().toISOString()
+    _lastSyncAt = newSyncAt
+    // Persist cursor AFTER applying events — atomic with the apply cycle
+    engine.persistCursor(deviceId, shopId, newSyncAt)
     dispatchSyncStatus('online')
   } catch (err) {
     log.warn('SyncTimerWorker: pull cycle failed', err)

@@ -105,6 +105,18 @@ export function createSyncTables(): void {
   `)
   database.exec(`CREATE INDEX IF NOT EXISTS idx_sync_conflicts_status ON sync_conflicts(status)`)
 
+  // Phase 16.1: Durable sync cursor — survives app restarts.
+  // Stored per (deviceId, businessId) so each device tracks its own pull point.
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS sync_cursor (
+      device_id    TEXT NOT NULL,
+      business_id  TEXT NOT NULL,
+      cursor_id    TEXT NOT NULL,
+      last_sync_at TEXT NOT NULL,
+      PRIMARY KEY (device_id, business_id)
+    )
+  `)
+
   // Phase 05: products.version column for version-based conflict detection
   migrateProductsVersionColumn(database)
 
