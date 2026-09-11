@@ -1,8 +1,6 @@
 /**
- * sync-timer-worker.ts — 30-second cloud sync polling worker.
- *
- * Phase 05: runs every 30 seconds when online, calls pull() and applies
- * incoming events to local SQLite.
+ * sync-timer-worker.ts — 30-second cloud sync polling worker with Phase 16
+ * offline-first: immediate drain on network-up, processedKeys dedup persistence.
  */
 
 import log from 'electron-log'
@@ -11,6 +9,7 @@ import { getRealSyncEngine } from '../sync/sync-engine'
 import { resolveActiveShopId } from '../database/active-shop'
 import { getSyncStore } from '../services/store'
 import { dispatchSyncStatus } from '../sync/sync-service-core'
+import { setCloudOnline } from './cloud-sync-service'
 import type { SyncEvent, SyncCursor } from '@soostori/contracts'
 import { asDeviceId, asBusinessId, type SyncCursorId } from '@soostori/core'
 
@@ -19,6 +18,7 @@ const SYNC_INTERVAL_MS = 30_000
 
 let _timer: ReturnType<typeof setInterval> | null = null
 let _lastSyncAt: string | null = null
+let _wasOffline = false
 
 function isOnline(): boolean {
   return (
@@ -75,6 +75,23 @@ export function startSyncTimerWorker(): void {
   }
 
   log.info('SyncTimerWorker: starting (30s interval)')
+
+  // Wire network-up handler for immediate drain when coming back online
+  if (typeof window !== 'undefined') {
+    window.addEventListener('online', () => {
+      if (_wasOffline) {
+        log.info('SyncTimerWorker: network restored, triggering immediate sync')
+        _wasOffline = false
+        setCloudOnline(true)
+        runCloudPull().catch(() => {})
+      }
+    })
+    window.addEventListener('offline', () => {
+      _wasOffline = true
+      setCloudOnline(false)
+    })
+  }
+
   runCloudPull().catch(() => {})
 
   _timer = setInterval(() => {

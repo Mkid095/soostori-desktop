@@ -31,6 +31,35 @@ export class RealSyncEngine {
   constructor(appId: string) {
     this.appId = appId
     this.db = getDatabase()
+    this.loadProcessedKeys()
+  }
+
+  /** Load processed idempotency keys from the persistent sync_processed table. */
+  private loadProcessedKeys(): void {
+    try {
+      const rows = this.db.prepare(
+        `SELECT idempotency_key FROM sync_processed LIMIT 10000`
+      ).all() as Array<{ idempotency_key: string }>
+      for (const row of rows) {
+        this.processedKeys.add(row.idempotency_key)
+      }
+      log.debug(`RealSyncEngine: loaded ${this.processedKeys.size} processed keys`)
+    } catch (err) {
+      log.warn('RealSyncEngine: failed to load processed keys', err)
+    }
+  }
+
+  /** Persist an idempotency key to sync_processed so it survives app restarts. */
+  private persistProcessedKey(idempotencyKey: string, eventId: string, deviceId: string): void {
+    try {
+      const { v4: uuidv4 } = require('uuid')
+      this.db.prepare(`
+        INSERT OR IGNORE INTO sync_processed (id, device_id, idempotency_key, event_id, processed_at)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(uuidv4(), deviceId, idempotencyKey, eventId, new Date().toISOString())
+    } catch (err) {
+      log.warn('RealSyncEngine: failed to persist processed key', err)
+    }
   }
 
   /** Inject the cloud client once auth is established. */
@@ -105,11 +134,22 @@ export class RealSyncEngine {
 
       for (const row of rawRows) {
         const key = String(row.id ?? '')
-        if (this.processedKeys.has(key)) continue
+        const idempKey = String(row.idempotencyKey ?? row.id ?? '')
+
+        // Check persistent dedup: query sync_processed table (not just in-memory Set)
+        const alreadyProcessed = this.db.prepare(
+          `SELECT 1 FROM sync_processed WHERE device_id = ? AND idempotency_key = ? LIMIT 1`
+        ).get(row.shopId as string, idempKey)
+
+        if (alreadyProcessed || this.processedKeys.has(key)) {
+          this.processedKeys.add(key) // keep in-memory in sync
+          continue
+        }
 
         // Business isolation
         if (row.shopId && (row.shopId as string) !== shopId) continue
         this.processedKeys.add(key)
+        this.persistProcessedKey(idempKey, key, row.shopId as string)
 
         const rawPayload = row.payload
         const parsed = typeof rawPayload === 'string' ? JSON.parse(rawPayload) : (rawPayload ?? {})
@@ -155,6 +195,7 @@ export class RealSyncEngine {
     if (event.businessId && (event.businessId as string) !== shopId) {
       log.debug(`RealSyncEngine: apply rejecting event for businessId=${event.businessId} (active=${shopId})`)
       this.processedKeys.add(event.idempotencyKey)
+      this.persistProcessedKey(event.idempotencyKey, event.id, event.originatingDeviceId as string)
       return { state: 'no_op' }
     }
 
@@ -172,6 +213,7 @@ export class RealSyncEngine {
       const productId = p.id ?? event.entityId
       if (!productId) {
         this.processedKeys.add(event.idempotencyKey)
+        this.persistProcessedKey(event.idempotencyKey, event.id, event.originatingDeviceId as string)
         return { state: 'no_op' }
       }
 
@@ -182,6 +224,7 @@ export class RealSyncEngine {
 
         if (existing && existing.version !== undefined && existing.version > event.entityVersion) {
           this.processedKeys.add(event.idempotencyKey)
+          this.persistProcessedKey(event.idempotencyKey, event.id, event.originatingDeviceId as string)
           return {
             state: 'version_older',
             localEntityVersion: existing.version,
@@ -217,6 +260,7 @@ export class RealSyncEngine {
         }
 
         this.processedKeys.add(event.idempotencyKey)
+        this.persistProcessedKey(event.idempotencyKey, event.id, event.originatingDeviceId as string)
         return { state: 'applied', entityVersion: event.entityVersion }
       }
     }
