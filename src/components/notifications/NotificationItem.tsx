@@ -74,10 +74,12 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
   const isUnread = !notification.read_at
   const label = labelFor(notification.event_type)
 
-  // Build message from payload or fallback to label
-  const message = notification.payload?.message
+  const message = String(
+    notification.payload?.message
     ?? notification.payload?.title
     ?? label
+    ?? ''
+  )
 
   return (
     <div className={`flex gap-3 px-4 py-3.5 transition-colors ${isUnread ? '' : 'opacity-60'}`}>

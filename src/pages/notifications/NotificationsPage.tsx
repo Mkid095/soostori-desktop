@@ -7,20 +7,11 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react'
-import { Bell, Check, Trash2, Filter, CircleAlert } from 'lucide-react'
+import { Bell, Check } from 'lucide-react'
 import { useTranslation } from '../../lib/useTranslation'
 import NotificationItem from '../../components/notifications/NotificationItem'
+import NotificationsFilterBar from './notifications-filter-bar'
 import type { NotificationRecord } from '../../../electron/preload/ipc-signatures-db'
-
-const EVENT_TYPES = [
-  { value: '', label: 'All' },
-  { value: 'sale.created', label: 'Sales' },
-  { value: 'debt.payment_recorded', label: 'Debt' },
-  { value: 'inventory.low_stock', label: 'Stock' },
-  { value: 'team.member_added', label: 'Team' },
-  { value: 'commission.created', label: 'Commission' },
-  { value: 'expense.created', label: 'Expense' },
-]
 
 const NotificationsPage: React.FC = () => {
   const { t } = useTranslation()
@@ -50,7 +41,6 @@ const NotificationsPage: React.FC = () => {
 
   useEffect(() => { load() }, [load])
 
-  // Also reload when a sync event fires a notification
   useEffect(() => {
     const handler = () => { load() }
     window.addEventListener('soostori:notification', handler)
@@ -66,7 +56,6 @@ const NotificationsPage: React.FC = () => {
   }
 
   const handleDismiss = async (id: string) => {
-    // Remove locally (no delete IPC — dismiss = mark read + archive)
     const n = notifications.find(n => n.id === id)
     if (n && !n.read_at) {
       await window.electronAPI.db.markNotificationRead(id)
@@ -83,7 +72,6 @@ const NotificationsPage: React.FC = () => {
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-bg-primary">
-      {/* Header */}
       <header className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-bg-secondary px-4 py-3 dark:border-slate-700">
         <div className="flex items-center gap-2">
           <div className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-brand-orange text-white">
@@ -113,27 +101,8 @@ const NotificationsPage: React.FC = () => {
         </div>
       </header>
 
-      {/* Filter bar */}
-      <div className="flex shrink-0 items-center gap-2 border-b border-slate-100 bg-bg-secondary px-4 py-2 dark:border-slate-700">
-        <Filter size={12} className="text-slate-400 shrink-0" />
-        <div className="flex gap-1 overflow-x-auto">
-          {EVENT_TYPES.map(et => (
-            <button
-              key={et.value}
-              onClick={() => setFilter(et.value)}
-              className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold transition-colors ${
-                filter === et.value
-                  ? 'bg-brand-orange text-white'
-                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
-              }`}
-            >
-              {et.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <NotificationsFilterBar filter={filter} onFilterChange={setFilter} />
 
-      {/* List */}
       <div className="flex-1 overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center py-24">
