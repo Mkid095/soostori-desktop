@@ -21,11 +21,15 @@ export function createCommerceTables(): void {
       id TEXT PRIMARY KEY, name TEXT NOT NULL, phone TEXT, email TEXT,
       address TEXT, notes TEXT, is_active INTEGER DEFAULT 1,
       id_number TEXT,
+      idempotency_key TEXT,
       shop_id TEXT NOT NULL DEFAULT 'default',
+      version INTEGER DEFAULT 1,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     )
   `)
+
+  migrateCustomersTable(database)
 
   database.exec(`
     CREATE TABLE IF NOT EXISTS debts (
@@ -35,20 +39,29 @@ export function createCommerceTables(): void {
       shop_id TEXT NOT NULL DEFAULT 'default',
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      version INTEGER DEFAULT 1,
+      idempotency_key TEXT,
       FOREIGN KEY (customer_id) REFERENCES customers(id),
       FOREIGN KEY (sale_id) REFERENCES sales(id)
     )
   `)
+
+  migrateDebtsTable(database)
 
   database.exec(`
     CREATE TABLE IF NOT EXISTS debt_payments (
       id TEXT PRIMARY KEY, debt_id TEXT NOT NULL,
       amount REAL NOT NULL, payment_method TEXT DEFAULT 'cash',
       reference TEXT, notes TEXT,
+      shop_id TEXT NOT NULL DEFAULT 'default',
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      version INTEGER DEFAULT 1,
+      idempotency_key TEXT,
       FOREIGN KEY (debt_id) REFERENCES debts(id)
     )
   `)
+
+  migrateDebtPaymentsTable(database)
 
   database.exec(`
     CREATE TABLE IF NOT EXISTS expenses (
@@ -163,5 +176,41 @@ function migrateInvitationsTable(database: import('better-sqlite3').Database): v
   const existing = cols.map(c => c.name)
   if (!existing.includes('cloud_used_at')) {
     database.exec('ALTER TABLE invitations ADD COLUMN cloud_used_at TEXT')
+  }
+}
+
+function migrateCustomersTable(database: import('better-sqlite3').Database): void {
+  const cols = database.prepare("PRAGMA table_info(customers)").all() as { name: string }[]
+  const existing = cols.map(c => c.name)
+  if (!existing.includes('idempotency_key')) {
+    database.exec('ALTER TABLE customers ADD COLUMN idempotency_key TEXT')
+  }
+  if (!existing.includes('version')) {
+    database.exec('ALTER TABLE customers ADD COLUMN version INTEGER DEFAULT 1')
+  }
+}
+
+function migrateDebtsTable(database: import('better-sqlite3').Database): void {
+  const cols = database.prepare("PRAGMA table_info(debts)").all() as { name: string }[]
+  const existing = cols.map(c => c.name)
+  if (!existing.includes('version')) {
+    database.exec('ALTER TABLE debts ADD COLUMN version INTEGER DEFAULT 1')
+  }
+  if (!existing.includes('idempotency_key')) {
+    database.exec('ALTER TABLE debts ADD COLUMN idempotency_key TEXT')
+  }
+}
+
+function migrateDebtPaymentsTable(database: import('better-sqlite3').Database): void {
+  const cols = database.prepare("PRAGMA table_info(debt_payments)").all() as { name: string }[]
+  const existing = cols.map(c => c.name)
+  if (!existing.includes('shop_id')) {
+    database.exec('ALTER TABLE debt_payments ADD COLUMN shop_id TEXT NOT NULL DEFAULT \'default\'')
+  }
+  if (!existing.includes('version')) {
+    database.exec('ALTER TABLE debt_payments ADD COLUMN version INTEGER DEFAULT 1')
+  }
+  if (!existing.includes('idempotency_key')) {
+    database.exec('ALTER TABLE debt_payments ADD COLUMN idempotency_key TEXT')
   }
 }

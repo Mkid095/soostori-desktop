@@ -14,15 +14,49 @@ export function useDebtState(
   createCustomer: { mutateAsync: (data: CustomerInput) => Promise<unknown> },
   createDebt: { mutateAsync: (data: DebtCreateInput) => Promise<unknown> },
 ) {
+  // Sort debts: overdue first, then by due date (soonest first), then newest first.
+  // Overdue = has a dueDate that is in the past AND status is not 'paid'.
+  const sortedDebts = useMemo(() => {
+    const now = new Date()
+    now.setHours(0, 0, 0, 0)
+
+    return [...debts].sort((a, b) => {
+      const aOutstanding = a.amount - (a.amountPaid || 0)
+      const bOutstanding = b.amount - (b.amountPaid || 0)
+      const aPaid = a.status === 'paid'
+      const bPaid = b.status === 'paid'
+
+      // Settled debts go to the bottom
+      if (aPaid !== bPaid) return aPaid ? 1 : -1
+
+      // Compute overdue status
+      const aDue = a.dueDate ? new Date(a.dueDate) : null
+      const bDue = b.dueDate ? new Date(b.dueDate) : null
+      const aOverdue = aDue && !aPaid && aDue < now
+      const bOverdue = bDue && !bPaid && bDue < now
+
+      // Overdue debts bubble up
+      if (aOverdue !== bOverdue) return aOverdue ? -1 : 1
+
+      // Among non-overdue (or no due date): sort by due date ascending (soonest first)
+      if (aDue && bDue) return aDue.getTime() - bDue.getTime()
+      if (aDue) return -1  // debts with due dates before those without
+      if (bDue) return 1
+
+      // Finally sort by creation date (newest first)
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    })
+  }, [debts])
+
   const filteredDebts = useMemo(() => {
-    return debts.filter(d => {
+    return sortedDebts.filter(d => {
       const mS = !search ||
         (d.customerName || '').toLowerCase().includes(search.toLowerCase()) ||
         (d.customerPhone || '').includes(search)
       const mF = statusFilter === 'all' || d.status === statusFilter
       return mS && mF
     })
-  }, [debts, search, statusFilter])
+  }, [sortedDebts, search, statusFilter])
 
   const filteredCustomers = useMemo(() => {
     if (!search) return customers

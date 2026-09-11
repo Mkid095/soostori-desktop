@@ -1,5 +1,5 @@
 import React from 'react'
-import { ShoppingCart, Package, BarChart3, DollarSign, Bell, Receipt, Users, Monitor, Settings as SettingsIcon, TrendingUp, Building } from 'lucide-react'
+import { ShoppingCart, Package, BarChart3, DollarSign, Bell, Receipt, Users, Monitor, Settings as SettingsIcon, TrendingUp, Building, LayoutDashboard } from 'lucide-react'
 import NavItemButton from './NavItemButton'
 import { useTranslation } from '../../lib/useTranslation'
 import { useAuth } from '../../lib/auth-context'
@@ -8,7 +8,7 @@ import type { TranslationKey } from '../../lib/i18n'
 // ============================================================
 // TYPES
 // ============================================================
-type Page = 'pos' | 'inventory' | 'reports' | 'debts' | 'expenses' | 'settings' | 'notifications' | 'team' | 'devices' | 'commissions' | 'business'
+type Page = 'pos' | 'inventory' | 'reports' | 'debts' | 'expenses' | 'settings' | 'notifications' | 'team' | 'devices' | 'commissions' | 'business' | 'dashboard'
 
 interface NavItem {
   id: Page
@@ -37,6 +37,7 @@ const navGroups: NavGroup[] = [
   {
     labelKey: 'nav.finance',
     items: [
+      { id: 'dashboard', labelKey: 'nav.dashboard', icon: LayoutDashboard },
       { id: 'reports', labelKey: 'nav.reports', icon: BarChart3, permission: 'reports' },
       { id: 'debts', labelKey: 'nav.debts', icon: DollarSign, permission: 'customers' },
       { id: 'expenses', labelKey: 'nav.expenses', icon: Receipt, permission: 'expenses' },

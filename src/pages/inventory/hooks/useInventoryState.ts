@@ -34,14 +34,19 @@ export function useInventoryState() {
     ).length,
   }), [products])
 
-  function filterProducts(search: string, categoryId: string) {
+  function filterProducts(search: string, categoryId: string, stockStatus: 'all' | 'low' | 'out') {
     return products.filter((p) => {
       const matchesSearch = !search ||
         p.name.toLowerCase().includes(search.toLowerCase()) ||
         (p.barcode && p.barcode.toLowerCase().includes(search.toLowerCase())) ||
         (p.sku && p.sku.toLowerCase().includes(search.toLowerCase()))
       const matchesCategory = categoryId === 'ALL' || p.categoryId === categoryId
-      return matchesSearch && matchesCategory && p.isActive
+      const isLow = p.trackInventory && p.stockQuantity > 0 && p.stockQuantity <= p.lowStockThreshold
+      const isOut = p.trackInventory && p.stockQuantity <= 0
+      const matchesStock = stockStatus === 'all' ||
+        (stockStatus === 'low' && isLow) ||
+        (stockStatus === 'out' && isOut)
+      return matchesSearch && matchesCategory && matchesStock && p.isActive
     })
   }
 

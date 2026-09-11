@@ -10,12 +10,14 @@ import TeamPage from '../pages/team/TeamPage'
 import DevicesPage from '../pages/devices/DevicesPage'
 import CommissionsPage from '../pages/commissions/CommissionsPage'
 import BusinessPage from '../pages/business/BusinessPage'
+import DashboardPage from '../pages/dashboard/DashboardPage'
 
 interface Props {
   page: string
+  onNavigate?: (tab: 'sales' | 'inventory' | 'debt' | 'expense') => void
 }
 
-export function PageRenderer({ page }: Props): React.ReactElement {
+export function PageRenderer({ page, onNavigate }: Props): React.ReactElement {
   switch (page) {
     case 'pos': return <POS />
     case 'inventory': return <Inventory />
@@ -28,6 +30,7 @@ export function PageRenderer({ page }: Props): React.ReactElement {
     case 'devices': return <DevicesPage />
     case 'commissions': return <CommissionsPage />
     case 'business': return <BusinessPage />
+    case 'dashboard': return <DashboardPage onNavigateToReport={onNavigate} />
     default: return <div className="p-6 text-slate-500">Page not found</div>
   }
 }

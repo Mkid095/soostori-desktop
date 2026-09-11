@@ -47,11 +47,14 @@ export const fromLocalStockMovement = (r: InventoryTxRow): StockMovement => ({
 export interface ExpensesRow {
   id: string; shop_id: string; category: string; amount: number
   note?: string; date: string; created_at?: string
+  status?: string; paid_at?: string | null
 }
 export const fromLocalExpense = (r: ExpensesRow): Expense => ({
   id: asExI(r.id), businessId: asBI(r.shop_id), categoryName: r.category,
   amount: r.amount, employeeId: asEI(''), note: r.note ?? null,
   date: r.date, reference: null,
+  status: (r.status ?? 'pending') as 'pending' | 'approved' | 'paid',
+  paidAt: r.paid_at ?? null,
   createdAt: r.created_at ?? new Date().toISOString(),
   updatedAt: r.created_at ?? new Date().toISOString(), version: V1,
 })

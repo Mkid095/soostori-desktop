@@ -6,8 +6,11 @@ import { productCreateSchema, productUpdateSchema } from './validation'
 import { registerProductQueryHandlers } from './product-handlers-query'
 import { registerProductMutationHandlers } from './product-handlers-mutation'
 import { pushProduct } from '../services/cloud-entity-sync'
-import { resolveActiveShopId, resolveShopIdSync } from '../database/active-shop'
+import { resolveActiveShopId } from '../database/active-shop'
 import { desktopLoadSession } from '../auth/electron-store-session'
+import { getRealSyncEngine } from '../sync/sync-engine'
+import { buildProductSyncEvent, type ProductSyncEventContext } from '../database/sync-event-builder'
+import { asBusinessId, asDeviceId, asEmployeeId } from '@soostori/core'
 // Phase 04: canonical capability API
 import { can, CAPABILITIES } from '@soostori/auth'
 import type { Member } from '@soostori/auth'
@@ -55,6 +58,18 @@ export function registerProductHandlers(): void {
       data.allowSingleUnitSale !== undefined ? (data.allowSingleUnitSale ? 1 : 0) : 1,
       data.unitsPerPackage ?? null, data.boxBuyingPrice ?? null, data.bulkSellingPrice ?? null,
       data.groupPrices ? JSON.stringify(data.groupPrices) : null, shopId, now, now)
+
+    // Phase 08: enqueue product.created sync event
+    const productRow = db.prepare('SELECT * FROM products WHERE id = ?').get(id) as Record<string, unknown>
+    const syncCtx: ProductSyncEventContext = {
+      businessId: asBusinessId(shopId),
+      originatingDeviceId: asDeviceId(session?.deviceId ?? 'desktop'),
+      originatingEmployeeId: asEmployeeId(session?.employeeId ?? ''),
+      clientSequence: Date.now(),
+    }
+    const syncEvent = buildProductSyncEvent('create', { ...productRow, id: productRow.id as string, version: 1 }, syncCtx)
+    getRealSyncEngine().enqueue(syncEvent).catch(() => {})
+
     // Push to cloud (fire-and-forget)
     pushProduct(id).catch(() => {})
     return db.prepare('SELECT * FROM products WHERE id = ? AND shop_id = ?').get(id, shopId)
@@ -100,6 +115,20 @@ export function registerProductHandlers(): void {
     fields.push('updated_at = ?')
     values.push(now, id, shopId)
     db.prepare(`UPDATE products SET ${fields.join(', ')} WHERE id = ? AND shop_id = ?`).run(...values)
+
+    // Phase 08: enqueue product.updated sync event
+    const productRow = db.prepare('SELECT * FROM products WHERE id = ? AND shop_id = ?').get(id, shopId) as Record<string, unknown> | undefined
+    if (productRow) {
+      const syncCtx: ProductSyncEventContext = {
+        businessId: asBusinessId(shopId),
+        originatingDeviceId: asDeviceId(session?.deviceId ?? 'desktop'),
+        originatingEmployeeId: asEmployeeId(session?.employeeId ?? ''),
+        clientSequence: Date.now(),
+      }
+      const syncEvent = buildProductSyncEvent('update', { ...productRow, id: productRow.id as string, version: Number(productRow.version ?? 1) }, syncCtx)
+      getRealSyncEngine().enqueue(syncEvent).catch(() => {})
+    }
+
     pushProduct(id).catch(() => {})
     return db.prepare('SELECT * FROM products WHERE id = ? AND shop_id = ?').get(id, shopId)
   })
@@ -113,7 +142,21 @@ export function registerProductHandlers(): void {
     }
     const now = new Date().toISOString()
     const shopId = await resolveActiveShopId()
+    const productRow = getDatabase().prepare('SELECT * FROM products WHERE id = ? AND shop_id = ?').get(id, shopId) as Record<string, unknown> | undefined
     getDatabase().prepare('UPDATE products SET deleted_at = ?, is_active = 0 WHERE id = ? AND shop_id = ?').run(now, id, shopId)
+
+    // Phase 08: enqueue product.archived sync event
+    if (productRow) {
+      const syncCtx: ProductSyncEventContext = {
+        businessId: asBusinessId(shopId),
+        originatingDeviceId: asDeviceId(session?.deviceId ?? 'desktop'),
+        originatingEmployeeId: asEmployeeId(session?.employeeId ?? ''),
+        clientSequence: Date.now(),
+      }
+      const syncEvent = buildProductSyncEvent('tombstone', { ...productRow, id: productRow.id as string, version: Number(productRow.version ?? 1) }, syncCtx)
+      getRealSyncEngine().enqueue(syncEvent).catch(() => {})
+    }
+
     pushProduct(id).catch(() => {})
   })
 

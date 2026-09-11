@@ -1,7 +1,7 @@
 import { getDatabase } from './index'
 import log from 'electron-log'
 
-const CURRENT_VERSION = 3
+const CURRENT_VERSION = 4
 
 export function runMigrations(): void {
   const db = getDatabase()
@@ -67,6 +67,29 @@ export function runMigrations(): void {
       db.exec('ALTER TABLE app_settings ADD COLUMN login_pin_salt TEXT')
       log.info('[Migration v3] login_pin_hash + login_pin_salt added to app_settings')
     }
+  }
+
+  // v4: add status + paid_at to expenses; add recurring_expenses table
+  if (appliedVersion < 4) {
+    db.prepare(`INSERT OR IGNORE INTO schema_migrations (version, applied_at) VALUES (?, datetime('now'))`).run(4)
+    const expCols = (db.prepare('PRAGMA table_info(expenses)').all() as { name: string }[])
+    if (!expCols.find(c => c.name === 'status')) {
+      db.exec("ALTER TABLE expenses ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'")
+      log.info('[Migration v4] status added to expenses')
+    }
+    if (!expCols.find(c => c.name === 'paid_at')) {
+      db.exec("ALTER TABLE expenses ADD COLUMN paid_at TEXT")
+      log.info('[Migration v4] paid_at added to expenses')
+    }
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS recurring_expenses (
+        id TEXT PRIMARY KEY, shop_id TEXT NOT NULL, category TEXT NOT NULL,
+        amount REAL NOT NULL, frequency TEXT NOT NULL,
+        next_due_date TEXT NOT NULL, is_active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `)
+    log.info('[Migration v4] recurring_expenses table created')
   }
 
   log.info(`Schema migrations complete: now at version ${CURRENT_VERSION}`)

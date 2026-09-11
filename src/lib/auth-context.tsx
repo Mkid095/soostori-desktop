@@ -10,6 +10,13 @@ interface AuthValue {
 
 const AuthContext = createContext<AuthValue | null>(null)
 
+const ROLE_TEAM_PERMISSIONS: Record<string, string[]> = {
+  owner:      ['team.view', 'team.invite', 'team.update', 'team.remove', 'team.assign_role', 'team.assign_permission'],
+  manager:    ['team.view', 'team.invite', 'team.update', 'team.remove', 'team.assign_role'],
+  cashier:    [],
+  attendant:  [],
+}
+
 const PERMISSIONS = {
   owner: ['sales', 'receipts', 'customers', 'inventory', 'reports', 'expenses', 'team', 'devices', 'settings'],
   manager: ['sales', 'receipts', 'customers', 'inventory', 'reports', 'expenses'],

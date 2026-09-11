@@ -2,7 +2,7 @@
  * sale-void-handlers.ts — Sale void (POS "cancel completed sale") IPC handler.
  *
  * Phase 04: capability enforcement — sales.void required.
- * A void reverses a completed sale (status → 'cancelled') and restores stock.
+ * Phase 10: emits sale.voided sync event + reason required.
  */
 
 import { ipcMain } from 'electron'
@@ -11,12 +11,15 @@ import log from 'electron-log'
 import { desktopLoadSession } from '../auth/electron-store-session'
 import { resolveActiveShopId } from '../database/active-shop'
 import { syncService } from '../sync/sync-service'
-// Phase 04: canonical capability API
+import { getRealSyncEngine } from '../sync/sync-engine'
+import { fromLocalSale, type SalesRow } from '../database/contracts-mapper-2'
+import { buildVoidSyncEvent } from '../database/sync-event-builder'
 import { can, CAPABILITIES } from '@soostori/auth'
 import type { Member } from '@soostori/auth'
 import type { EmployeeRole } from '@soostori/core'
+import type { Sale } from '@soostori/contracts'
+import { asBusinessId, asEmployeeId, asDeviceId } from '@soostori/core'
 
-/** Build a Member for the capability system from the session's employeeId. */
 function getCallerMember(session: { employeeId: string }): Member {
   const db = getDatabase()
   const row = db.prepare('SELECT role FROM employees WHERE id = ?').get(session.employeeId) as { role: string } | undefined
@@ -27,11 +30,15 @@ export function registerSaleVoidHandlers(): void {
   /**
    * Void a completed sale — marks it cancelled and restores stock.
    * Requires sales.void capability.
+   * Phase 10: reason is required.
    */
-  ipcMain.handle('db:sales:void', async (_event, saleId: string) => {
+  ipcMain.handle('db:sales:void', async (_event, saleId: string, reason: string) => {
+    if (!reason || reason.trim().length === 0) {
+      throw new Error('Void reason is required')
+    }
+
     const session = await desktopLoadSession()
     if (!session) throw new Error('Not authenticated')
-    // Phase 04: capability enforcement
     if (!can(getCallerMember(session), CAPABILITIES.SALES_VOID)) {
       throw new Error('Insufficient permissions: sales.void required')
     }
@@ -52,7 +59,6 @@ export function registerSaleVoidHandlers(): void {
     }>
     for (const item of items) {
       if (!item.product_id) continue
-      // Restore stock by inserting a positive adjustment movement
       db.prepare(
         `INSERT INTO stock_movements (id, product_id, shop_id, type, quantity, reason, created_at)
          VALUES (?, ?, ?, 'adjustment', ?, ?, datetime('now'))`,
@@ -63,7 +69,6 @@ export function registerSaleVoidHandlers(): void {
         item.quantity,
         `void:${saleId}`,
       )
-      // Update product stock
       db.prepare(
         `UPDATE products SET stock_quantity = stock_quantity + ? WHERE id = ? AND shop_id = ?`,
       ).run(item.quantity, item.product_id, shopId)
@@ -72,10 +77,23 @@ export function registerSaleVoidHandlers(): void {
     db.prepare("UPDATE sales SET status = 'cancelled', updated_at = ? WHERE id = ? AND shop_id = ?")
       .run(new Date().toISOString(), saleId, shopId)
 
-    // Broadcast SALE_VOIDED so all LAN devices mark it voided
+    // Phase 10: emit sale.voided sync event
+    const saleRow = db.prepare('SELECT * FROM sales WHERE id = ? AND shop_id = ?').get(saleId, shopId) as SalesRow | undefined
+    if (saleRow) {
+      const voidedSale: Sale = fromLocalSale(saleRow)
+      const syncEvent = buildVoidSyncEvent(voidedSale, {
+        businessId: asBusinessId(voidedSale.businessId),
+        originatingDeviceId: asDeviceId(session?.deviceId ?? 'system'),
+        originatingEmployeeId: asEmployeeId(session?.userId ?? 'system'),
+        clientSequence: Date.now(),
+        reason: reason.trim(),
+      })
+      getRealSyncEngine().enqueue(syncEvent).catch(() => {})
+    }
+
     syncService.sendLocalMutation('SALE_VOIDED', { saleId })
-    log.info(`Sale ${saleId} voided by ${session.userId}`)
-    return { id: saleId, status: 'cancelled' }
+    log.info(`Sale ${saleId} voided by ${session.userId}: ${reason}`)
+    return { id: saleId, status: 'cancelled', reason }
   })
 
   log.info('Sale void IPC handlers registered')

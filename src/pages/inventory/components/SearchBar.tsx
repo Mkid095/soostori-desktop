@@ -5,17 +5,19 @@ import { SearchSuggestions } from './SearchSuggestions'
 interface SearchBarProps {
   searchTerm: string
   categoryFilter: string
+  stockStatusFilter: 'all' | 'low' | 'out'
   categories: Category[]
   suggestions: Product[]
   onSearchChange: (v: string) => void
   onCategoryChange: (v: string) => void
+  onStockStatusChange: (v: 'all' | 'low' | 'out') => void
   onAddClick: () => void
   onSelectSuggestion: (product: Product) => void
 }
 
 export const SearchBar: React.FC<SearchBarProps> = ({
-  searchTerm, categoryFilter, categories, suggestions,
-  onSearchChange, onCategoryChange, onAddClick, onSelectSuggestion
+  searchTerm, categoryFilter, stockStatusFilter, categories, suggestions,
+  onSearchChange, onCategoryChange, onStockStatusChange, onAddClick, onSelectSuggestion
 }) => {
   return (
     <div className="px-4 py-2 bg-bg-secondary dark:bg-bg-secondary border-b border-slate-100 dark:border-slate-700 flex items-center gap-2 shrink-0 transition-colors duration-200">
@@ -40,6 +42,16 @@ export const SearchBar: React.FC<SearchBarProps> = ({
         <option value="ALL">All</option>
         {categories.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
       </select>
+      <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
+        {(['all', 'low', 'out'] as const).map((s) => (
+          <button key={s} onClick={() => onStockStatusChange(s)}
+            className={`px-2 py-1.5 rounded-md text-[10px] font-bold transition-colors ${
+              stockStatusFilter === s
+                ? 'bg-brand-orange text-white'
+                : 'text-slate-400 dark:text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700'
+            }`}>{s === 'all' ? 'All' : s === 'low' ? 'Low' : 'Out'}</button>
+        ))}
+      </div>
       <button onClick={onAddClick}
         className="px-3 py-2 bg-brand-orange text-white rounded-lg font-bold text-xs
           hover:bg-orange-600 transition-colors flex items-center gap-1 shrink-0">

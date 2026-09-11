@@ -6,6 +6,10 @@ import { categoryCreateSchema, categoryUpdateSchema } from './validation'
 import { pushCategory } from '../services/cloud-entity-sync'
 import { resolveActiveShopId } from '../database/active-shop'
 import { type CategoriesRow } from '../database/contracts-mapper'
+import { getRealSyncEngine } from '../sync/sync-engine'
+import { buildCategorySyncEvent, type CategorySyncEventContext } from '../database/sync-event-builder'
+import { asBusinessId, asDeviceId, asEmployeeId } from '@soostori/core'
+import { desktopLoadSession } from '../auth/electron-store-session'
 
 export function registerCategoryHandlers(): void {
   ipcMain.handle('db:categories:list', async (_event, _shopId?: string) => {
@@ -22,6 +26,7 @@ export function registerCategoryHandlers(): void {
   })
 
   ipcMain.handle('db:categories:create', async (_event, rawData: unknown) => {
+    const session = await desktopLoadSession()
     const data = categoryCreateSchema.parse(rawData)
     const db = getDatabase()
     const id = uuidv4()
@@ -43,11 +48,23 @@ export function registerCategoryHandlers(): void {
       now
     )
 
+    // Phase 08: enqueue category.created sync event
+    const categoryRow = db.prepare('SELECT * FROM categories WHERE id = ?').get(id) as Record<string, unknown>
+    const syncCtx: CategorySyncEventContext = {
+      businessId: asBusinessId(shopId),
+      originatingDeviceId: asDeviceId(session?.deviceId ?? 'desktop'),
+      originatingEmployeeId: asEmployeeId(session?.employeeId ?? ''),
+      clientSequence: Date.now(),
+    }
+    const syncEvent = buildCategorySyncEvent('create', { ...categoryRow, id: categoryRow.id as string, version: 1 }, syncCtx)
+    getRealSyncEngine().enqueue(syncEvent).catch(() => {})
+
     pushCategory(id).catch(() => {})
     return db.prepare('SELECT * FROM categories WHERE id = ? AND shop_id = ?').get(id, shopId)
   })
 
   ipcMain.handle('db:categories:update', async (_event, id: string, rawData: unknown) => {
+    const session = await desktopLoadSession()
     const data = categoryUpdateSchema.parse(rawData)
     const db = getDatabase()
     const now = new Date().toISOString()
@@ -67,6 +84,20 @@ export function registerCategoryHandlers(): void {
     values.push(now, id, shopId)
 
     db.prepare(`UPDATE categories SET ${fields.join(', ')} WHERE id = ? AND shop_id = ?`).run(...values)
+
+    // Phase 08: enqueue category.updated sync event
+    const categoryRow = db.prepare('SELECT * FROM categories WHERE id = ? AND shop_id = ?').get(id, shopId) as Record<string, unknown> | undefined
+    if (categoryRow) {
+      const syncCtx: CategorySyncEventContext = {
+        businessId: asBusinessId(shopId),
+        originatingDeviceId: asDeviceId(session?.deviceId ?? 'desktop'),
+        originatingEmployeeId: asEmployeeId(session?.employeeId ?? ''),
+        clientSequence: Date.now(),
+      }
+      const syncEvent = buildCategorySyncEvent('update', { ...categoryRow, id: categoryRow.id as string, version: Number(categoryRow.version ?? 1) }, syncCtx)
+      getRealSyncEngine().enqueue(syncEvent).catch(() => {})
+    }
+
     pushCategory(id).catch(() => {})
     return db.prepare('SELECT * FROM categories WHERE id = ? AND shop_id = ?').get(id, shopId)
   })

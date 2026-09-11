@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react'
-import { Search, X, Package, AlertCircle } from 'lucide-react'
+import React, { useEffect, useRef, useState } from 'react'
+import { Search, X, Package, AlertCircle, Clock, LayoutDashboard } from 'lucide-react'
 import { useCategories, useShopSettings } from '../../hooks/useDatabase'
 import { useCartState } from './hooks/useCartState'
 import { useScanner } from '../../hooks/useScanner'
@@ -11,6 +11,8 @@ import HeldSalesSheet from './components/HeldSalesSheet'
 import POSCategories from './components/POSCategories'
 import POSCart from './components/POSCart'
 import PriceSelectionDialog from './components/PriceSelectionDialog'
+import RecentSalesPanel from './components/RecentSalesPanel'
+import DashboardView from './components/DashboardView'
 import type { TranslationKey } from '../../lib/i18n'
 
 const POS: React.FC = () => {
@@ -29,6 +31,8 @@ const POS: React.FC = () => {
     handleDeleteHeldSale,
   } = useCartState()
 
+  const [showRecent, setShowRecent] = React.useState(false)
+  const [showDashboard, setShowDashboard] = React.useState(true)
   const searchRef = useRef<HTMLInputElement>(null)
   useScanner(handleScan)
 
@@ -74,7 +78,27 @@ const POS: React.FC = () => {
             </div>
           )}
           {search && <button onClick={() => setSearch('')} className="text-slate-400 hover:text-slate-600"><X size={14} /></button>}
+          <button
+            onClick={() => setShowRecent(true)}
+            className="flex items-center gap-1 px-2.5 py-2 rounded-lg bg-brand-orange/10 hover:bg-brand-orange/20 text-brand-orange text-[10px] font-bold shrink-0 transition-colors"
+            title="Recent Sales"
+          >
+            <Clock size={13} />
+          </button>
+          <button
+            onClick={() => setShowDashboard(d => !d)}
+            className={`flex items-center gap-1 px-2.5 py-2 rounded-lg text-[10px] font-bold shrink-0 transition-colors ${
+              showDashboard
+                ? 'bg-brand-orange/20 text-brand-orange'
+                : 'bg-slate-100 hover:bg-slate-200 text-slate-500'
+            }`}
+            title="Toggle Dashboard"
+          >
+            <LayoutDashboard size={13} />
+          </button>
         </div>
+
+        {showDashboard && <DashboardView compact />}
 
         <div className="flex-1 overflow-y-auto p-2">
           {products.length === 0 ? (
@@ -101,6 +125,12 @@ const POS: React.FC = () => {
       {showHeld && (
         <HeldSalesSheet heldSales={heldSales} onRecall={handleRecall}
           onDelete={handleDeleteHeldSale} onClose={() => setShowHeld(false)} />
+      )}
+      {showRecent && (
+        <RecentSalesPanel
+          onClose={() => setShowRecent(false)}
+          onReprint={() => {}}
+        />
       )}
       {priceSelectionProduct && (
         <PriceSelectionDialog

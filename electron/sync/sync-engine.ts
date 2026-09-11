@@ -51,13 +51,14 @@ export class RealSyncEngine {
 
       this.db.prepare(`
         INSERT INTO sync_events
-          (id, shop_id, device_id, event_type, payload, idempotency_key, version, timestamp, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (id, shop_id, device_id, event_type, sequence_number, payload, idempotency_key, version, timestamp, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         event.id,
         event.businessId,
         event.originatingDeviceId,
         event.entityKind,
+        0, // sequence_number managed by cloud pull; enqueue uses 0 as placeholder
         JSON.stringify(event.payload),
         event.idempotencyKey,
         event.entityVersion,
@@ -218,6 +219,212 @@ export class RealSyncEngine {
         this.processedKeys.add(event.idempotencyKey)
         return { state: 'applied', entityVersion: event.entityVersion }
       }
+    }
+
+    // ── customer ─────────────────────────────────────────────────────────
+    if (event.entityKind === 'customer') {
+      const c = event.payload as {
+        id?: string; name?: string; phone?: string | null; email?: string | null
+        id_number?: string | null; address?: string | null; notes?: string | null
+        status?: string; idempotency_key?: string
+      }
+      const customerId = c.id ?? event.entityId
+      if (!customerId) {
+        this.processedKeys.add(event.idempotencyKey)
+        return { state: 'no_op' }
+      }
+
+      if (event.operation === 'delete' || event.operation === 'tombstone') {
+        db.prepare(
+          'UPDATE customers SET is_active = 0 WHERE id = ? AND shop_id = ?'
+        ).run(customerId, event.businessId)
+        this.processedKeys.add(event.idempotencyKey)
+        return { state: 'applied' }
+      }
+
+      // create / update
+      const existing = db.prepare(
+        'SELECT version FROM customers WHERE id = ?'
+      ).get(customerId) as { version?: number } | undefined
+
+      if (existing && existing.version !== undefined && existing.version > event.entityVersion) {
+        this.processedKeys.add(event.idempotencyKey)
+        return {
+          state: 'version_older',
+          localEntityVersion: existing.version,
+          eventEntityVersion: event.entityVersion,
+        }
+      }
+
+      if (existing) {
+        const updates: string[] = ['updated_at = ?']
+        const vals: unknown[] = [new Date().toISOString()]
+        if (c.name !== undefined) { updates.push('name = ?'); vals.push(c.name) }
+        if (c.phone !== undefined) { updates.push('phone = ?'); vals.push(c.phone) }
+        if (c.email !== undefined) { updates.push('email = ?'); vals.push(c.email) }
+        if (c.id_number !== undefined) { updates.push('id_number = ?'); vals.push(c.id_number) }
+        if (c.address !== undefined) { updates.push('address = ?'); vals.push(c.address) }
+        if (c.notes !== undefined) { updates.push('notes = ?'); vals.push(c.notes) }
+        if (c.status !== undefined) {
+          updates.push('is_active = ?')
+          vals.push(c.status === 'active' ? 1 : 0)
+        }
+        updates.push('version = ?')
+        vals.push(event.entityVersion, customerId)
+        db.prepare(`UPDATE customers SET ${updates.join(', ')} WHERE id = ?`).run(...vals)
+      } else {
+        db.prepare(`
+          INSERT OR IGNORE INTO customers
+            (id, name, phone, email, id_number, address, notes, is_active,
+             idempotency_key, shop_id, version, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          customerId,
+          c.name ?? 'Unknown',
+          c.phone ?? null,
+          c.email ?? null,
+          c.id_number ?? null,
+          c.address ?? null,
+          c.notes ?? null,
+          c.status === 'active' ? 1 : 0,
+          event.idempotencyKey,
+          event.businessId,
+          event.entityVersion,
+          new Date().toISOString(),
+          new Date().toISOString(),
+        )
+      }
+
+      this.processedKeys.add(event.idempotencyKey)
+      return { state: 'applied', entityVersion: event.entityVersion }
+    }
+
+    // ── debt ───────────────────────────────────────────────────────────────
+    if (event.entityKind === 'debt') {
+      const d = event.payload as {
+        id?: string; customer_id?: string; sale_id?: string | null
+        amount?: number; status?: string; due_date?: string | null; notes?: string | null
+        version?: number
+      }
+      const debtId = d.id ?? event.entityId
+      if (!debtId) {
+        this.processedKeys.add(event.idempotencyKey)
+        return { state: 'no_op' }
+      }
+
+      if (event.operation === 'delete' || event.operation === 'tombstone') {
+        db.prepare('UPDATE debts SET status = ? WHERE id = ? AND shop_id = ?')
+          .run('written_off', debtId, event.businessId)
+        this.processedKeys.add(event.idempotencyKey)
+        return { state: 'applied' }
+      }
+
+      const existing = db.prepare(
+        'SELECT version FROM debts WHERE id = ?'
+      ).get(debtId) as { version?: number } | undefined
+
+      if (existing && existing.version !== undefined && existing.version > event.entityVersion) {
+        this.processedKeys.add(event.idempotencyKey)
+        return { state: 'version_older', localEntityVersion: existing.version, eventEntityVersion: event.entityVersion }
+      }
+
+      if (existing) {
+        const updates: string[] = ['updated_at = ?']
+        const vals: unknown[] = [new Date().toISOString()]
+        if (d.customer_id !== undefined) { updates.push('customer_id = ?'); vals.push(d.customer_id) }
+        if (d.sale_id !== undefined) { updates.push('sale_id = ?'); vals.push(d.sale_id) }
+        if (d.amount !== undefined) { updates.push('amount = ?'); vals.push(d.amount) }
+        if (d.status !== undefined) { updates.push('status = ?'); vals.push(d.status) }
+        if (d.due_date !== undefined) { updates.push('due_date = ?'); vals.push(d.due_date) }
+        if (d.notes !== undefined) { updates.push('notes = ?'); vals.push(d.notes) }
+        if (d.version !== undefined) { updates.push('version = ?'); vals.push(d.version) }
+        else { updates.push('version = ?'); vals.push(event.entityVersion) }
+        vals.push(debtId)
+        db.prepare(`UPDATE debts SET ${updates.join(', ')} WHERE id = ?`).run(...vals)
+      } else {
+        db.prepare(`
+          INSERT OR IGNORE INTO debts
+            (id, customer_id, sale_id, amount, status, due_date, notes,
+             shop_id, created_at, updated_at, version)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          debtId,
+          d.customer_id ?? null,
+          d.sale_id ?? null,
+          d.amount ?? 0,
+          d.status ?? 'pending',
+          d.due_date ?? null,
+          d.notes ?? null,
+          event.businessId,
+          new Date().toISOString(),
+          new Date().toISOString(),
+          d.version ?? event.entityVersion,
+        )
+      }
+
+      this.processedKeys.add(event.idempotencyKey)
+      return { state: 'applied', entityVersion: d.version ?? event.entityVersion }
+    }
+
+    // ── debtPayment ────────────────────────────────────────────────────────
+    if (event.entityKind === 'debtPayment') {
+      const p = event.payload as {
+        id?: string; debt_id?: string; amount?: number
+        payment_method?: string; payment_ref?: string | null; reference?: string | null
+        shop_id?: string; version?: number
+      }
+      const paymentId = p.id ?? event.entityId
+      if (!paymentId) {
+        this.processedKeys.add(event.idempotencyKey)
+        return { state: 'no_op' }
+      }
+
+      // Idempotent: skip if already recorded
+      const existingPay = db.prepare(
+        'SELECT id FROM debt_payments WHERE idempotency_key = ?'
+      ).get(event.idempotencyKey)
+      if (existingPay) {
+        this.processedKeys.add(event.idempotencyKey)
+        return { state: 'no_op' }
+      }
+
+      const shopId = p.shop_id ?? event.businessId
+
+      db.prepare(`
+        INSERT OR IGNORE INTO debt_payments
+          (id, debt_id, amount, payment_method, reference, shop_id, created_at, version, idempotency_key)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        paymentId,
+        p.debt_id ?? '',
+        p.amount ?? 0,
+        p.payment_method ?? 'cash',
+        p.payment_ref ?? p.reference ?? null,
+        shopId,
+        new Date().toISOString(),
+        p.version ?? event.entityVersion,
+        event.idempotencyKey,
+      )
+
+      // Recompute balance and update cached amount_paid on debt
+      if (p.debt_id) {
+        const debt = db.prepare(
+          'SELECT amount FROM debts WHERE id = ?'
+        ).get(p.debt_id) as { amount: number } | undefined
+        if (debt) {
+          const paidRow = db.prepare(
+            'SELECT COALESCE(SUM(amount), 0) as paid FROM debt_payments WHERE debt_id = ?'
+          ).get(p.debt_id) as { paid: number }
+          const newBalance = debt.amount - paidRow.paid
+          const newStatus = newBalance <= 0 ? 'paid' : 'partial'
+          db.prepare(
+            'UPDATE debts SET amount_paid = ?, status = ?, updated_at = ? WHERE id = ?'
+          ).run(paidRow.paid, newStatus, new Date().toISOString(), p.debt_id)
+        }
+      }
+
+      this.processedKeys.add(event.idempotencyKey)
+      return { state: 'applied', entityVersion: p.version ?? event.entityVersion }
     }
 
     this.processedKeys.add(event.idempotencyKey)

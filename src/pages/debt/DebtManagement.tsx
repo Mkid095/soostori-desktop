@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Search, Plus, DollarSign } from 'lucide-react'
 import {
   useCustomers, useDebts, useCreateCustomer,
-  useRecordDebtPayment, useCreateDebt, useDebtSummary,
+  useRecordDebtPayment, useCreateDebt, useDebtSummary, useCustomerDebts,
 } from '../../hooks/useDatabase'
 import { formatCurrency } from '../../lib/formatting-currency'
 import type { Customer, Debt } from '../../lib/types'
@@ -13,6 +13,7 @@ import DebtDetailModal from './components/DebtDetailModal'
 import PaymentModal from './components/PaymentModal'
 import AddCustomerSheet from './components/AddCustomerSheet'
 import RecordDebtSheet from './components/RecordDebtSheet'
+import CustomerDetailModal from './components/CustomerDetailModal'
 import DebtContent from './components/DebtContent'
 
 const DebtManagement: React.FC = () => {
@@ -31,6 +32,7 @@ const DebtManagement: React.FC = () => {
   const [payingDebt, setPayingDebt] = useState<Debt | null>(null)
   const [detailDebt, setDetailDebt] = useState<Debt | null>(null)
   const [recordDebtFor, setRecordDebtFor] = useState<Customer | null>(null)
+  const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null)
 
   const { filteredDebts, filteredCustomers, pending, handlePayDebt, handleSaveCustomer, handleRecordDebt } =
     useDebtState(debts, customers, search, statusFilter, recordPayment, createCustomer, createDebt)
@@ -52,6 +54,14 @@ const DebtManagement: React.FC = () => {
   }, [])
 
   const statusLabels: Record<string, string> = { all: t('deb.all'), pending: t('deb.pending'), partial: t('deb.partial'), paid: t('deb.paid') }
+
+  // Find the full Debt object for a debtId from the customer detail view
+  const { data: customerDebts = [] } = useCustomerDebts(viewingCustomer?.id ?? null)
+  const handleRecordPaymentFromCustomer = (debtId: string) => {
+    const debt = customerDebts.find(d => d.id === debtId) ?? debts.find(d => d.id === debtId) ?? null
+    setViewingCustomer(null)
+    setTimeout(() => setPayingDebt(debt), 50)
+  }
 
   return (
     <div className="h-full bg-bg-primary dark:bg-bg-primary flex flex-col overflow-hidden transition-colors duration-200">
@@ -111,8 +121,14 @@ const DebtManagement: React.FC = () => {
         </div>
       )}
 
-      <DebtContent activeTab={activeTab} filteredDebts={filteredDebts} filteredCustomers={filteredCustomers}
-        onRecordDebt={setRecordDebtFor} onShowDetail={setDetailDebt} onRecordPayment={setPayingDebt} />
+      <DebtContent
+        activeTab={activeTab}
+        filteredDebts={filteredDebts}
+        filteredCustomers={filteredCustomers}
+        onRecordDebt={setRecordDebtFor}
+        onShowDetail={setDetailDebt}
+        onRecordPayment={setPayingDebt}
+        onShowCustomer={setViewingCustomer} />
 
       {activeTab === 'customers' && (
         <button onClick={() => setShowAddCustomer(true)}
@@ -134,6 +150,9 @@ const DebtManagement: React.FC = () => {
       )}
       {detailDebt && (
         <DebtDetailModal debt={detailDebt} onClose={() => setDetailDebt(null)} onRecordPayment={() => { setPayingDebt(detailDebt); setDetailDebt(null) }} />
+      )}
+      {viewingCustomer && (
+        <CustomerDetailModal customer={viewingCustomer} onClose={() => setViewingCustomer(null)} onRecordPayment={handleRecordPaymentFromCustomer} />
       )}
     </div>
   )

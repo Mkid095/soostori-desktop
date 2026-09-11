@@ -104,6 +104,8 @@ export interface Customer {
   notes?: string
   idNumber?: string
   isActive: boolean
+  idempotencyKey?: string
+  version?: number
   createdAt: string
   updatedAt: string
 }

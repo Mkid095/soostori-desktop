@@ -15,6 +15,13 @@ interface StockMovementDbRow {
   created_by: string | null
 }
 
+interface LowStockRow {
+  id: string
+  name: string
+  current_stock: number
+  low_stock_threshold: number
+}
+
 function mapStockMovement(row: StockMovementDbRow): StockMovement {
   return {
     id: row.id,
@@ -47,6 +54,57 @@ export function useAdjustStock() {
       queryClient.invalidateQueries({ queryKey: ['stockMovements'] })
     },
   })
+}
+
+export function useReceiveStock() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { productId: string; quantity: number; supplier?: string; notes?: string }) =>
+      api.receiveStock(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+      queryClient.invalidateQueries({ queryKey: ['stockMovements'] })
+    },
+  })
+}
+
+export function useTransferStock() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { productId: string; fromBusinessId: string; toBusinessId: string; quantity: number }) =>
+      api.transferStock(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+      queryClient.invalidateQueries({ queryKey: ['stockMovements'] })
+    },
+  })
+}
+
+export function useCountStock() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { counts: Array<{ productId: string; counted: number }> }) =>
+      api.countStock(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+      queryClient.invalidateQueries({ queryKey: ['stockMovements'] })
+    },
+  })
+}
+
+export function useLowStockProducts() {
+  return {
+    queryKey: ['lowStockProducts'] as const,
+    queryFn: async () => {
+      const rows = await api.getLowStockProducts() as LowStockRow[]
+      return rows.map(row => ({
+        productId: row.id,
+        productName: row.name,
+        currentStock: row.current_stock,
+        threshold: row.low_stock_threshold,
+      }))
+    },
+  }
 }
 
 export function useStockMovements(productId?: string, limit: number = 100) {

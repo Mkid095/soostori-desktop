@@ -2,9 +2,11 @@
  * IPC handler registration — split from main.ts to keep entry under 150 lines.
  */
 
-import { registerProductHandlers, registerCategoryHandlers, registerSaleHandlers,
+import {
+  registerProductHandlers, registerCategoryHandlers, registerSaleHandlers,
   registerCustomerHandlers, registerDebtHandlers, registerSettingsHandlers,
-  registerStockHandlers, registerExpenseHandlers, registerShopHandlers,
+  registerStockHandlers, registerExpenseHandlers, registerRecurringExpenseHandlers,
+  registerShopHandlers,
   registerAuthHandlers, registerInviteHandlers, registerDeviceHandlers,
   registerAuditHandlers,
   registerSyncSaleHandlers, registerSyncQueueHandlers,
@@ -12,6 +14,9 @@ import { registerProductHandlers, registerCategoryHandlers, registerSaleHandlers
   registerSyncIpcHandlers,
   registerCloudHandlers,
   registerCloudAuthHandlers,
+  registerDashboardHandlers,
+  registerReportHandlers,
+  registerTeamHandlers,
 } from './index'
 import { registerCloudAuthIpcHandlers } from './cloud-auth-ipc-handlers'
 import { registerHardwareHandlers } from './hardware-handlers'
@@ -27,6 +32,7 @@ export function registerAllIpcHandlers(): void {
   registerSettingsHandlers()
   registerStockHandlers()
   registerExpenseHandlers()
+  registerRecurringExpenseHandlers()
   registerShopHandlers()
   registerAuthHandlers()
   registerInviteHandlers()
@@ -43,4 +49,7 @@ export function registerAllIpcHandlers(): void {
   registerAppHandlers()
   registerSyncServiceHandlers()
   registerBusinessSetupHandlers()
+  registerDashboardHandlers()
+  registerReportHandlers()
+  registerTeamHandlers()
 }

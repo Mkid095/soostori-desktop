@@ -12,7 +12,7 @@ import {
   setHostMode,
   tickPrimaryCoordinator,
 } from '../sdk/primary-coordinator'
-import { applyStockAdjusted, applySaleConfirmed, applySaleRefunded, applySaleVoided, applyProductEvent } from './sync-service-apply'
+import { applyStockAdjusted, applySaleConfirmed, applySaleRefunded, applySaleVoided, applyProductEvent, applyDebtCreated, applyDebtPaymentRecorded } from './sync-service-apply'
 import { startHeartbeat, stopHeartbeat } from './sync-service-heartbeat'
 
 export type AuthorityStatus = 'online' | 'stale' | 'lost' | 'unknown'
@@ -86,6 +86,8 @@ class SyncService {
       else if (event.eventType === 'SALE_CONFIRMED') await applySaleConfirmed(event)
       else if (event.eventType === 'SALE_REFUNDED') applySaleRefunded(event)
       else if (event.eventType === 'SALE_VOIDED') applySaleVoided(event)
+      else if (event.eventType === 'DEBT_CREATED') applyDebtCreated(event)
+      else if (event.eventType === 'DEBT_PAYMENT_RECORDED') applyDebtPaymentRecorded(event)
       else if (['PRODUCT_CREATED','PRODUCT_UPDATED','PRODUCT_DELETED','CATEGORY_CREATED','CATEGORY_UPDATED','PRICE_CHANGED'].includes(event.eventType)) applyProductEvent(event)
       this.eventListeners.forEach(cb => cb(event))
       dispatchSyncStatus('syncing'); setTimeout(() => dispatchSyncStatus('online'), 500)

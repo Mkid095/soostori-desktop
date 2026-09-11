@@ -19,11 +19,10 @@ import { syncService } from '../sync/sync-service'
 import { notify } from '../services/notification-service'
 import { resolveActiveShopId } from '../database/active-shop'
 import { desktopLoadSession } from '../auth/electron-store-session'
-import { defaultSyncEngine } from '@soostori/contracts'
 import type { Sale, SyncEvent } from '@soostori/contracts'
 import { asBusinessId, asEmployeeId, asDeviceId, type SyncCursorId } from '@soostori/core'
 import { fromLocalSale, type SalesRow } from '../database/contracts-mapper-2'
-import { buildSaleSyncEvent } from '../database/sync-event-builder'
+import { buildSaleSyncEvent, buildDebtSyncEvent } from '../database/sync-event-builder'
 // Phase 04: canonical capability API
 import { can, CAPABILITIES } from '@soostori/auth'
 import type { Member } from '@soostori/auth'
@@ -110,14 +109,43 @@ export function registerSaleCreateHandlers(): void {
           customerId = custId
         }
         if (customerId) {
+          const debtId = uuidv4()
+          const debtKey = `debt:created:${debtId}`
           getDatabase().prepare(
-            `INSERT INTO debts (id, customer_id, sale_id, amount, amount_paid, status, notes, shop_id, created_at, updated_at) VALUES (?, ?, ?, ?, 0, 'pending', ?, ?, ?, ?)`,
-          ).run(uuidv4(), customerId, saleId, saleData.totalAmount, saleData.note || null, shopId,
-            new Date().toISOString(), new Date().toISOString())
+            `INSERT INTO debts (id, customer_id, sale_id, amount, amount_paid, status, notes, shop_id, created_at, updated_at, version, idempotency_key) VALUES (?, ?, ?, ?, 0, 'pending', ?, ?, ?, ?, 1, ?)`,
+          ).run(debtId, customerId, saleId, saleData.totalAmount, saleData.note || null, shopId,
+            new Date().toISOString(), new Date().toISOString(), debtKey)
+
+          // Phase 11: enqueue DebtCreated sync event so other devices/cloud receive it
+          const debtRow = getDatabase().prepare(
+            'SELECT * FROM debts WHERE id = ?'
+          ).get(debtId)
+          if (debtRow) {
+            const debtEvent = buildDebtSyncEvent('create', {
+              id: debtId,
+              businessId: asBusinessId(shopId),
+              customerId: customerId as import('@soostori/core').CustomerId,
+              saleId: saleId as import('@soostori/core').SaleId,
+              amount: saleData.totalAmount,
+              balance: saleData.totalAmount,
+              status: 'pending',
+              dueDate: null,
+              notes: saleData.note ?? null,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              version: 1,
+            } as import('@soostori/contracts').Debt, {
+              businessId: asBusinessId(shopId),
+              originatingDeviceId: asDeviceId(session?.deviceId ?? deviceId ?? 'system'),
+              originatingEmployeeId: asEmployeeId(session?.userId ?? userId),
+              clientSequence: Date.now() + 1,
+            })
+            getRealSyncEngine().enqueue(debtEvent).catch(() => {})
+          }
         }
       }
 
-      // Sub-cycle F: enqueue SyncEvent onto defaultSyncEngine after the
+      // Sub-cycle F: enqueue SyncEvent onto RealSyncEngine after the
       // SQLite INSERT succeeds. Projects the persisted row to the
       // canonical Sale shape via fromLocalSale so the sync payload is
       // contract-typed.
@@ -132,7 +160,10 @@ export function registerSaleCreateHandlers(): void {
           originatingEmployeeId: asEmployeeId(session?.userId ?? userId),
           clientSequence: Date.now(),
         })
-        defaultSyncEngine.enqueue(syncEvent).catch(() => {})
+        // Phase 09: CRITICAL FIX — use RealSyncEngine (persisted to SQLite),
+        // not the NoOp stub. RealSyncEngine.enqueue() writes to sync_events
+        // table with idempotency_key dedup; cloud pull reads from there.
+        getRealSyncEngine().enqueue(syncEvent).catch(() => {})
 
         // Phase 05: trigger immediate cloud pull to receive any pending events
         const appId = process.env.INSTANT_APP_ID

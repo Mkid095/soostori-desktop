@@ -21,9 +21,11 @@ export const dbHandlers: DbIpc = {
   // Sales
   getSales: (shopId?: string, limit?: number, offset?: number) => ipcRenderer.invoke('db:sales:list', shopId, limit, offset),
   getSaleById: (id: string) => ipcRenderer.invoke('db:sales:get', id),
+  getRecentSales: (limit?: number) => ipcRenderer.invoke('db:sales:recent', limit),
   createSale: (sale: unknown) => ipcRenderer.invoke('db:sales:create', sale),
-  refundSale: (saleId: string) => ipcRenderer.invoke('db:sales:refund', saleId),
-  voidSale: (saleId: string) => ipcRenderer.invoke('db:sales:void', saleId),
+  refundSale: (input: { saleId: string; lineItems?: Array<{ productId: string; quantity: number }>; refundAmount: number; reason: string; paymentMethod: 'cash' | 'mobile_money' | 'card' }) =>
+    ipcRenderer.invoke('db:sales:refund', input),
+  voidSale: (saleId: string, reason: string) => ipcRenderer.invoke('db:sales:void', saleId, reason),
   getSalesByDateRange: (startDate: string, endDate: string, shopId?: string) =>
     ipcRenderer.invoke('db:sales:listByDateRange', startDate, endDate, shopId),
   getTopProducts: (startDate: string, endDate: string, limit?: number) =>
@@ -38,6 +40,14 @@ export const dbHandlers: DbIpc = {
     ipcRenderer.invoke('db:inventory:adjust', productId, quantityChange, reason),
   getStockMovements: (productId?: string, limit?: number) =>
     ipcRenderer.invoke('db:inventory:movements', productId, limit),
+  receiveStock: (data: { productId: string; quantity: number; supplier?: string; notes?: string }) =>
+    ipcRenderer.invoke('db:inventory:receive', data),
+  transferStock: (data: { productId: string; fromBusinessId: string; toBusinessId: string; quantity: number }) =>
+    ipcRenderer.invoke('db:inventory:transfer', data),
+  countStock: (data: { counts: Array<{ productId: string; counted: number }> }) =>
+    ipcRenderer.invoke('db:inventory:count', data),
+  getLowStockProducts: () =>
+    ipcRenderer.invoke('db:inventory:lowStock'),
   // Shop Settings
   getShopSettings: () => ipcRenderer.invoke('db:shop-settings:get'),
   updateShopSettings: (settings: unknown) => ipcRenderer.invoke('db:shop-settings:update', settings),
@@ -51,9 +61,15 @@ export const dbHandlers: DbIpc = {
   // Customers
   getCustomers: () => ipcRenderer.invoke('db:customers:list'),
   getCustomer: (id: string) => ipcRenderer.invoke('db:customers:get', id),
-  createCustomer: (data: unknown) => ipcRenderer.invoke('db:customers:create', data),
+  createCustomer: (data: unknown, idempotencyKey?: string) =>
+    ipcRenderer.invoke('db:customers:create', data, idempotencyKey),
   updateCustomer: (id: string, data: unknown) => ipcRenderer.invoke('db:customers:update', id, data),
   deleteCustomer: (id: string) => ipcRenderer.invoke('db:customers:delete', id),
+  searchCustomers: (query: string) => ipcRenderer.invoke('db:customers:search', query),
+  getCustomerPurchaseHistory: (customerId: string) =>
+    ipcRenderer.invoke('db:customers:purchaseHistory', customerId),
+  attachCustomerToSale: (saleId: string, customerId: string) =>
+    ipcRenderer.invoke('db:customers:attachToSale', saleId, customerId),
   // Debts
   getDebts: () => ipcRenderer.invoke('db:debts:list'),
   getDebt: (id: string) => ipcRenderer.invoke('db:debts:get', id),
@@ -62,10 +78,18 @@ export const dbHandlers: DbIpc = {
     ipcRenderer.invoke('db:debts:recordPayment', debtId, amount, paymentMethod, reference),
   getDebtSummary: () => ipcRenderer.invoke('db:debts:summary'),
   getTotalDebtCollected: () => ipcRenderer.invoke('db:debts:totalCollected'),
+  getCustomerDebts: (customerId: string) => ipcRenderer.invoke('db:debts:byCustomer', customerId),
+  getCustomerDebtBalance: (customerId: string) => ipcRenderer.invoke('db:debts:customerBalance', customerId),
   // Expenses
   getExpenses: () => ipcRenderer.invoke('db:expenses:list'),
   createExpense: (data: unknown) => ipcRenderer.invoke('db:expenses:create', data),
   deleteExpense: (id: string) => ipcRenderer.invoke('db:expenses:delete', id),
+  approveExpense: (id: string) => ipcRenderer.invoke('db:expenses:approve', id),
+  markExpensePaid: (id: string) => ipcRenderer.invoke('db:expenses:markPaid', id),
+  getExpenseSummary: (month: string) => ipcRenderer.invoke('db:expenses:summary', month),
+  getRecurringExpenses: () => ipcRenderer.invoke('db:expenses:recurring:list'),
+  createRecurringExpense: (data: unknown) => ipcRenderer.invoke('db:expenses:recurring:create', data),
+  deleteRecurringExpense: (id: string) => ipcRenderer.invoke('db:expenses:recurring:delete', id),
   // Shop / Auth / Team
   getShop: () => ipcRenderer.invoke('db:shop:get'),
   getDeviceId: () => ipcRenderer.invoke('db:device:getId'),
@@ -103,6 +127,9 @@ export const dbHandlers: DbIpc = {
   approvePairing: (pairingId: string, approvedBy: string) => ipcRenderer.invoke('db:devices:approvePairing', pairingId, approvedBy),
   rejectPairing: (pairingId: string) => ipcRenderer.invoke('db:devices:rejectPairing', pairingId),
   getPairings: (shopId: string) => ipcRenderer.invoke('db:devices:getPairings', shopId),
+  getPrimaryStatus: (shopId: string) => ipcRenderer.invoke('db:devices:getPrimaryStatus', shopId),
+  transferPrimaryDevice: (toDeviceId: string, shopId: string) =>
+    ipcRenderer.invoke('db:devices:transferPrimary', toDeviceId, shopId),
   // Inventory TX
   createInventoryTx: (data: { productId: string; eventType: string; quantity: number; balanceAfter: number; status: string; payload?: string }) =>
     ipcRenderer.invoke('db:inventory:txCreate', data),
@@ -140,4 +167,24 @@ export const dbHandlers: DbIpc = {
   listBusinessesForUser: () => ipcRenderer.invoke('db:business:listForUser'),
   setActiveBusiness: (businessId: string) => ipcRenderer.invoke('db:business:setActive', businessId),
   getActiveBusinessId: () => ipcRenderer.invoke('db:business:getActive'),
+  // Dashboard (Phase 12)
+  getDashboard: () => ipcRenderer.invoke('db:dashboard'),
+  getDashboardSales: () => ipcRenderer.invoke('db:dashboard:sales'),
+  getDashboardStock: () => ipcRenderer.invoke('db:dashboard:stock'),
+  getDashboardDebt: () => ipcRenderer.invoke('db:dashboard:debt'),
+  // Reports (Phase 13)
+  getDashboardSummary: () => ipcRenderer.invoke('db:reports:dashboardSummary'),
+  getSalesReport: (from: string, to: string) => ipcRenderer.invoke('db:reports:sales', from, to),
+  getInventoryReport: () => ipcRenderer.invoke('db:reports:inventory'),
+  getDebtReport: () => ipcRenderer.invoke('db:reports:debt'),
+  getExpenseReport: (month: string) => ipcRenderer.invoke('db:reports:expense', month),
+  // Team (Phase 14)
+  teamInvite: (data: { email: string; role: string; invitedByEmployeeId: string }) =>
+    ipcRenderer.invoke('db:team:invite', data),
+  teamListInvitations: () => ipcRenderer.invoke('db:team:listInvitations'),
+  teamCancelInvitation: (id: string) => ipcRenderer.invoke('db:team:cancelInvitation', id),
+  teamListMembers: () => ipcRenderer.invoke('db:team:listMembers'),
+  teamUpdateMember: (membershipId: string, data: { role?: string; permissions?: string[] }) =>
+    ipcRenderer.invoke('db:team:updateMember', { membershipId, ...data }),
+  teamRemoveMember: (membershipId: string) => ipcRenderer.invoke('db:team:removeMember', membershipId),
 }

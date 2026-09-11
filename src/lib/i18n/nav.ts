@@ -16,6 +16,7 @@ export const nav = {
     'nav.devices': 'Devices',
     'nav.commissions': 'Commissions',
     'nav.business': 'Business',
+    'nav.dashboard': 'Dashboard',
   },
   sw: {
     'nav.store': 'Duka',
@@ -33,5 +34,6 @@ export const nav = {
     'nav.devices': 'Vifaa',
     'nav.commissions': 'Commissions',
     'nav.business': 'Biashara',
+    'nav.dashboard': 'Dashibodi',
   },
 } as const

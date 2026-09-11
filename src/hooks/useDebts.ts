@@ -90,3 +90,15 @@ export function useRecordDebtPayment() {
     },
   })
 }
+
+export function useCustomerDebts(customerId: string | null) {
+  return useQuery<Debt[]>({
+    queryKey: ['debts', 'customer', customerId],
+    queryFn: async () => {
+      if (!customerId) return []
+      const rows = await api.getCustomerDebts(customerId) as DebtDbRow[]
+      return rows.map(mapDebt)
+    },
+    enabled: !!customerId,
+  })
+}

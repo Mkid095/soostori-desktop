@@ -128,5 +128,35 @@ export function registerDeviceHandlers(): void {
     return { primaryId: primary.id, electedAt: null, lastHeartbeatAt: primary.last_seen, stalenessMs, status, electionPending: false, canAuthorStockOps }
   })
 
+  // Transfer primary (host) role to another device
+  ipcMain.handle('db:devices:transferPrimary', (_event, toDeviceId: string, shopId: string) => {
+    const db = getDatabase()
+    const target = db.prepare('SELECT id, device_name FROM devices WHERE id = ? AND shop_id = ?').get(toDeviceId, shopId)
+    if (!target) throw new Error('Target device not found')
+    const now = new Date().toISOString()
+    db.prepare('UPDATE devices SET is_host = 0 WHERE shop_id = ?').run(shopId)
+    db.prepare('UPDATE devices SET is_host = 1, last_seen = ? WHERE id = ?').run(now, toDeviceId)
+    log.info(`Primary transferred to device ${toDeviceId} for shop ${shopId}`)
+    return { success: true, primaryDeviceId: toDeviceId }
+  })
+
+  // Get primary status (alias for getPrimaryState for naming consistency)
+  ipcMain.handle('db:devices:getPrimaryStatus', (_event, shopId: string) => {
+    const db = getDatabase()
+    const primary = db.prepare(
+      'SELECT id, device_name, last_seen FROM devices WHERE is_host = 1 AND shop_id = ? LIMIT 1',
+    ).get(shopId) as { id: string; device_name: string; last_seen: string | null } | undefined
+    if (!primary) {
+      return { primaryId: null, primaryName: null, electedAt: null, lastHeartbeatAt: null, stalenessMs: Infinity, status: 'lost', electionPending: false }
+    }
+    const now = Date.now()
+    const lastSeen = primary.last_seen ? new Date(primary.last_seen).getTime() : 0
+    const stalenessMs = now - lastSeen
+    let status: 'online' | 'stale' | 'lost' = 'online'
+    if (stalenessMs > 60_000) status = 'lost'
+    else if (stalenessMs > 15_000) status = 'stale'
+    return { primaryId: primary.id, primaryName: primary.device_name, electedAt: null, lastHeartbeatAt: primary.last_seen, stalenessMs, status, electionPending: false }
+  })
+
   log.info('Device IPC handlers registered')
 }

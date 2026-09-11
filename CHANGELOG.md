@@ -5,6 +5,262 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 
+## [Unreleased] — Cycle 05 Phase 15 Devices Desktop (2026-09-11)
+
+### Added
+
+- **`device-handlers.ts`** (`electron/ipc-handlers/device-handlers.ts`): Phase 15 — added `db:devices:transferPrimary` (transfers host role to another device, clears old host first) and `db:devices:getPrimaryStatus` (returns primaryId, primaryName, staleness, status: online|stale|lost). Both handlers require shopId for business isolation.
+
+- **Preload bridge** (`electron/preload/ipc-signatures-db.ts` + `handlers-db.ts`): Wired `getPrimaryStatus` and `transferPrimaryDevice` IPC methods for renderer access.
+
+- **`usePermissions.ts`** (`src/hooks/usePermissions.ts`): Phase 15 — added `DEVICES_CAPABILITY_PERMISSIONS` map (Owner/Manager: devices.view|manage|transfer_primary; Cashier/Attendant: none) and extended `can()` to check device capabilities alongside existing team capabilities.
+
+- **`DeviceManagement.tsx`** (`src/pages/settings/components/DeviceManagement.tsx`): Phase 15 — full rewrite with Primary Device section (shows current primary, health badge: Online/Stale/Lost, last seen time, Transfer button), Transfer Primary modal (device picker with online/offline indicators, confirm/cancel), `devices.view` guard (blocked for Cashier/Attendant), `devices.manage` guard for approve/reject/transfer, device type icons (Monitor/Smartphone), Primary health badge (Online/Stale/Lost with color coding).
+
+## [Unreleased] — Cycle 05 Phase 14 Team Desktop (2026-09-10)
+
+### Added
+
+- **`team-handlers.ts`** (`electron/ipc-handlers/team-handlers.ts`): Phase 14 Team IPC handlers — 6 handlers: `db:team:invite`, `db:team:listInvitations`, `db:team:cancelInvitation`, `db:team:listMembers`, `db:team:updateMember`, `db:team:removeMember`. Each mutation enqueues a typed sync event via `RealSyncEngine`.
+
+- **`schema-team.ts`** (`electron/database/schema-team.ts`): Phase 14 SQLite schema — `team_invitations` (id, business_id, invited_by_employee_id, email, role, status, expires_at, accepted_at, created_at) and `team_memberships` (id, business_id, person_id, employee_id, role, permissions_json, joined_at) with migration support.
+
+- **`sync-event-builder-team.ts`** (`electron/database/sync-event-builder-team.ts`): Phase 14 team sync event builders — `team.invitation.created`, `team.invitation.accepted`, `team.invitation.expired`, `team.member.removed`, `team.member.role_changed` using canonical `invitation`/`membership` `EntityKind`.
+
+- **`useTeam.ts`** (`src/hooks/useTeam.ts`): Phase 14 React Query hooks — `useTeamMembers`, `useTeamInvitations`, `useInviteTeamMember`, `useUpdateTeamMember`, `useRemoveTeamMember`, `useCancelInvitation`.
+
+- **`TeamPage.tsx`** (`src/pages/team/TeamPage.tsx`): Phase 14 Team Management UI — Members tab (list, role badge, change-role modal, remove button) and Invitations tab (pending list, cancel action). Full `team.*` capability gating (Owner/Manager full access; Cashier/Attendant blocked via sidebar RBAC `can('team')`).
+
+- **Preload bridge** (`electron/preload/handlers-db.ts` + `ipc-signatures-db.ts`): Wired `teamInvite`, `teamListInvitations`, `teamCancelInvitation`, `teamListMembers`, `teamUpdateMember`, `teamRemoveMember`.
+
+- **`auth-context.tsx`** + **`usePermissions.ts`**: Added `ROLE_TEAM_PERMISSIONS` and extended `can()` to check team capabilities — Owner (`team.view|invite|update|remove|assign_role|assign_permission`), Manager (`team.view|invite|update|remove|assign_role`), Cashier/Attendant (none).
+
+- **`index-register.ts`** + **`index.ts`** (`electron/ipc-handlers/`): Registered `registerTeamHandlers`. `schema.ts`: added `createTeamTables()`.
+
+## [Unreleased] — Cycle 05 Phase 13 Reports Desktop (2026-09-10)
+
+### Added
+
+- **`report-handlers.ts`** (`electron/ipc-handlers/report-handlers.ts`): Phase 13 Report IPC handlers — all read-only, no mutations. Registers 5 handlers: `db:reports:dashboardSummary`, `db:reports:sales`, `db:reports:inventory`, `db:reports:debt`, `db:reports:expense`. Each query filters by `shop_id` for business isolation.
+
+- **`DashboardSummary` report** (`electron/ipc-handlers/report-handlers.ts`): Returns today/week/month sales and revenue, month cost, gross profit, gross margin %, low stock count, outstanding debts, pending expense count, active customers.
+
+- **`SalesReport`** (`electron/ipc-handlers/report-handlers.ts`): Returns total/cost/profit/margin, payment method breakdown with counts, top 10 products by revenue, sales count, average sale value. Supports arbitrary date range.
+
+- **`InventoryReport`** (`electron/ipc-handlers/report-handlers.ts`): Returns total products, stock value (cost_price × current_stock), low/out-of-stock counts, dead stock list (>30 days no movement), reorder suggestions (current vs threshold, suggested order qty).
+
+- **`DebtReport`** (`electron/ipc-handlers/report-handlers.ts`): Returns total outstanding, overdue/partial counts, aging buckets (0-30/31-60/61-90/90+ days computed from created_at), outstanding by customer sorted descending.
+
+- **`ExpenseReport`** (`electron/ipc-handlers/report-handlers.ts`): Returns total, by-category breakdown, pending count, and vs-prior-month percentage change for any YYYY-MM month.
+
+- **Preload bridge** (`electron/preload/handlers-db.ts` + `ipc-signatures-db.ts`): Added `getDashboardSummary`, `getSalesReport`, `getInventoryReport`, `getDebtReport`, `getExpenseReport` IPC methods.
+
+- **`useReports.ts`** (`src/hooks/useReports.ts`): Five TanStack Query hooks — `useDashboardSummary`, `useSalesReport`, `useInventoryReport`, `useDebtReport`, `useExpenseReport` — with appropriate stale/refetch intervals.
+
+- **Dashboard page enhanced** (`src/pages/dashboard/DashboardPage.tsx`): Full Phase 13 KPI cards — today/week/month sales + revenue, gross profit, gross margin %, low stock count, outstanding debts, pending expenses. Quick-access buttons to all four report tabs. Recent 10-transaction activity feed.
+
+- **`Reports.tsx` tabbed hub** (`src/pages/reports/Reports.tsx`): Replaced single sales view with 4-tab navigation (Sales | Inventory | Debt | Expense). Each tab renders its dedicated report view.
+
+- **`SalesReportView`** (`src/pages/reports/components/SalesReportView.tsx`): Date range picker (today/week/month/custom), revenue/profit/margin/transactions KPIs, payment method breakdown with bar charts, top products table.
+
+- **`InventoryReportView`** (`src/pages/reports/components/InventoryReportView.tsx`): Stock valuation KPIs, dead stock list, reorder suggestions table with suggested order quantities.
+
+- **`DebtReportView`** (`src/pages/reports/components/DebtReportView.tsx`): Outstanding/overdue/partial KPIs, 4-bucket aging grid (0-30/31-60/61-90/90+ days), outstanding-by-customer list sorted by amount.
+
+- **`ExpenseReportView`** (`src/pages/reports/components/ExpenseReportView.tsx`): Month picker with prev/next navigation, total/pending/vs-prior-month KPIs, by-category breakdown with color badges.
+
+- **App navigation wiring** (`src/App.tsx` + `src/pages/PageRenderer.tsx`): Dashboard quick-access buttons navigate to appropriate page tabs via `onNavigateToReport` callback prop.
+
+### Added
+
+- **`status` + `paid_at` expense columns** (`electron/database/migrations.ts` v4 migration): Added `status TEXT NOT NULL DEFAULT 'pending'` and `paid_at TEXT` columns to the `expenses` table. Added `recurring_expenses` table (id, shop_id, category, amount, frequency, next_due_date, is_active, created_at). Migration is idempotent (IF NOT EXISTS / column checks).
+
+- **`db:expenses:approve` + `db:expenses:markPaid` IPC handlers** (`electron/ipc-handlers/expense-handlers.ts`): Approve sets `status = 'approved'`; Mark Paid sets `status = 'paid', paid_at = <now>`. Both enforce `CAPABILITIES.EXPENSES_APPROVE` (Phase 04 RBAC already wired). Both enqueue `expense.updated` sync event via `buildExpenseSyncEvent` + `getRealSyncEngine().enqueue()`.
+
+- **`db:expenses:summary` IPC handler** (`electron/ipc-handlers/expense-handlers.ts`): Returns `{ total, byCategory: Record<string, number>, pendingCount }` for a given `YYYY-MM` month. Filters by `shop_id` for business isolation.
+
+- **`buildExpenseSyncEvent` sync event factory** (`electron/database/sync-event-builder.ts`): Emits typed `SyncEvent` with `entityKind: 'expense'` and idempotency key `create:expense:<id>` / `update:expense:<id>`. Wired into `db:expenses:create`, `db:expenses:approve`, and `db:expenses:markPaid` handlers.
+
+- **Recurring expense IPC handlers** (`electron/ipc-handlers/expense-handlers.ts`): `db:expenses:recurring:list` (reads `recurring_expenses` table), `db:expenses:recurring:create` (Zod-validated, idempotent INSERT), `db:expenses:recurring:delete` (RBAC: `EXPENSES_DELETE`).
+
+- **`ExpenseRow` + `RecurringExpenseRow` types updated** (`electron/preload/types-commerce.ts`): `ExpenseRow` now includes `status: 'pending' | 'approved' | 'paid'` and `paid_at: string | null`. New `RecurringExpenseRow` and `RecurringExpenseInput` interfaces added.
+
+- **`approveExpense`, `markExpensePaid`, `getExpenseSummary`, `getRecurringExpenses`, `createRecurringExpense`, `deleteRecurringExpense` preload bridge** (`electron/preload/handlers-db.ts` + `ipc-signatures-db.ts`): All 6 new IPC methods exposed to renderer via `ipcRenderer.invoke`.
+
+- **Expense summary widget** (`src/pages/expenses/ExpensesPage.tsx`): Two-card grid showing "Total This Month" (KES) and "Top Category" (badge + amount), computed from `getExpenseSummary(month)`.
+
+- **Month filter** (`src/pages/expenses/ExpensesPage.tsx`): `<input type="month">` with prev/next navigation, drives the `useExpenses(month)` query and `getExpenseSummary(month)` IPC call.
+
+- **Approve + Mark Paid actions in expense list** (`src/pages/expenses/components/ExpenseList.tsx`): Per-row action buttons — blue checkmark for Approve (pending → approved), green dollar sign for Mark Paid (any non-paid → paid), plus status badge per expense row.
+
+- **Recurring expenses section** (`src/pages/expenses/ExpensesPage.tsx`): Collapsible list below the main expense list showing all active recurring expenses (frequency badge, next due date, amount). Delete button per row. "Add Recurring" FAB in header.
+
+- **`AddRecurringSheet` component** (`src/pages/expenses/components/AddRecurringSheet.tsx`): Bottom-sheet form with amount, category, frequency (daily/weekly/monthly), and next due date.
+
+- **Updated `useExpenses` hook + new hooks** (`src/pages/expenses/hooks/useExpenses.ts`): `useExpenses(month)` with month param; `useExpenseSummary(month)`; `useApproveExpense()`; `useMarkExpensePaid()`; `useRecurringExpenses()`; `useCreateRecurringExpense()`; `useDeleteRecurringExpense()`; `useExpenseStats()` (for Reports page profit calculation).
+
+### Acceptance
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit` | **clean (0 errors)** — pre-existing SDK contract errors in `../soostori-sdk/` unrelated to this phase |
+| Expense list with month filter | `useExpenses(month)` wired to `getExpenses` IPC, month selector controls filter |
+| Create expense | Existing `AddExpenseSheet` + `useCreateExpense` — no changes needed |
+| Approve / Mark Paid | `db:expenses:approve` + `db:expenses:markPaid` → `useApproveExpense` + `useMarkExpensePaid` |
+| Recurring expenses section | `useRecurringExpenses` + `useCreateRecurringExpense` + `useDeleteRecurringExpense` |
+| Summary widget | `useExpenseSummary(month)` → total + top category cards |
+| Sync wired | `buildExpenseSyncEvent` → `getRealSyncEngine().enqueue()` in create/approve/markPaid |
+| CHANGELOG.md | This entry |
+
+### Files Changed
+
+`electron/database/migrations.ts` · `electron/database/contracts-mapper-3.ts` · `electron/database/sync-event-builder.ts` · `electron/ipc-handlers/expense-handlers.ts` · `electron/preload/types-commerce.ts` · `electron/preload/types.ts` · `electron/preload/ipc-signatures-db.ts` · `electron/preload/handlers-db.ts` · `src/pages/expenses/ExpensesPage.tsx` · `src/pages/expenses/components/ExpenseList.tsx` · `src/pages/expenses/components/AddRecurringSheet.tsx` · `src/pages/expenses/hooks/useExpenses.ts` · `CHANGELOG.md`
+
+## [Unreleased] — Cycle 05 Phase 12 Reports / Dashboard (2026-09-10)
+
+### Added
+
+- **`dashboard-handlers.ts` IPC layer** (`electron/ipc-handlers/dashboard-handlers.ts`): Phase 12 operational dashboard — fast single-shot SQLite queries, no sync, no aggregation. Four handlers: `db:dashboard` (full), `db:dashboard:sales`, `db:dashboard:stock`, `db:dashboard:debt`. Canonical sources: sales table (completed, today), products table (tracked stock), debts+debt_payments ledger (balance derived as `amount - SUM(payments)`).
+
+- **Preload bridge** (`electron/preload/handlers-db.ts`, `electron/preload/ipc-signatures-db.ts`): `getDashboard`, `getDashboardSales`, `getDashboardStock`, `getDashboardDebt` exposed to renderer via `ipcRenderer.invoke`.
+
+- **`useDashboard` React Query hooks** (`src/hooks/useDashboard.ts`): `useDashboard()` (full, 30s refresh), `useDashboardSales()` (15s refresh), `useDashboardStock()` (60s), `useDashboardDebt()` (30s). Re-exported from `useDatabase.ts`.
+
+- **`DashboardView` compact component** (`src/pages/pos/components/DashboardView.tsx`): embedded in POS page header — collapsible KPI strip showing today's sales total+count, stock in/low/out indicators, outstanding debt+overdue. Toggle via LayoutDashboard icon button.
+
+- **`DashboardPage` full-page view** (`src/pages/dashboard/DashboardPage.tsx`): dedicated page with three sections (Sales, Stock, Debt) each with stat cards. Accessible from sidebar Finance group.
+
+- **Sidebar integration**: `dashboard` added to `Page` type, `SidebarNav.tsx` nav items, `page-config.ts` entry, `PageRenderer.tsx` routing, `nav.ts` i18n (EN: Dashboard, SW: Dashibodi).
+
+- **Reconciliation rules** documented in both component and handler: Sales total = SUM(completed today); Stock = products table (verifiable against inventory_transactions ledger); Debt balance = derived from append-only payment ledger. Sync replay does not change totals.
+
+**Files:** electron/ipc-handlers/dashboard-handlers.ts, electron/preload/handlers-db.ts, electron/preload/ipc-signatures-db.ts, electron/ipc-handlers/index-register.ts, electron/ipc-handlers/index.ts, src/hooks/useDashboard.ts, src/hooks/useDatabase.ts, src/pages/pos/components/DashboardView.tsx, src/pages/pos/POS.tsx, src/pages/dashboard/DashboardPage.tsx, src/pages/PageRenderer.tsx, src/lib/page-config.ts, src/components/sidebar/SidebarNav.tsx, src/lib/i18n/nav.ts
+
+## [Unreleased] — Cycle 05 Phase 11 Customers & Debts Desktop (2026-09-10)
+
+### Added
+
+- **`db:debts:byCustomer` IPC handler** (`electron/ipc-handlers/debt-handlers.ts`): added `db:debts:byCustomer` handler — returns all debts for a specific customer with live balance derived from the payment ledger (`computeBalance`). Enforces `CAPABILITIES.DEBTS_VIEW` RBAC and business isolation.
+
+- **`getCustomerDebts` preload/API bridge** (`electron/preload/handlers-db.ts`, `electron/preload/ipc-signatures-db.ts`): added `getCustomerDebts(customerId)` to the `DbIpc` interface and IPC renderer bridge.
+
+- **`useCustomerDebts` React Query hook** (`src/hooks/useDebts.ts`): new hook calling `api.getCustomerDebts(customerId)`, returns mapped `Debt[]`. Enabled only when `customerId` is non-null. Re-exported from `useDatabase.ts`.
+
+- **Customer detail modal** (`src/pages/debt/components/CustomerDetailModal.tsx`): new modal showing customer info (name, phone, email, address, created date) and full debt history — active debts with outstanding balance + Pay button, settled debts list. Uses `useCustomerDebts` to load per-customer debt data.
+
+- **Customer detail wiring** (`src/pages/debt/components/CustomerRow.tsx`, `src/pages/debt/components/DebtContent.tsx`, `src/pages/debt/DebtManagement.tsx`): tapping a customer row in the customers tab now opens `CustomerDetailModal` instead of only showing the Record Debt button. Both Record Debt and Pay actions remain accessible from the detail modal.
+
+- **Sort debts by overdue first** (`src/pages/debt/hooks/useDebtState.ts`): `filteredDebts` now sorted with: (1) settled debts last, (2) overdue debts (past `dueDate`, not paid) bubble to top, (3) non-overdue debts sorted by `dueDate` ascending (soonest first), (4) debts without a due date sorted newest-first.
+
+- **Sync already wired**: `createDebt` handler emits `debt.created` sync event; `recordDebtPayment` handler emits `debt.payment` sync event — both via `getRealSyncEngine().enqueue()` fire-and-forget, matching the brief requirement.
+
+### Acceptance
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit` | **clean (0 errors)** — pre-existing SDK contract errors in `../soostori-sdk/` unrelated to this phase |
+| Customer list + search | `useCustomers` + `useSearchCustomers` already wired |
+| Customer detail + debt history | `CustomerDetailModal` + `useCustomerDebts` new |
+| Debts sorted overdue-first | `useDebtState.ts` sort comparator |
+| Record Payment modal | `PaymentModal` already existed, wired from detail modal |
+| Sync wired (mutations → cloud) | `buildDebtCreatedEvent` + `buildDebtPaymentEvent` enqueued in debt handlers — already present |
+| CHANGELOG.md | This entry |
+
+## [Unreleased] — Cycle 05 Phase 10 POS Sales Desktop (2026-09-10)
+
+### Added
+
+- **Sale void sync event** (`electron/database/sync-event-builder.ts`): added `buildVoidSyncEvent()` factory — emits a `sale.voided` sync event (operation: `'update'`, idempotency key `sale.voided:<id>`) with `voidReason` in the payload. Wired into `db:sales:void` handler (`electron/ipc-handlers/sale-void-handlers.ts`). Phase 10 reason field required — handler throws `"Void reason is required"` if blank.
+
+- **Sale refund sync event** (`electron/database/sync-event-builder.ts`): added `buildRefundSyncEvent()` factory — emits a `sale.refunded` sync event (operation: `'update'`, idempotency key `sale.refunded:<id>`) with `refundReason`, `refundAmount`, and `isPartialRefund` in the payload. Wired into `db:sales:refund` handler (`electron/ipc-handlers/sale-refund-handlers.ts`). Phase 10: reason required, partial/full refund via optional `lineItems`, refund payment method tracked.
+
+- **Recent Sales IPC** (`electron/ipc-handlers/sale-handlers-query.ts`): added `db:sales:recent` handler — returns last N completed sales with their `sale_items` joined, ordered by `created_at DESC`, max 50. Enables the POS Recent Sales panel without fetching the full sales history.
+
+- **Recent Sales sidebar panel** (`src/pages/pos/components/RecentSalesPanel.tsx`): slide-in panel showing the last 10 sales with time-ago, total, payment method badge, and status badge (completed/refunded/cancelled). Per-row hover actions: Receipt reprint (printer icon), Void (X icon), Refund (RotateCCW icon). Void opens a reason-required dialog; Refund opens a reason+method dialog. Polls every 15 seconds via `useRecentSales`.
+
+- **Recent Sales button in POS header** (`src/pages/pos/POS.tsx`): added Clock icon button in the product search bar header — opens the RecentSalesPanel.
+
+- **`useRecentSales` hook** (`src/hooks/useSales.ts`): TanStack Query hook calling `api.getRecentSales(limit)` with 15-second `refetchInterval`. Invalidated by void and refund mutations.
+
+- **`useVoidSale` hook** (`src/hooks/useSales.ts`): wraps `api.voidSale(saleId, reason)`, invalidates `sales`, `recentSales`, and `products` queries on success.
+
+- **Updated refund API** (`electron/preload/handlers-db.ts`, `ipc-signatures-db.ts`): `refundSale` now accepts a full input object `{ saleId, lineItems?, refundAmount, reason, paymentMethod }` instead of just `saleId`. Returns extended response `{ id, status, refundAmount, isPartial, reason, paymentMethod }`.
+
+- **`voidSale` signature update** (`electron/preload/handlers-db.ts`, `ipc-signatures-db.ts`): now takes `(saleId, reason)` — reason is a required second argument.
+
+- **Refund flow in SaleDetailModal** (`src/pages/reports/components/SaleDetailModal.tsx`): Refund button now opens an inline `RefundConfirmDialog` (no `window.prompt`, no `alert()`) — user enters reason in a text field, confirms or cancels. Toast notifications on success or error. Reason passed to the updated `refundSale` mutation.
+
+- **Void flow in RecentSalesPanel** (`src/pages/pos/components/RecentSalesPanel.tsx`): `VoidDialog` component with reason input and confirm/cancel buttons. Calls `useVoidSale` mutation. Shows toast on success/error.
+
+- **Refund flow in RecentSalesPanel**: `RefundDialog` component with reason input, payment method selector (Cash/M-Pesa/Card), and confirm/cancel buttons. Calls `useRefundSale` mutation with full input. Shows toast on success/error.
+
+- **Receipt reprint** (`src/pages/pos/components/RecentSalesPanel.tsx`): Reprint button in RecentSalesPanel calls `window.electronAPI.hw.printReceipt()` with the sale's actual item data, date, shop settings, and totals from the loaded sale object.
+
+### Acceptance
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit` | **clean (0 errors)** — pre-existing SDK contract errors in `../soostori-sdk/` unrelated to this phase |
+| Sale mutations → `RealSyncEngine.enqueue()` | `buildVoidSyncEvent` + `buildRefundSyncEvent` both enqueued in their respective handlers |
+| Recent sales panel | Last 10 sales, 15s auto-refresh, hover-reveal Void/Refund/Reprint |
+| Void with reason | `db:sales:void` throws if reason blank; reason stored in sync payload |
+| Refund full/partial | `lineItems` optional — empty = full refund; `isPartial` flag returned |
+| Receipt reprint | Actual sale items from DB attached to `db:sales:recent` response |
+
+## [Unreleased] — Cycle 05 Phase 09 Inventory Desktop (2026-09-10)
+
+### Added
+
+- **Inventory SDK orchestrator** (`electron/sdk/inventory-orchestrator.ts`): added `receiveStock()`, `transferStock()`, and `countStock()` functions alongside the existing `adjustStock()`. All four flow through `StockMovementLedger` for event-source correctness. `receiveStock` uses type `received`; `transferStock` creates two linked movements (out/in); `countStock` computes variance and auto-applies adjustment.
+
+- **Sync event factories** (`electron/database/sync-event-builder.ts`): added `buildReceiveSyncEvent()` (`inventory.received`), `buildTransferSyncEvent()` (`inventory.transferred`), and `buildCountSyncEvent()` (`inventory.counted`). All use idempotency keys, typed payload, and `RealSyncEngine.enqueue()` fire-and-forget.
+
+- **IPC handlers** (`electron/ipc-handlers/stock-handlers.ts`): added `db:inventory:receive`, `db:inventory:transfer`, `db:inventory:count`, and `db:inventory:lowStock` handlers. All validate with Zod schemas, enforce RBAC via `CAPABILITIES`, emit sync events, and dispatch low-stock notifications. `db:inventory:lowStock` returns all products where `current_stock <= low_stock_threshold`.
+
+- **Validation schemas** (`electron/ipc-handlers/validation/inventory-schemas.ts`): `receiveStockSchema`, `transferStockSchema`, `countStockSchema`, `countBatchSchema`.
+
+- **Preload wiring** (`electron/preload/handlers-db.ts` + `ipc-signatures-db.ts`): wired `receiveStock`, `transferStock`, `countStock`, and `getLowStockProducts` IPC calls.
+
+- **React hooks** (`src/hooks/useInventory.ts`): added `useReceiveStock()`, `useTransferStock()`, `useCountStock()`, `useLowStockProducts()`. Re-exported from `useDatabase.ts`.
+
+- **Receive Stock modal** (`src/pages/inventory/components/ReceiveStockModal.tsx`): product selector, quantity, supplier, notes. Submit calls `useReceiveStock()`.
+
+- **Adjust Stock modal** (`src/pages/inventory/components/AdjustStockModal.tsx`): product selector, +/- delta toggle, reason select, notes. Submit calls `useAdjustStock()`.
+
+- **Stock Count screen** (`src/pages/inventory/components/StockCountScreen.tsx`): all products listed with system qty vs counted qty side-by-side, live variance indicator. Submit calls `useCountStock()`.
+
+- **Low-stock alerts** (`src/pages/inventory/components/LowStockAlerts.tsx`): collapsible banner showing products where `qty <= threshold`, sorted by urgency. "Restock" button opens inline restock.
+
+- **Recent movements list** (`src/pages/inventory/components/RecentMovementsList.tsx`): icon + product + reason + relative time + signed quantity for last 20 movements.
+
+- **Inventory page integration** (`src/pages/inventory/Inventory.tsx`): added quick-action toolbar (Receive / Adjust / Count / Movements buttons), low-stock alert banner, movements panel, and all three modal/screen entry points.
+
+### Acceptance
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit` | **clean (0 errors)** — only pre-existing SDK contract errors in `../soostori-sdk/` unrelated to this phase |
+
+## [Unreleased] — Cycle 05 Phase 08 Products Desktop (2026-09-10)
+
+### Added
+
+- **Product sync events** (`electron/database/sync-event-builder.ts`): added `buildProductSyncEvent()` and `buildCategorySyncEvent()` factories for typed `SyncEvent` emission on product/category mutations. Both use idempotency keys (`${operation}:product:${id}` / `${operation}:category:${id}`) for safe enqueue deduplication.
+
+- **Product mutation sync wiring** (`electron/ipc-handlers/product-handlers.ts`): `db:products:create` → enqueues `product.created` event; `db:products:update` → enqueues `product.updated` event; `db:products:delete` → enqueues `product.tombstone` event. All three call `getRealSyncEngine().enqueue()` fire-and-forget alongside the existing `pushProduct()` cloud push.
+
+- **Category mutation sync wiring** (`electron/ipc-handlers/category-handlers.ts`): `db:categories:create` → enqueues `category.created`; `db:categories:update` → enqueues `category.updated`. Both call `getRealSyncEngine().enqueue()` alongside existing `pushCategory()`.
+
+- **Stock status filter** (`src/pages/inventory/Inventory.tsx` + `src/pages/inventory/hooks/useInventoryState.ts`): added `stockStatusFilter` state (`'all' | 'low' | 'out'`). `filterProducts()` now filters by stock status: `low` = trackInventory && 0 < qty <= threshold; `out` = trackInventory && qty <= 0.
+
+- **Stock status filter UI** (`src/pages/inventory/components/SearchBar.tsx`): added segmented filter control (All / Low / Out) with orange active state. Props `stockStatusFilter` and `onStockStatusChange` added to `SearchBarProps`.
+
+### Acceptance
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit` | **clean (0 errors)** — only pre-existing SDK contract errors unrelated to this phase |
+
 ## [Unreleased] — Cycle 05 Phase 07 Business Setup (2026-09-10)
 
 ### Added

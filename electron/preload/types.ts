@@ -1,6 +1,6 @@
 // Re-export all domain types
 export type {
-  ExpenseRow, ExpenseInput
+  ExpenseRow, ExpenseInput, RecurringExpenseRow, RecurringExpenseInput
 } from './types-commerce'
 
 export type {

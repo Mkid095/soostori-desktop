@@ -39,7 +39,7 @@ export const fromLocalSale = (r: SalesRow): Sale => ({
   subtotal: r.subtotal, discountAmount: r.discount_amount, taxAmount: r.tax_amount,
   totalAmount: r.total_amount, paidAmount: r.paid_amount,
   paymentMethod: (r.payment_method as Sale['paymentMethod']) || 'cash',
-  note: r.note ?? null, customerId: null, employeeId: asEI(''), deviceId: asDI(''),
+  note: r.note ?? null, customerId: (r as { customer_id?: string | null }).customer_id ?? null, employeeId: asEI(''), deviceId: asDI(''),
   idempotencyKey: asIK(r.id), items: [],
   createdAt: r.created_at ?? new Date().toISOString(),
   updatedAt: r.updated_at ?? new Date().toISOString(),
@@ -68,6 +68,7 @@ export interface CustomersRow {
   id: string; shop_id: string; name: string
   phone?: string | null; email?: string | null; id_number?: string | null
   address?: string | null; notes?: string | null; is_active: number
+  idempotency_key?: string | null; version?: number
   created_at?: string; updated_at?: string
 }
 export const fromLocalCustomer = (r: CustomersRow): Customer => ({
@@ -76,7 +77,8 @@ export const fromLocalCustomer = (r: CustomersRow): Customer => ({
   address: r.address ?? null, notes: r.notes ?? null, balance: 0,
   status: bool01(r.is_active) ? 'active' : 'inactive',
   createdAt: r.created_at ?? new Date().toISOString(),
-  updatedAt: r.updated_at ?? new Date().toISOString(), version: V1,
+  updatedAt: r.updated_at ?? new Date().toISOString(),
+  version: r.version ?? 1,
 })
 export const toLocalCustomer = (c: Customer): Partial<CustomersRow> => ({
   id: c.id, shop_id: c.businessId, name: c.name, phone: c.phone, email: c.email,
@@ -85,32 +87,42 @@ export const toLocalCustomer = (c: Customer): Partial<CustomersRow> => ({
 })
 
 // ── Debt ← debts ─────────────────────────────────────────────────────────────
-export interface DebtsRow {
-  id: string; shop_id: string; customer_id: string
-  sale_id?: string | null; amount: number; amount_paid: number
+export interface DebtRow {
+  id: string; shop_id: string; customer_id: string | null
+  sale_id?: string | null; amount: number; amount_paid?: number
   status: string; due_date?: string | null; notes?: string | null
   created_at?: string; updated_at?: string
+  version?: number; idempotency_key?: string | null
 }
-export const fromLocalDebt = (r: DebtsRow): Debt => ({
-  id: asDebtI(r.id), businessId: asBI(r.shop_id), customerId: asCustI(r.customer_id),
+export interface DebtsRow extends DebtRow {}
+export const fromLocalDebt = (r: DebtRow): Debt => ({
+  id: asDebtI(r.id), businessId: asBI(r.shop_id),
+  customerId: asCustI(r.customer_id ?? ''),
   saleId: r.sale_id ? asSaleI(r.sale_id) : null,
-  amount: r.amount, balance: r.amount - r.amount_paid,
+  amount: r.amount,
+  balance: r.amount - (r.amount_paid ?? 0),
   status: (r.status as Debt['status']) || 'pending',
   dueDate: r.due_date ?? null, notes: r.notes ?? null,
   createdAt: r.created_at ?? new Date().toISOString(),
-  updatedAt: r.updated_at ?? new Date().toISOString(), version: V1,
+  updatedAt: r.updated_at ?? new Date().toISOString(),
+  version: r.version ?? 1,
 })
 
 // ── DebtPayment ← debt_payments ──────────────────────────────────────────────
-export interface DebtPaymentsRow {
+export interface DebtPaymentRow {
   id: string; debt_id: string; amount: number
-  payment_method: string; reference?: string | null; created_at: string
+  payment_method: string; reference?: string | null; notes?: string | null
+  shop_id: string
+  created_at?: string
+  version?: number; idempotency_key?: string | null
 }
-export const fromLocalDebtPayment = (r: DebtPaymentsRow): DebtPayment => ({
-  id: asDPI(r.id), businessId: asBI(''), debtId: asDebtI(r.debt_id),
+export const fromLocalDebtPayment = (r: DebtPaymentRow): DebtPayment => ({
+  id: asDPI(r.id), businessId: asBI(r.shop_id), debtId: asDebtI(r.debt_id),
   amount: r.amount, employeeId: asEI(''),
   paymentMethod: (r.payment_method as DebtPayment['paymentMethod']) || 'cash',
-  paymentRef: r.reference ?? null, idempotencyKey: asIK(r.id),
-  timestamp: r.created_at,
-  createdAt: r.created_at, updatedAt: r.created_at, version: V1,
+  paymentRef: r.reference ?? null, idempotencyKey: asIK(r.idempotency_key ?? r.id),
+  timestamp: r.created_at ?? new Date().toISOString(),
+  createdAt: r.created_at ?? new Date().toISOString(),
+  updatedAt: r.created_at ?? new Date().toISOString(),
+  version: r.version ?? 1,
 })

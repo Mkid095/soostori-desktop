@@ -68,6 +68,9 @@ const App: React.FC = () => {
 
   const handleNavigate = useCallback((page: Page) => setCurrentPage(page), [])
   const handleOpenSettings = useCallback(() => setCurrentPage('settings'), [])
+  const handleDashboardReportNavigate = useCallback((tab: 'sales' | 'inventory' | 'debt' | 'expense') => {
+    setCurrentPage(tab === 'sales' ? 'reports' : tab === 'inventory' ? 'inventory' : tab === 'debt' ? 'debts' : 'expenses')
+  }, [])
 
   const { can } = usePermissions(authUser)
   const authValue = useMemo(() => ({ user: authUser, device: null, sessionId, can }), [authUser, sessionId, can])
@@ -132,7 +135,7 @@ const App: React.FC = () => {
                       </div>
                     </div>
                     <main className="flex-1 overflow-hidden bg-bg-primary dark:bg-bg-primary transition-colors duration-200">
-                      <PageRendererComponent page={currentPage} />
+                      <PageRendererComponent page={currentPage} onNavigate={handleDashboardReportNavigate} />
                     </main>
                   </div>
                 </div>

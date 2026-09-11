@@ -1,6 +1,18 @@
 import { ipcMain } from 'electron'
 import { getDatabase } from '../database'
 import { resolveActiveShopId } from '../database/active-shop'
+import { desktopLoadSession } from '../auth/electron-store-session'
+// Phase 04: canonical capability API
+import { can, CAPABILITIES } from '@soostori/auth'
+import type { Member } from '@soostori/auth'
+import type { EmployeeRole } from '@soostori/core'
+
+/** Build a Member for the capability system from the session's employeeId. */
+function getCallerMember(session: { employeeId: string }): Member {
+  const db = getDatabase()
+  const row = db.prepare('SELECT role FROM employees WHERE id = ?').get(session.employeeId) as { role: string } | undefined
+  return { role: (row?.role ?? 'cashier') as EmployeeRole }
+}
 
 const PRODUCT_SELECT = `
   SELECT p.*, c.name as category_name, c.color as category_color, c.icon as category_icon
@@ -9,23 +21,43 @@ const PRODUCT_SELECT = `
 
 export function registerProductQueryHandlers(): void {
   ipcMain.handle('db:products:list', async (_event, _shopId?: string) => {
+    const session = await desktopLoadSession()
+    if (!session) throw new Error('Not authenticated')
+    if (!can(getCallerMember(session), CAPABILITIES.PRODUCTS_VIEW)) {
+      throw new Error('Insufficient permissions: products.view required')
+    }
     const shopId = await resolveActiveShopId()
     return getDatabase().prepare(`${PRODUCT_SELECT} AND p.shop_id = ? ORDER BY p.name ASC`).all(shopId)
   })
 
   ipcMain.handle('db:products:get', async (_event, id: string) => {
+    const session = await desktopLoadSession()
+    if (!session) throw new Error('Not authenticated')
+    if (!can(getCallerMember(session), CAPABILITIES.PRODUCTS_VIEW)) {
+      throw new Error('Insufficient permissions: products.view required')
+    }
     const shopId = await resolveActiveShopId()
     const db = getDatabase()
     return db.prepare(`${PRODUCT_SELECT} AND p.id = ? AND p.shop_id = ?`).get(id, shopId)
   })
 
   ipcMain.handle('db:products:getByBarcode', async (_event, barcode: string) => {
+    const session = await desktopLoadSession()
+    if (!session) throw new Error('Not authenticated')
+    if (!can(getCallerMember(session), CAPABILITIES.PRODUCTS_VIEW)) {
+      throw new Error('Insufficient permissions: products.view required')
+    }
     const normalized = barcode.trim().toUpperCase()
     const shopId = await resolveActiveShopId()
     return getDatabase().prepare(`${PRODUCT_SELECT} AND UPPER(TRIM(p.barcode)) = ? AND p.shop_id = ?`).get(normalized, shopId)
   })
 
   ipcMain.handle('db:products:search', async (_event, query: string, _shopId?: string) => {
+    const session = await desktopLoadSession()
+    if (!session) throw new Error('Not authenticated')
+    if (!can(getCallerMember(session), CAPABILITIES.PRODUCTS_VIEW)) {
+      throw new Error('Insufficient permissions: products.view required')
+    }
     const db = getDatabase()
     const shopId = await resolveActiveShopId()
     const pattern = `%${query}%`
@@ -34,6 +66,9 @@ export function registerProductQueryHandlers(): void {
   })
 
   ipcMain.handle('db:products:lookupBarcode', async (_event, barcode: string) => {
+    const session = await desktopLoadSession()
+    if (!session) throw new Error('Not authenticated')
+    // lookupBarcode is an internal scanner call — skip PRODUCTS_VIEW (used at POS)
     const normalized = barcode.trim().toUpperCase()
     const shopId = await resolveActiveShopId()
     const product = getDatabase().prepare(`${PRODUCT_SELECT.replace('p.deleted_at IS NULL AND ', '')} AND UPPER(TRIM(p.barcode)) = ? AND p.shop_id = ?`).get(normalized, shopId)
@@ -41,6 +76,11 @@ export function registerProductQueryHandlers(): void {
   })
 
   ipcMain.handle('db:products:validateImport', async (_event, rows: unknown[]) => {
+    const session = await desktopLoadSession()
+    if (!session) throw new Error('Not authenticated')
+    if (!can(getCallerMember(session), CAPABILITIES.PRODUCTS_CREATE)) {
+      throw new Error('Insufficient permissions: products.create required')
+    }
     const db = getDatabase()
     const shopId = await resolveActiveShopId()
     const csvRows = rows as Array<{ name: string; barcode?: string; sku?: string }>

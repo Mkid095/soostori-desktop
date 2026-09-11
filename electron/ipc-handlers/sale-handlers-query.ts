@@ -3,6 +3,26 @@ import { getDatabase } from '../database'
 import { resolveActiveShopId } from '../database/active-shop'
 
 export function registerSaleQueryHandlers(): void {
+  ipcMain.handle('db:sales:recent', async (_event, limit = 10) => {
+    const db = getDatabase()
+    const shopId = await resolveActiveShopId()
+    const sales = db.prepare(`
+      SELECT s.*, GROUP_CONCAT(si.product_name || ' x' || si.quantity) as items_summary
+      FROM sales s
+      LEFT JOIN sale_items si ON s.id = si.sale_id AND si.shop_id = s.shop_id
+      WHERE s.shop_id = ?
+      GROUP BY s.id
+      ORDER BY s.created_at DESC
+      LIMIT ?
+    `).all(shopId, Math.min(limit, 50)) as Array<{ id: string }>
+
+    // Attach items to each sale
+    return sales.map(sale => ({
+      ...sale,
+      items: db.prepare('SELECT * FROM sale_items WHERE sale_id = ? AND shop_id = ?').all(sale.id, shopId),
+    }))
+  })
+
   ipcMain.handle('db:sales:list', async (_event, _shopId?: string, limit?: number) => {
     const db = getDatabase()
     const shopId = await resolveActiveShopId()

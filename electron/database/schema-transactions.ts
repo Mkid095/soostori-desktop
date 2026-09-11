@@ -31,12 +31,14 @@ export function createTransactionTables(): void {
       discount_amount REAL DEFAULT 0, tax_amount REAL DEFAULT 0,
       total_amount REAL NOT NULL, paid_amount REAL NOT NULL,
       payment_method TEXT DEFAULT 'cash', note TEXT,
-      customer_id_number TEXT,
+      customer_id TEXT, customer_id_number TEXT,
       shop_id TEXT NOT NULL DEFAULT 'default',
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     )
   `)
+
+  migrateSalesCustomerId(database)
 
   database.exec(`
     CREATE TABLE IF NOT EXISTS sale_items (
@@ -66,4 +68,12 @@ export function createTransactionTables(): void {
   database.exec(`
     CREATE INDEX IF NOT EXISTS idx_stock_movements_product ON stock_movements(product_id)
   `)
+  database.exec(`CREATE INDEX IF NOT EXISTS idx_sales_customer ON sales(customer_id)`)
+}
+
+function migrateSalesCustomerId(database: import('better-sqlite3').Database): void {
+  const cols = database.prepare("PRAGMA table_info(sales)").all() as { name: string }[]
+  if (!cols.some(c => c.name === 'customer_id')) {
+    database.exec('ALTER TABLE sales ADD COLUMN customer_id TEXT')
+  }
 }

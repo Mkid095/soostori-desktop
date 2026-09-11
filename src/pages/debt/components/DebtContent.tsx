@@ -11,7 +11,8 @@ const DebtContent: React.FC<{
   onRecordDebt: (c: Customer) => void
   onShowDetail: (d: Debt) => void
   onRecordPayment: (d: Debt) => void
-}> = ({ activeTab, filteredDebts, filteredCustomers, onRecordDebt, onShowDetail, onRecordPayment }) => (
+  onShowCustomer: (c: Customer) => void
+}> = ({ activeTab, filteredDebts, filteredCustomers, onRecordDebt, onShowDetail, onRecordPayment, onShowCustomer }) => (
   <div className="flex-1 overflow-y-auto">
     {activeTab === 'debts' ? (
       filteredDebts.length === 0 ? (
@@ -28,7 +29,9 @@ const DebtContent: React.FC<{
         <p className="text-xs font-semibold">No customers found</p>
       </div>
     ) : filteredCustomers.map(customer => (
-      <CustomerRow key={customer.id} customer={customer} onRecordDebt={() => onRecordDebt(customer)} />
+      <CustomerRow key={customer.id} customer={customer}
+        onRecordDebt={() => onRecordDebt(customer)}
+        onShowDetail={() => onShowCustomer(customer)} />
     ))}
   </div>
 )
