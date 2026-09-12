@@ -6,5 +6,6 @@ dist-electron-new/
 .DS_Store
 Thumbs.db
 *.local
+settings.local.json
 .env
 .env.*
