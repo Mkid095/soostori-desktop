@@ -61,6 +61,40 @@ export function getSubscriptionState(): SubscriptionState | null {
   return _state
 }
 
+export type CloudSubscriptionStatus = 'active' | 'expired_grace' | 'blocked' | 'cancelled'
+
+/**
+ * Lightweight subscription status check for the sync timer path.
+ * Returns the current cached state without a network call.
+ * Use recheckSubscription() to force a cloud refresh first.
+ */
+export function checkCloudSubscription(): {
+  status: CloudSubscriptionStatus
+  expiresAt: string | null
+  plan: string
+} {
+  const state = _state
+
+  if (!state) {
+    // Not yet initialized — treat as active, let the hourly enforcer catch it
+    return { status: 'active', expiresAt: null, plan: '' }
+  }
+
+  if (state.isExpired) {
+    return { status: 'cancelled', expiresAt: state.expiresAt, plan: state.plan ?? '' }
+  }
+
+  if (state.isInGracePeriod) {
+    return { status: 'expired_grace', expiresAt: state.expiresAt, plan: state.plan ?? '' }
+  }
+
+  if (!state.valid) {
+    return { status: 'blocked', expiresAt: state.expiresAt, plan: state.plan ?? '' }
+  }
+
+  return { status: 'active', expiresAt: state.expiresAt, plan: state.plan ?? '' }
+}
+
 /** Update state from cloud or cache. */
 async function refreshState(shopId: string): Promise<SubscriptionState> {
   const now = Date.now()

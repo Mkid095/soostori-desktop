@@ -5,6 +5,14 @@ import { shopSettingsSchema } from './validation'
 import { hashPin, verifyPin } from '@soostori/auth/pin-node'
 import { desktopLoadSession } from '../auth/electron-store-session'
 import { audit } from '../services/audit-logger'
+import {
+  updateBusinessProfile,
+  updateOwnerProfile,
+  updateMpesaConfig,
+  type BusinessProfileUpdate,
+  type OwnerProfileUpdate,
+  type MpesaConfigUpdate,
+} from '../services/settings-service'
 
 export function registerSettingsHandlers(): void {
   ipcMain.handle('db:shop-settings:get', () => {
@@ -93,6 +101,19 @@ export function registerSettingsHandlers(): void {
   ipcMain.handle('app:settings:recordLogin', () => {
     const db = getDatabase()
     db.prepare('UPDATE app_settings SET last_login = ?, updated_at = ? WHERE id = ?').run(new Date().toISOString(), new Date().toISOString(), 'default')
+  })
+
+  // Phase 19: structured settings handlers
+  ipcMain.handle('settings:updateBusiness', async (_event, data: BusinessProfileUpdate) => {
+    return updateBusinessProfile(data)
+  })
+
+  ipcMain.handle('settings:updateOwner', async (_event, data: OwnerProfileUpdate) => {
+    return updateOwnerProfile(data)
+  })
+
+  ipcMain.handle('settings:updateMpesa', async (_event, data: MpesaConfigUpdate) => {
+    return updateMpesaConfig(data)
   })
 
   log.info('Settings IPC handlers registered')

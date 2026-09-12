@@ -90,4 +90,24 @@ export const audit = {
   shopSettingsUpdated(shopId: string, actorId: string, metadata: Record<string, unknown>): void {
     logAuditEvent({ eventName: 'shop.settings.updated', entityKind: 'shop', entityId: shopId, actorType: 'employee', actorId, shopId, metadata })
   },
+  employeeProfileUpdated(employeeId: string, metadata: Record<string, unknown>): void {
+    logAuditEvent({ eventName: 'employee.profile_updated', entityKind: 'employee', entityId: employeeId, actorType: 'employee', actorId: employeeId, metadata })
+  },
+  mpesaConfigUpdated(shopId: string, actorId: string, metadata: Record<string, unknown>): void {
+    logAuditEvent({ eventName: 'shop.mpesa_config_updated', entityKind: 'shop', entityId: shopId, actorType: 'employee', actorId, shopId, metadata })
+  },
+  mpesaReceiptIssued(params: {
+    shopId: string; checkoutRequestId: string; mpesaReceiptNumber: string
+    amount: number; customerPhone: string; paidAt: string
+  }): void {
+    logAuditEvent({
+      eventName: 'mpesa.receipt_issued',
+      entityKind: 'mpesa',
+      entityId: params.mpesaReceiptNumber,
+      actorType: 'system',
+      actorId: params.checkoutRequestId,
+      shopId: params.shopId,
+      metadata: params,
+    })
+  },
 }

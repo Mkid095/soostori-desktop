@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+
+- **Phase 19 Reports SDK Wiring** (`electron/services/reports-repository.ts`): SQLite implementation for all five report queries (`getSalesReport`, `getInventoryReport`, `getExpenseReport`, `getDebtReport`, `getDashboardSummary`) backed by existing `report-handlers.ts` IPC layer. Wired to renderer via `electron/preload/handlers-db.ts` (`getDashboardSummary`, `getSalesReport`, `getInventoryReport`, `getDebtReport`, `getExpenseReport`) and `electron/preload/ipc-signatures-db.ts` type signatures.
+
+- **Phase 19 Subscription Enforcement in Sync Timer** (`electron/services/sync-timer-worker.ts`): Added `checkCloudSubscription()` guard at the top of `runCloudPull()` — pauses cloud sync and dispatches `soostori:subscription:blocked` DOM event when subscription status is `cancelled` or `blocked`.
+
+- **Phase 19 Offline Policy Hardening** (`electron/services/sync-timer-worker.ts`): Added `computeDesktopOfflineState()` check at the top of `runCloudPull()` — dispatches `soostori:offline:limit_exceeded` and `soostori:offline:warning` DOM events to trigger UI banners in `SyncIndicator.tsx` when offline days exceed the grace window.
+
+- **Phase 19 M-Pesa Receipt → Audit Log** (`electron/services/audit-logger.ts`, `electron/services/mpesa-stk-push.ts`): Added `audit.mpesaReceiptIssued()` convenience method recording `mpesa.receipt_issued` events to `audit_logs`. Added `audit.employeeProfileUpdated()` and `audit.mpesaConfigUpdated()`. `onSTKCallback()` in `mpesa-stk-push.ts` now calls `audit.mpesaReceiptIssued()` on completed STK push with the M-Pesa receipt number.
+
+- **Phase 19 Settings Full CRUD** (`electron/services/settings-service.ts`, `electron/ipc-handlers/settings-handlers.ts`): New `settings-service.ts` with `updateBusinessProfile()`, `updateOwnerProfile()`, `updateMpesaConfig()`, `updatePin()`. Three new IPC handlers registered: `settings:updateBusiness`, `settings:updateOwner`, `settings:updateMpesa`. All wired to preload with audit logging.
+
+- **Phase 19 Partner Dashboard for Salesperson Role** (`src/pages/partner/PartnerDashboardPage.tsx`, `src/pages/partner/CommissionSummaryCard.tsx`): New `PartnerDashboardPage` (≤150 lines) for SALESPERSON role — shows `CommissionSummaryCard` with total earned / pending / active business counts, formula reference, worked examples table, and enrolled businesses list. `CommissionSummaryCard` reuses `EnrolledBusinessCard` from commissions.
+
 ### Refactored
 
 - **Phase 18 ANPAS compliance — file splits**: Split two over-sized files to meet the 150-line limit.

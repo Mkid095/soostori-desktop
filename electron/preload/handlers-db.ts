@@ -141,4 +141,14 @@ export const dbHandlers: DbIpc = {
     ipcRenderer.invoke('mpesa:stkPush', phone, amount, accountRef),
   mpesaPollSTK: (id: string, checkoutRequestId: string) =>
     ipcRenderer.invoke('mpesa:pollSTK', id, checkoutRequestId),
+  // Reports (Phase 19 — wired to existing db:reports:* handlers)
+  getDashboardSummary: () => ipcRenderer.invoke('db:reports:dashboardSummary'),
+  getSalesReport: (from: string, to: string) => ipcRenderer.invoke('db:reports:sales', from, to),
+  getInventoryReport: () => ipcRenderer.invoke('db:reports:inventory'),
+  getDebtReport: () => ipcRenderer.invoke('db:reports:debt'),
+  getExpenseReport: (month: string) => ipcRenderer.invoke('db:reports:expense', month),
+  // Settings (Phase 19 — structured handlers)
+  updateBusinessProfile: (data: Record<string, unknown>) => ipcRenderer.invoke('settings:updateBusiness', data),
+  updateOwnerProfile: (data: Record<string, unknown>) => ipcRenderer.invoke('settings:updateOwner', data),
+  updateMpesaConfig: (data: Record<string, unknown>) => ipcRenderer.invoke('settings:updateMpesa', data),
 }

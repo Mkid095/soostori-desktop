@@ -12,6 +12,8 @@ import { getSyncStore } from '../services/store'
 import { dispatchSyncStatus } from '../sync/sync-service-core'
 import { setCloudOnline } from './cloud-sync-service'
 import { notifyFromSyncEvent } from './desktop-notifications'
+import { checkCloudSubscription } from './subscription-enforcer'
+import { computeDesktopOfflineState } from './canonical/offline-state'
 import type { SyncEvent, SyncCursor } from '@soostori/contracts'
 import { asDeviceId, asBusinessId, type SyncCursorId } from '@soostori/core'
 
@@ -32,6 +34,38 @@ function isOnline(): boolean {
 
 async function runCloudPull(): Promise<void> {
   if (!isOnline()) return
+
+  // Phase 19: check subscription before applying cloud events
+  const sub = checkCloudSubscription()
+  if (sub.status === 'cancelled' || sub.status === 'blocked') {
+    log.warn(`SyncTimerWorker: subscription ${sub.status} — pausing cloud sync`)
+    dispatchSyncStatus('online')
+    window.dispatchEvent(new CustomEvent('soostori:subscription:blocked', { detail: { status: sub.status } }))
+    return
+  }
+
+  // Phase 19: enforce offline policy
+  try {
+    const shopId = await resolveActiveShopId().catch(() => 'default')
+    const isOnlineFlag = true
+    const lastVerifiedAt = (getSyncStore().get('subscriptionCheckedAt') as string | undefined) ?? new Date().toISOString()
+    const offlineState = computeDesktopOfflineState({
+      shopId,
+      isOnline: isOnlineFlag,
+      lastVerifiedAt,
+      entitlement: null,
+      offlineSince: null,
+    })
+    if (offlineState.phase === 'OFFLINE_LIMIT_EXCEEDED') {
+      log.warn(`SyncTimerWorker: offline limit exceeded — pausing sync`)
+      dispatchSyncStatus('online')
+      window.dispatchEvent(new CustomEvent('soostori:offline:limit_exceeded'))
+      return
+    }
+    if (offlineState.phase === 'OFFLINE_WARNING') {
+      window.dispatchEvent(new CustomEvent('soostori:offline:warning', { detail: { daysOffline: offlineState.daysSinceVerification } }))
+    }
+  } catch { /* offline check is best-effort */ }
 
   try {
     const shopId = await resolveActiveShopId()

@@ -2,13 +2,15 @@
  * mpesa-stk-push.ts — PayHero STK Push integration.
  *
  * Initiates an M-Pesa STK push request via PayHero and polls for completion.
- * (onSTKCallback lives in callback-server.ts — called directly, not via IPC.)
+ * onSTKCallback() handles PayHero webhook callbacks and records audit events.
  */
 
 import { getDatabase } from '../database'
 import { v4 as uuidv4 } from 'uuid'
 import log from 'electron-log'
-import type { STKStatus, STKPushResult } from './mpesa-stk-types'
+import type { STKStatus, STKPushResult, STKCallbackPayload } from './mpesa-stk-types'
+export type { STKCallbackPayload } from './mpesa-stk-types'
+import { audit } from './audit-logger'
 
 const PAYHERO_API_KEY = process.env.PAYHERO_API_KEY || ''
 const PAYHERO_API_URL = 'https://payhero.io/api/payment'
@@ -140,4 +142,55 @@ export async function pollSTKStatus(id: string, checkoutRequestId: string): Prom
     log.warn(`[STK] Poll error for ${id}:`, err)
     return row.status
   }
+}
+
+/**
+ * Handle PayHero webhook callback for STK push results.
+ * Called by callback-server.ts when PayHero POSTs to /api/mpesa/callback.
+ */
+export function onSTKCallback(payload: {
+  checkout_request_id: string
+  status: string
+  amount?: number
+  receipt?: string
+  phone?: string
+  transaction_id?: string
+  error_code?: string
+  error_message?: string
+}): void {
+  const checkoutRequestId = payload.checkout_request_id
+  const statusStr = (status: string) => {
+    if (status === 'completed') return 'completed'
+    if (status === 'failed') return 'failed'
+    return 'failed'
+  }
+  const status: STKStatus = statusStr(payload.status)
+
+  // Find the local STK record by checkout_request_id
+  const db = getDatabase()
+  const row = db.prepare(
+    'SELECT * FROM stk_push_state WHERE checkout_request_id = ?'
+  ).get(checkoutRequestId) as { id: string; phone: string; amount: number } | undefined
+
+  if (!row) {
+    log.warn('[STK] Callback: no stk_push_state record found for', checkoutRequestId)
+    return
+  }
+
+  upsertSTKState(row.id, checkoutRequestId, row.phone, row.amount, status)
+
+  // Phase 19: record successful M-Pesa receipt to audit log
+  if (status === 'completed' && payload.receipt) {
+    audit.mpesaReceiptIssued({
+      shopId: 'default', // will be resolved by audit context
+      checkoutRequestId,
+      mpesaReceiptNumber: payload.receipt,
+      amount: payload.amount ?? row.amount,
+      customerPhone: payload.phone ?? row.phone,
+      paidAt: new Date().toISOString(),
+    })
+    log.info(`[STK] Audit logged: receipt=${payload.receipt} amount=${payload.amount ?? row.amount}`)
+  }
+
+  log.info(`[STK] Callback processed: checkout=${checkoutRequestId} status=${status} receipt=${payload.receipt ?? 'N/A'}`)
 }

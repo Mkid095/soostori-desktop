@@ -144,4 +144,37 @@ export interface DbIpc {
     Promise<{ success: boolean; id?: string; checkoutRequestId?: string; error?: string }>
   mpesaPollSTK: (id: string, checkoutRequestId: string) =>
     Promise<{ success: boolean; status?: 'pending' | 'completed' | 'failed' | 'timeout'; error?: string }>
+  // Reports (Phase 19)
+  getDashboardSummary: () => Promise<{
+    todaySales: number; weekSales: number; monthSales: number
+    todayRevenue: number; weekRevenue: number; monthRevenue: number
+    monthCost: number; grossProfit: number; grossMargin: number
+    lowStockCount: number; outstandingDebts: number; pendingExpenses: number; activeCustomers: number
+  }>
+  getSalesReport: (from: string, to: string) => Promise<{
+    period: { from: string; to: string }
+    totalSales: number; totalRevenue: number; totalCost: number
+    grossProfit: number; grossMargin: number
+    byPaymentMethod: Record<string, { count: number; amount: number }>
+    topProducts: Array<{ productId: string; name: string; quantitySold: number; revenue: number }>
+    salesCount: number; averageSaleValue: number
+  }>
+  getInventoryReport: () => Promise<{
+    totalProducts: number; totalStockValue: number
+    lowStockCount: number; outOfStockCount: number
+    deadStock: Array<{ productId: string; name: string; lastMovementDate: string }>
+    reorderSuggestions: Array<{ productId: string; name: string; currentStock: number; threshold: number; suggestedOrder: number }>
+  }>
+  getDebtReport: () => Promise<{
+    totalOutstanding: number; overdueCount: number; partialCount: number
+    agingBuckets: { '0-30': number; '31-60': number; '61-90': number; '90+': number }
+    byCustomer: Array<{ customerId: string; name: string; outstanding: number; debtCount: number }>
+  }>
+  getExpenseReport: (month: string) => Promise<{
+    total: number; byCategory: Record<string, number>; pendingCount: number; vsPriorMonth: number
+  }>
+  // Settings (Phase 19)
+  updateBusinessProfile: (data: Record<string, unknown>) => Promise<Record<string, unknown>>
+  updateOwnerProfile: (data: Record<string, unknown>) => Promise<Record<string, unknown>>
+  updateMpesaConfig: (data: Record<string, unknown>) => Promise<Record<string, unknown>>
 }
