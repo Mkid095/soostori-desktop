@@ -46,6 +46,24 @@ export const dbHandlers: DbIpc = {
   setPin: (pin: string) => ipcRenderer.invoke('app:settings:setPin', pin),
   verifyPin: (pin: string) => ipcRenderer.invoke('app:settings:verifyPin', pin),
   recordLogin: () => ipcRenderer.invoke('app:settings:recordLogin'),
+  // Operational Auth (Phase 01)
+  opGetEnrollmentState: (shopId: string, deviceId: string) => ipcRenderer.invoke('op:getEnrollmentState', shopId, deviceId),
+  opBeginEnrollment: (params: { state: string; shopId: string; deviceId: string; deviceName: string; employeeId?: string; pinVerificationProof?: string }) =>
+    ipcRenderer.invoke('op:beginEnrollment', params),
+  opCompleteEnrollmentWithCloudVerify: (params: { enrollmentToken: string; employeeId: string; shopId: string; deviceId: string; newPin: string }) =>
+    ipcRenderer.invoke('op:completeEnrollmentWithCloudVerify', params),
+  opChangePin: (params: { employeeId: string; shopId: string; deviceId: string; oldPin: string; newPin: string }) =>
+    ipcRenderer.invoke('op:changePin', params),
+  opClearPin: () => ipcRenderer.invoke('op:clearPin'),
+  opGetLockState: () => ipcRenderer.invoke('op:getLockState'),
+  opIsWithinOfflineEntitlement: (session: unknown) => ipcRenderer.invoke('op:isWithinOfflineEntitlement', session),
+  opIsSessionExpired: (session: unknown) => ipcRenderer.invoke('op:isSessionExpired', session),
+  opSerializeSession: (session: unknown) => ipcRenderer.invoke('op:serializeSession', session),
+  opDeserializeSession: (raw: string) => ipcRenderer.invoke('op:deserializeSession', raw),
+  opRequestPinRecovery: (employeeId: string) => ipcRenderer.invoke('op:requestPinRecovery', employeeId),
+  opVerifyPinRecoveryCode: (employeeId: string, code: string) => ipcRenderer.invoke('op:verifyPinRecoveryCode', employeeId, code),
+  opResetPinWithRecovery: (params: { recoveryAuthToken: string; employeeId: string; newPin: string; shopId: string; deviceId: string }) =>
+    ipcRenderer.invoke('op:resetPinWithRecovery', params),
   // Customers
   getCustomers: () => ipcRenderer.invoke('db:customers:list'),
   getCustomer: (id: string) => ipcRenderer.invoke('db:customers:get', id),

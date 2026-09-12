@@ -11,7 +11,14 @@ import type { Member } from '@soostori/auth'
 import { asUserId, asShopId, asEmployeeId, asDeviceId } from '@soostori/core'
 import type { AuthSession, EmployeeRole } from '@soostori/core'
 import { desktopSaveSession, desktopClearSession, desktopLoadSession } from '../auth/electron-store-session'
-import { setupPin as opSetupPin, verifyPin as opVerifyPin, hasPinEnrolled as opHasPinEnrolled } from '../auth/desktop-operational-auth'
+import {
+  setupPin as opSetupPin, verifyPin as opVerifyPin, hasPinEnrolled as opHasPinEnrolled,
+  changePin as opChangePin, clearPin as opClearPin,
+  isWithinOfflineEntitlement, isSessionExpired, getOpAuthLockState,
+  getEnrollmentState, beginEnrollment, completeEnrollmentWithCloudVerify,
+  requestPinRecovery, verifyPinRecoveryCode, resetPinWithRecovery,
+  serializeOpSession, deserializeOpSession,
+} from '../auth/desktop-operational-auth'
 import { loginSchema, createUserSchema, updateUserSchema } from './validation'
 
 interface ShopUserRow {
@@ -146,6 +153,103 @@ export function registerAuthHandlers(): void {
     }
     const member: Member = { role: role as EmployeeRole }
     return can(member, capability as any)
+  })
+
+  // ── Phase 01: OperationalAuth enrollment + recovery IPC ──────────────────────
+
+  ipcMain.handle('op:getEnrollmentState', async (_e, shopId: string, deviceId: string) => {
+    try { return { state: await getEnrollmentState(asShopId(shopId), asDeviceId(deviceId)) } }
+    catch (err) { return { state: 'DEVICE_NOT_ENROLLED', error: String(err) } }
+  })
+
+  ipcMain.handle('op:beginEnrollment', async (_e, params: {
+    state: string; shopId: string; deviceId: string; deviceName: string; employeeId?: string; pinVerificationProof?: string
+  }) => {
+    try {
+      const result = await beginEnrollment({
+        state: params.state as import('@soostori/auth').DeviceEnrollmentState,
+        shopId: asShopId(params.shopId),
+        deviceId: asDeviceId(params.deviceId),
+        deviceName: params.deviceName,
+        employeeId: params.employeeId as import('@soostori/core').EmployeeId | undefined,
+        pinVerificationProof: params.pinVerificationProof,
+      })
+      return result
+    } catch (err) { return { error: String(err) } }
+  })
+
+  ipcMain.handle('op:completeEnrollmentWithCloudVerify', async (_e, params: {
+    enrollmentToken: string; employeeId: string; shopId: string; deviceId: string; newPin: string
+  }) => {
+    try {
+      await completeEnrollmentWithCloudVerify({
+        enrollmentToken: params.enrollmentToken,
+        employeeId: asEmployeeId(params.employeeId),
+        shopId: asShopId(params.shopId),
+        deviceId: asDeviceId(params.deviceId),
+        newPin: params.newPin,
+      })
+      return { success: true }
+    } catch (err) { return { success: false, error: String(err) } }
+  })
+
+  ipcMain.handle('op:changePin', async (_e, params: {
+    employeeId: string; shopId: string; deviceId: string; oldPin: string; newPin: string
+  }) => {
+    try {
+      const result = await opChangePin(asEmployeeId(params.employeeId), asShopId(params.shopId), asDeviceId(params.deviceId), params.oldPin, params.newPin)
+      return result
+    } catch (err) { return { ok: false, error: String(err) } }
+  })
+
+  ipcMain.handle('op:clearPin', async () => {
+    try { await opClearPin(); return { success: true } }
+    catch (err) { return { success: false, error: String(err) } }
+  })
+
+  ipcMain.handle('op:getLockState', () => getOpAuthLockState())
+
+  ipcMain.handle('op:isWithinOfflineEntitlement', (_e, session: unknown) => {
+    return isWithinOfflineEntitlement(session as Parameters<typeof isWithinOfflineEntitlement>[0])
+  })
+
+  ipcMain.handle('op:isSessionExpired', (_e, session: unknown) => {
+    return isSessionExpired(session as Parameters<typeof isSessionExpired>[0])
+  })
+
+  ipcMain.handle('op:serializeSession', (_e, session: unknown) => {
+    return serializeOpSession(session as Parameters<typeof serializeOpSession>[0])
+  })
+
+  ipcMain.handle('op:deserializeSession', (_e, raw: string) => {
+    return deserializeOpSession(raw)
+  })
+
+  // ── PIN Recovery ─────────────────────────────────────────────────────────────
+
+  ipcMain.handle('op:requestPinRecovery', async (_e, employeeId: string) => {
+    try { return { cooldownSeconds: (await requestPinRecovery(asEmployeeId(employeeId))).cooldownSeconds } }
+    catch (err) { return { error: String(err) } }
+  })
+
+  ipcMain.handle('op:verifyPinRecoveryCode', async (_e, employeeId: string, code: string) => {
+    try { return await verifyPinRecoveryCode(asEmployeeId(employeeId), code) }
+    catch (err) { return { error: String(err) } }
+  })
+
+  ipcMain.handle('op:resetPinWithRecovery', async (_e, params: {
+    recoveryAuthToken: string; employeeId: string; newPin: string; shopId: string; deviceId: string
+  }) => {
+    try {
+      await resetPinWithRecovery({
+        recoveryAuthToken: params.recoveryAuthToken,
+        employeeId: asEmployeeId(params.employeeId),
+        newPin: params.newPin,
+        shopId: asShopId(params.shopId),
+        deviceId: asDeviceId(params.deviceId),
+      })
+      return { success: true }
+    } catch (err) { return { success: false, error: String(err) } }
   })
 
   log.info('Auth IPC handlers registered')

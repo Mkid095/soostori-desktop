@@ -67,6 +67,24 @@ export interface DbIpc {
   setPin: (pin: string) => Promise<{ success: boolean }>
   verifyPin: (pin: string) => Promise<{ valid: boolean }>
   recordLogin: () => Promise<void>
+  // Operational Auth (Phase 01)
+  opGetEnrollmentState: (shopId: string, deviceId: string) => Promise<{ state: string; error?: string }>
+  opBeginEnrollment: (params: { state: string; shopId: string; deviceId: string; deviceName: string; employeeId?: string; pinVerificationProof?: string }) =>
+    Promise<{ nextState?: string; enrollmentToken?: string; employeeId?: string; error?: string }>
+  opCompleteEnrollmentWithCloudVerify: (params: { enrollmentToken: string; employeeId: string; shopId: string; deviceId: string; newPin: string }) =>
+    Promise<{ success: boolean; error?: string }>
+  opChangePin: (params: { employeeId: string; shopId: string; deviceId: string; oldPin: string; newPin: string }) =>
+    Promise<{ ok: boolean; salt?: string; verifierHash?: string; error?: string }>
+  opClearPin: () => Promise<{ success: boolean; error?: string }>
+  opGetLockState: () => Promise<{ failedAttempts: number; isLocked: boolean; lockedUntilMs: number | null }>
+  opIsWithinOfflineEntitlement: (session: unknown) => Promise<boolean>
+  opIsSessionExpired: (session: unknown) => Promise<boolean>
+  opSerializeSession: (session: unknown) => Promise<string>
+  opDeserializeSession: (raw: string) => Promise<unknown>
+  opRequestPinRecovery: (employeeId: string) => Promise<{ cooldownSeconds?: number; error?: string }>
+  opVerifyPinRecoveryCode: (employeeId: string, code: string) => Promise<{ recoveryAuthToken?: string; expiresAt?: string; error?: string }>
+  opResetPinWithRecovery: (params: { recoveryAuthToken: string; employeeId: string; newPin: string; shopId: string; deviceId: string }) =>
+    Promise<{ success: boolean; error?: string }>
   // Customers
   getCustomers: () => Promise<unknown[]>
   getCustomer: (id: string) => Promise<unknown | null>
