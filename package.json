@@ -15,7 +15,7 @@
   "dependencies": {
     "@serialport/parser-readline": "^12.0.0",
     "@soostori/audit": "^0.1.0-alpha.1",
-    "@soostori/auth": "^0.1.0-alpha.7",
+    "@soostori/auth": "^0.1.0-alpha.9",
     "@soostori/business": "workspace:*",
     "@soostori/cloud": "^0.1.0-alpha.4",
     "@soostori/contracts": "workspace:*",

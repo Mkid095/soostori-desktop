@@ -33,11 +33,47 @@ export interface CloudAuthIpc {
     error?: string
   }>
 
+  signInWithGoogleIdToken(params: { idToken: string; clientName: string }): Promise<{
+    success: boolean
+    userId?: string
+    email?: string
+    isNewUser?: boolean
+    error?: string
+  }>
+
   signInWithEmail(email: string, password: string): Promise<{
     success: boolean
     userId?: string
     email?: string
     isEmailVerified?: boolean
+    error?: string
+  }>
+
+  registerWithEmail(email: string, password: string, name: string): Promise<{
+    success: boolean
+    userId?: string
+    email?: string
+    requiresEmailVerification?: boolean
+    error?: string
+  }>
+
+  verifyEmailAddress(token: string): Promise<{
+    success: boolean
+    userId?: string
+    email?: string
+    error?: string
+  }>
+
+  resetPassword(email: string): Promise<{
+    success: boolean
+    resetLinkSent?: boolean
+    error?: string
+  }>
+
+  completePasswordReset(token: string, newPassword: string): Promise<{
+    success: boolean
+    userId?: string
+    email?: string
     error?: string
   }>
 
@@ -54,6 +90,24 @@ export interface CloudAuthIpc {
   refreshSession(): Promise<{ refreshed: boolean; error?: string }>
 
   signOut(): Promise<{ success: boolean }>
+
+  registerTrustedDevice(deviceName: string): Promise<{
+    success: boolean
+    device?: { deviceId: string; deviceName: string; registeredAt: string; lastUsedAt: string; isAutoApproved: boolean }
+    deviceToken?: string
+    error?: string
+  }>
+
+  listTrustedDevices(): Promise<{
+    success: boolean
+    devices?: Array<{ deviceId: string; deviceName: string; registeredAt: string; lastUsedAt: string; isAutoApproved: boolean }>
+    error?: string
+  }>
+
+  removeTrustedDevice(deviceId: string): Promise<{
+    success: boolean
+    error?: string
+  }>
 
   onAuthEvent(callback: (event: {
     type: string
@@ -81,8 +135,23 @@ export function exposeAuthHandlers(): void {
     handleOAuthCallback: (code, state, codeVerifier, redirectUri) =>
       ipcRenderer.invoke('auth:handleOAuthCallback', code, state, codeVerifier, redirectUri),
 
+    signInWithGoogleIdToken: (params) =>
+      ipcRenderer.invoke('auth:signInWithGoogleIdToken', params),
+
     signInWithEmail: (email, password) =>
       ipcRenderer.invoke('auth:signInWithEmail', email, password),
+
+    registerWithEmail: (email, password, name) =>
+      ipcRenderer.invoke('auth:registerWithEmail', email, password, name),
+
+    verifyEmailAddress: (token) =>
+      ipcRenderer.invoke('auth:verifyEmailAddress', token),
+
+    resetPassword: (email) =>
+      ipcRenderer.invoke('auth:resetPassword', email),
+
+    completePasswordReset: (token, newPassword) =>
+      ipcRenderer.invoke('auth:completePasswordReset', token, newPassword),
 
     restoreSession: () =>
       ipcRenderer.invoke('auth:restoreSession'),
@@ -92,6 +161,15 @@ export function exposeAuthHandlers(): void {
 
     signOut: () =>
       ipcRenderer.invoke('auth:signOut'),
+
+    registerTrustedDevice: (deviceName) =>
+      ipcRenderer.invoke('auth:registerTrustedDevice', deviceName),
+
+    listTrustedDevices: () =>
+      ipcRenderer.invoke('auth:listTrustedDevices'),
+
+    removeTrustedDevice: (deviceId) =>
+      ipcRenderer.invoke('auth:removeTrustedDevice', deviceId),
 
     onAuthEvent: (callback) => {
       const handler = (_event: Electron.IpcRendererEvent, data: Parameters<typeof callback>[0]) => {
