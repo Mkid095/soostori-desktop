@@ -43,6 +43,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
+      - name: Checkout soostori-sdk (for tsconfig paths)
+        uses: actions/checkout@v4
+        with:
+          repository: Mkid095/soostori-sdk
+          ref: main
+          path: ../soostori-sdk
+
       - name: TypeScript check
         run: pnpm exec tsc --noEmit
 
@@ -52,6 +59,13 @@ jobs:
     needs: lint-and-typecheck
     steps:
       - uses: actions/checkout@v4
+
+      - name: Checkout soostori-sdk (for tsconfig paths)
+        uses: actions/checkout@v4
+        with:
+          repository: Mkid095/soostori-sdk
+          ref: main
+          path: ../soostori-sdk
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

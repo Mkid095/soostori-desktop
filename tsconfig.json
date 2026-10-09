@@ -23,40 +23,40 @@
         "src/*"
       ],
       "@soostori/core": [
-        "C:/Users/Administrator/Documents/GitHub/soostori-sdk/packages/core/src/index.ts"
+        "../soostori-sdk/packages/core/src/index.ts"
       ],
       "@soostori/contracts": [
-        "C:/Users/Administrator/Documents/GitHub/soostori-sdk/packages/contracts/src/index.ts"
+        "../soostori-sdk/packages/contracts/src/index.ts"
       ],
       "@soostori/auth": [
-        "C:/Users/Administrator/Documents/GitHub/soostori-sdk/packages/auth/src/index.ts"
+        "../soostori-sdk/packages/auth/src/index.ts"
       ],
       "@soostori/desktop-adapter": [
-        "C:/Users/Administrator/Documents/GitHub/soostori-sdk/packages/desktop-adapter/src/index.ts"
+        "../soostori-sdk/packages/desktop-adapter/src/index.ts"
       ],
       "@soostori/devices": [
-        "C:/Users/Administrator/Documents/GitHub/soostori-sdk/packages/devices/src/index.ts"
+        "../soostori-sdk/packages/devices/src/index.ts"
       ],
       "@soostori/storage": [
-        "C:/Users/Administrator/Documents/GitHub/soostori-sdk/packages/storage/src/index.ts"
+        "../soostori-sdk/packages/storage/src/index.ts"
       ],
       "@soostori/inventory": [
-        "C:/Users/Administrator/Documents/GitHub/soostori-sdk/packages/inventory/src/index.ts"
+        "../soostori-sdk/packages/inventory/src/index.ts"
       ],
       "@soostori/events": [
-        "C:/Users/Administrator/Documents/GitHub/soostori-sdk/packages/events/src/index.ts"
+        "../soostori-sdk/packages/events/src/index.ts"
       ],
       "@soostori/business": [
-        "C:/Users/Administrator/Documents/GitHub/soostori-sdk/packages/business/src/index.ts"
+        "../soostori-sdk/packages/business/src/index.ts"
       ],
       "@soostori/sales": [
-        "C:/Users/Administrator/Documents/GitHub/soostori-sdk/packages/business/sales/src/index.ts"
+        "../soostori-sdk/packages/business/sales/src/index.ts"
       ],
       "@soostori/products": [
-        "C:/Users/Administrator/Documents/GitHub/soostori-sdk/packages/business/products/src/index.ts"
+        "../soostori-sdk/packages/business/products/src/index.ts"
       ],
       "@soostori/updates": [
-        "C:/Users/Administrator/Documents/GitHub/soostori-sdk/packages/updates/src/index.ts"
+        "../soostori-sdk/packages/updates/src/index.ts"
       ]
     }
   },
