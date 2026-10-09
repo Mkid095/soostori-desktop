@@ -1,6 +1,8 @@
 # pnpm workspace — points @soostori/* at the self-hosted Verdaccio
 # Other packages come from the public registry automatically.
 
+packages: []
+
 # Allow the exact versions currently on Verdaccio.
 minimumReleaseAgeExclude:
   - '@soostori/audit@0.1.0-alpha.3'
