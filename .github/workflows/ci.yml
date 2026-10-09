@@ -31,17 +31,10 @@ jobs:
           echo "@soostori:registry=https://registry.nextmavens.com/" > .npmrc
           echo "//registry.nextmavens.com/:_authToken=${{ secrets.VERDACCIO_AUTH_TOKEN }}" >> .npmrc
 
-      - name: Checkout soostori-sdk (for tsconfig paths)
-        uses: actions/checkout@v4
-        with:
-          repository: Mkid095/soostori-sdk
-          ref: main
-          path: soostori-sdk
-
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
-      - name: Use CI tsconfig (relative SDK paths)
+      - name: Use CI tsconfig (no SDK path aliases)
         run: copy tsconfig.ci.json tsconfig.json
 
       - name: Build Electron app
