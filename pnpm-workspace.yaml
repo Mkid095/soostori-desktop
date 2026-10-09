@@ -1,33 +1,42 @@
-packages:
-  - 'packages/*'
-  - '../soostori-sdk/packages/*'
+# pnpm workspace — points @soostori/* at the self-hosted Verdaccio
+# Other packages come from the public registry automatically.
 
-# Override @soostori/auth to consume the local SDK source (alpha.6+ build)
-# so Desktop picks up OperationalAuth even though the registry's latest
-# published version is alpha.6 and the orchestrator brief named alpha.8
-# (awaiting joan's npm publish — see C-desktop-status.md).
+# Allow the exact versions currently on Verdaccio.
+minimumReleaseAgeExclude:
+  - '@soostori/audit@0.1.0-alpha.3'
+  - '@soostori/auth@0.2.0'
+  - '@soostori/business@0.1.0-alpha.4'
+  - '@soostori/cloud@0.2.0'
+  - '@soostori/contracts@0.2.0'
+  - '@soostori/core@0.2.0'
+  - '@soostori/customers@0.1.0-alpha.3'
+  - '@soostori/debts@0.1.0-alpha.3'
+  - '@soostori/devices@0.2.0'
+  - '@soostori/events@0.2.0'
+  - '@soostori/inventory@0.1.0-alpha.3'
+  - '@soostori/notifications@0.1.0-alpha.3'
+  - '@soostori/offline@0.1.0-alpha.3'
+  - '@soostori/products@0.1.0-alpha.1'
+  - '@soostori/sales@0.1.0-alpha.3'
+  - '@soostori/storage@0.2.0-alpha.5'
+  - '@soostori/subscription@0.2.0'
+  - '@soostori/sync@0.2.0'
+
+# Force the 7 critical SDK packages to resolve to 0.2.0 from Verdaccio.
 overrides:
-  '@soostori/auth': link:../soostori-sdk/packages/auth
+  '@soostori/core': npm:@soostori/core@^0.2.0
+  '@soostori/contracts': npm:@soostori/contracts@^0.2.0
+  '@soostori/subscription': npm:@soostori/subscription@^0.2.0
+  '@soostori/events': npm:@soostori/events@^0.2.0
+  '@soostori/sync': npm:@soostori/sync@^0.2.0
+  '@soostori/auth': npm:@soostori/auth@^0.2.0
+  '@soostori/schema': npm:@soostori/schema@^0.2.0
+
+minimumReleaseAge: 0 # accept fresh publishes (we are building from source today)
 
 allowBuilds:
-  '@serialport/bindings-cpp': false
-  better-sqlite3: false
-  electron: false
-  esbuild: false
-  lzma-native: false
-
-minimumReleaseAgeExclude:
-  - '@soostori/audit@0.1.0-alpha.1'
-  - '@soostori/auth@0.1.0-alpha.1 || 0.1.0-alpha.3'
-  - '@soostori/cloud@0.1.0-alpha.1'
-  - '@soostori/core@0.1.0-alpha.1 || 0.1.0-alpha.2'
-  - '@soostori/events@0.1.0-alpha.1'
-  - '@soostori/notifications@0.1.0-alpha.1'
-  - '@soostori/offline@0.1.0-alpha.1'
-  - '@soostori/schema@0.1.0-alpha.1 || 0.1.0-alpha.2'
-  - '@soostori/storage@0.1.0-alpha.1'
-  - '@soostori/subscription@0.1.0-alpha.1'
-  - '@soostori/customers@0.1.0-alpha.1'
-  - '@soostori/debts@0.1.0-alpha.1'
-  - '@soostori/products@0.1.0-alpha.1'
-  - '@soostori/sales@0.1.0-alpha.1'
+  '@serialport/bindings-cpp': true
+  better-sqlite3: true
+  electron: true
+  esbuild: true
+  lzma-native: true
