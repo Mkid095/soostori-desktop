@@ -53,11 +53,11 @@ jobs:
       - name: Install and build soostori-sdk
         run: |
           cd soostori-sdk
+          echo "@soostori:registry=https://registry.nextmavens.com/" > .npmrc
+          echo "//registry.nextmavens.com/:_authToken=${{ secrets.VERDACCIO_AUTH_TOKEN }}" >> .npmrc
           npm install -g pnpm@9
           pnpm install --no-frozen-lockfile
           pnpm run build
-        env:
-          NPM_CONFIG_REGISTRY: https://registry.nextmavens.com/
 
       - name: Patch tsconfig paths to use built .d.ts files (not .ts sources)
         run: |
@@ -98,6 +98,8 @@ jobs:
       - name: Install and build soostori-sdk
         run: |
           cd soostori-sdk
+          echo "@soostori:registry=https://registry.nextmavens.com/" > .npmrc
+          echo "//registry.nextmavens.com/:_authToken=${{ secrets.VERDACCIO_AUTH_TOKEN }}" >> .npmrc
           npm install -g pnpm@9
           pnpm install --no-frozen-lockfile
           pnpm run build
