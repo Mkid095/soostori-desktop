@@ -68,6 +68,7 @@
     "node_modules",
     "dist",
     "dist-electron",
-    "electron/integration"
+    "electron/integration",
+    "soostori-sdk"
   ]
 }

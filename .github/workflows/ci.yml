@@ -50,6 +50,20 @@ jobs:
           ref: main
           path: soostori-sdk
 
+      - name: Patch tsconfig paths to use built .d.ts files (not .ts sources)
+        run: |
+          node -e "
+          const fs = require('fs');
+          const cfg = JSON.parse(fs.readFileSync('tsconfig.ci.json', 'utf8'));
+          for (const [k, v] of Object.entries(cfg.compilerOptions.paths)) {
+            if (Array.isArray(v) && v[0].includes('/src/index.ts')) {
+              cfg.compilerOptions.paths[k] = v.map(p => p.replace('/src/index.ts', '/dist/index.d.ts'));
+            }
+          }
+          fs.writeFileSync('tsconfig.ci.json', JSON.stringify(cfg, null, 2));
+          console.log('Patched to use dist/');
+          "
+
       - name: TypeScript check
         run: pnpm exec tsc --noEmit -p tsconfig.ci.json
 
