@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useTranslation } from '../../../lib/useTranslation'
+import type { Device } from '../../../../electron/preload/types'
 
 interface Props {
   onJoined?: () => void
@@ -26,24 +27,19 @@ export default function InvitationPanel({ onJoined }: Props) {
       const { deviceId } = await window.electronAPI.db.getDeviceId() as { deviceId: string }
       localStorage.setItem('deviceId', deviceId)
 
-      // Accept invitation — creates employee, returns shopId
-      const acceptResult = await window.electronAPI.db.acceptInvite(code.trim(), name.trim(), pin, deviceId) as { userId: string; shopId: string }
+      // Accept invitation — creates employee, returns user + device
+      const acceptResult = await window.electronAPI.db.acceptInvite(code.trim(), name.trim(), pin, deviceId) as { user: { id: string; shop_id: string }; device: Device }
 
       // Register this device with the shop (uses canonical UUID)
       await window.electronAPI.db.registerDevice({
         deviceId,
-        shopId: acceptResult.shopId,
+        shopId: acceptResult.user.shop_id,
         deviceName: 'POS',
-        employeeId: acceptResult.userId,
+        employeeId: acceptResult.user.id,
       })
 
       // Create pairing request so owner can approve
-      await window.electronAPI.db.requestPairing({
-        shopId: acceptResult.shopId,
-        deviceId,
-        requestedBy: acceptResult.userId,
-        deviceName: 'POS',
-      })
+      await window.electronAPI.db.requestPairing(deviceId)
 
       onJoined?.()
     } catch (e) {

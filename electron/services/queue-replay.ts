@@ -10,6 +10,12 @@
  * - Does NOT delete failed items (audit trail)
  * - Survives app restarts (queue is in SQLite)
  * - A permanently failed item does NOT block unrelated items
+ *
+ * Queue state machine:
+ *   pending  → waiting to be processed
+ *   in_flight → push in progress (prevents concurrent duplicate)
+ *   sent      → successfully synced
+ *   failed    → push failed after MAX_RETRIES, will not retry
  */
 
 import { getDatabase } from '../database'
@@ -57,29 +63,36 @@ async function drainQueue(): Promise<void> {
     }
 
     log.info(`[QueueReplay] Processing ${pending.length} pending items`)
-    let allOk = true
 
+    // Step 1: Mark all pending items as in_flight (prevents duplicate processing)
     for (const item of pending) {
-      try {
-        await pushSyncEvents()
-        db.prepare(`UPDATE sync_queue SET status = 'sent' WHERE id = ?`).run(item.id)
-      } catch (err) {
-        const newRetry = item.retry_count + 1
-        if (newRetry >= MAX_RETRIES) {
-          db.prepare(`UPDATE sync_queue SET status = 'failed', retry_count = ? WHERE id = ?`).run(newRetry, item.id)
-          log.warn(`[QueueReplay] Item ${item.id} permanently failed after ${MAX_RETRIES} retries`)
-        } else {
-          db.prepare(`UPDATE sync_queue SET status = 'pending', retry_count = ? WHERE id = ?`).run(newRetry, item.id)
-          allOk = false
-        }
-      }
+      db.prepare(`UPDATE sync_queue SET status = 'in_flight' WHERE id = ?`).run(item.id)
     }
 
-    // Schedule next run: if all succeeded, back off; if some failed, retry soon
-    const delay = allOk ? 30_000 : RETRY_DELAYS_MS[0]
-    _isRunning = false
-    if (!_isOnline) return
-    scheduleNext(delay)
+    // Step 2: Call pushSyncEvents ONCE — pushes all unsynced sync_events once
+    let pushOk = true
+    try {
+      await pushSyncEvents()
+    } catch (err) {
+      log.warn('[QueueReplay] pushSyncEvents failed:', err)
+      pushOk = false
+    }
+
+    if (pushOk) {
+      // Step 3a: Mark all items as sent (success)
+      for (const item of pending) {
+        db.prepare(`UPDATE sync_queue SET status = 'sent' WHERE id = ?`).run(item.id)
+      }
+      _isRunning = false
+      if (_isOnline) scheduleNext(30_000)
+    } else {
+      // Step 3b: Revert in_flight back to pending for retry
+      for (const item of pending) {
+        db.prepare(`UPDATE sync_queue SET status = 'pending' WHERE id = ?`).run(item.id)
+      }
+      _isRunning = false
+      if (_isOnline) scheduleNext(RETRY_DELAYS_MS[0])
+    }
   } catch (err) {
     _isRunning = false
     log.error('[QueueReplay] drainQueue error:', err)

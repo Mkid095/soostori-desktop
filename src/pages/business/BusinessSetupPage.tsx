@@ -35,9 +35,10 @@ const CURRENCIES = [
 ]
 
 interface BusinessSetupResult {
+  success: boolean
   businessId: string
-  ownerMembershipId: string
-  defaultCategoryId: string
+  ownerMembershipId?: string
+  defaultCategoryId?: string
 }
 
 interface Props {
@@ -57,6 +58,7 @@ const BusinessSetupPage: React.FC<Props> = ({ onClose, onSuccess }) => {
   const [ownerName, setOwnerName] = useState('')
   const [ownerPhone, setOwnerPhone] = useState('')
   const [ownerEmail, setOwnerEmail] = useState('')
+  const [ownerPin, setOwnerPin] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState<BusinessSetupResult | null>(null)
@@ -86,12 +88,9 @@ const BusinessSetupPage: React.FC<Props> = ({ onClose, onSuccess }) => {
     try {
       const res = await window.electronAPI.db.businessSetup({
         businessName: businessName.trim(),
-        businessType: businessType as BusinessSetupResult['businessId'] extends string ? 'retail' | 'wholesale' | 'supermarket' | 'restaurant' | 'salon' | 'pharmacy' | 'other' : never,
-        country,
         currency,
         ownerName: ownerName.trim(),
-        ownerPhone: ownerPhone.trim(),
-        ownerEmail: ownerEmail.trim() || undefined,
+        ownerPin: ownerPin || '1234',
       })
       setResult(res)
       onSuccess?.(res)
@@ -121,14 +120,6 @@ const BusinessSetupPage: React.FC<Props> = ({ onClose, onSuccess }) => {
             <div>
               <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1">Business ID</p>
               <p className="text-sm font-mono text-emerald-800 dark:text-emerald-200 break-all">{result.businessId}</p>
-            </div>
-            <div>
-              <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1">Default Category ID</p>
-              <p className="text-sm font-mono text-emerald-800 dark:text-emerald-200 break-all">{result.defaultCategoryId}</p>
-            </div>
-            <div>
-              <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1">Owner Membership ID</p>
-              <p className="text-sm font-mono text-emerald-800 dark:text-emerald-200 break-all">{result.ownerMembershipId}</p>
             </div>
             <p className="text-xs text-emerald-700 dark:text-emerald-300 pt-1 border-t border-emerald-200 dark:border-emerald-800">
               A default "Uncategorized" category has been created so you can start adding products immediately.

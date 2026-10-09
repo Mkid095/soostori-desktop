@@ -33,7 +33,7 @@ export function CommissionExamplesTable() {
           </thead>
           <tbody>
             {COMMISSION_EXAMPLES.map(ex => (
-              <WorkedExampleRow key={ex.packageAmount} amount={ex.packageAmount} />
+              <WorkedExampleRow key={ex.total} amount={ex.total} />
             ))}
           </tbody>
         </table>

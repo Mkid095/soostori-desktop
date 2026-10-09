@@ -86,9 +86,9 @@ export const dbHandlers: DbIpc = {
   getShop: () => ipcRenderer.invoke('db:shop:get'),
   createShop: (data: { name: string; currency: string; ownerName: string; ownerPin: string }) =>
     ipcRenderer.invoke('db:shop:create', data),
-  getUsers: () => ipcRenderer.invoke('db:shop:getUsers'),
-  login: (userId: string, pin: string, deviceId: string) =>
-    ipcRenderer.invoke('db:auth:login', userId, pin, deviceId),
+  getUsers: (shopId?: string) => ipcRenderer.invoke('db:shop:getUsers', shopId),
+  login: (userId: string, pin: string, deviceId: string, shopId?: string) =>
+    ipcRenderer.invoke('db:auth:login', userId, pin, deviceId, shopId),
   createUser: (data: { name: string; pin: string; role: string }) =>
     ipcRenderer.invoke('db:auth:createUser', data),
   updateUser: (id: string, data: { name?: string; pin?: string; role?: string }) =>
@@ -103,7 +103,7 @@ export const dbHandlers: DbIpc = {
   listInvites: () => ipcRenderer.invoke('db:invites:list'),
   // Devices
   listDevices: () => ipcRenderer.invoke('db:devices:list'),
-  registerDevice: (data: { name: string; employeeId?: string }) =>
+  registerDevice: (data: { deviceId?: string; shopId?: string; deviceName: string; employeeId?: string }) =>
     ipcRenderer.invoke('db:devices:register', data),
   deviceHeartbeat: (deviceId: string) => ipcRenderer.invoke('db:devices:heartbeat', deviceId),
   setHostDevice: (deviceId: string, masterPin: string) =>
@@ -169,4 +169,54 @@ export const dbHandlers: DbIpc = {
   updateBusinessProfile: (data: Record<string, unknown>) => ipcRenderer.invoke('settings:updateBusiness', data),
   updateOwnerProfile: (data: Record<string, unknown>) => ipcRenderer.invoke('settings:updateOwner', data),
   updateMpesaConfig: (data: Record<string, unknown>) => ipcRenderer.invoke('settings:updateMpesa', data),
+  // Device management
+  getDeviceId: () => ipcRenderer.invoke('db:devices:getDeviceId'),
+  getPairings: () => ipcRenderer.invoke('db:devices:getPairings'),
+  getPrimaryStatus: () => ipcRenderer.invoke('db:devices:getPrimaryStatus'),
+  transferPrimaryDevice: (targetDeviceId: string) => ipcRenderer.invoke('db:devices:transferPrimary', targetDeviceId),
+  // Business context
+  getActiveBusinessId: () => ipcRenderer.invoke('db:business:getActiveBusinessId'),
+  setActiveBusiness: (businessId: string) => ipcRenderer.invoke('db:business:setActiveBusiness', businessId),
+  listBusinessesForUser: () => ipcRenderer.invoke('db:business:listForUser'),
+  // Business setup
+  businessSetup: (data: { businessName: string; currency: string; ownerName: string; ownerPin: string }) =>
+    ipcRenderer.invoke('db:business:setup', data),
+  // Customers (additional)
+  searchCustomers: (query: string) => ipcRenderer.invoke('db:customers:search', query),
+  getCustomerPurchaseHistory: (customerId: string) => ipcRenderer.invoke('db:customers:purchaseHistory', customerId),
+  attachCustomerToSale: (customerId: string, saleId: string) => ipcRenderer.invoke('db:customers:attachToSale', customerId, saleId),
+  // Inventory (additional)
+  receiveStock: (data: { productId: string; quantity: number; supplier?: string; notes?: string }) =>
+    ipcRenderer.invoke('db:inventory:receive', data),
+  transferStock: (data: { productId: string; fromBusinessId: string; toBusinessId: string; quantity: number }) =>
+    ipcRenderer.invoke('db:inventory:transfer', data),
+  countStock: (data: { counts: Array<{ productId: string; counted: number }> }) =>
+    ipcRenderer.invoke('db:inventory:count', data),
+  getLowStockProducts: () => ipcRenderer.invoke('db:inventory:lowStock'),
+  // Sales (additional)
+  getRecentSales: (limit?: number) => ipcRenderer.invoke('db:sales:recent', limit),
+  voidSale: (input: { saleId: string; reason: string }) => ipcRenderer.invoke('db:sales:void', input.saleId, input.reason),
+  refundSale: (input: { saleId: string; lineItems?: Array<{ productId: string; quantity: number }>; refundAmount: number; reason: string; paymentMethod: 'cash' | 'mobile_money' | 'card' }) =>
+    ipcRenderer.invoke('db:sales:refund', input),
+  // Team (additional)
+  teamListMembers: () => ipcRenderer.invoke('db:team:listMembers'),
+  teamListInvitations: () => ipcRenderer.invoke('db:team:listInvitations'),
+  teamInvite: (data: { email: string; role: string; invitedByEmployeeId: string }) => ipcRenderer.invoke('db:team:invite', data),
+  teamUpdateMember: (memberId: string, data: { role?: string; permissions?: string[] }) => ipcRenderer.invoke('db:team:updateMember', memberId, data),
+  teamRemoveMember: (memberId: string) => ipcRenderer.invoke('db:team:removeMember', memberId),
+  teamCancelInvitation: (invitationId: string) => ipcRenderer.invoke('db:team:cancelInvitation', invitationId),
+  // Debts (additional)
+  getCustomerDebts: (customerId: string) => ipcRenderer.invoke('db:debts:getCustomerDebts', customerId),
+  // Expenses (additional)
+  getExpenseSummary: () => ipcRenderer.invoke('db:expenses:getSummary'),
+  approveExpense: (expenseId: string) => ipcRenderer.invoke('db:expenses:approve', expenseId),
+  markExpensePaid: (expenseId: string) => ipcRenderer.invoke('db:expenses:markPaid', expenseId),
+  getRecurringExpenses: () => ipcRenderer.invoke('db:expenses:getRecurring'),
+  createRecurringExpense: (data: unknown) => ipcRenderer.invoke('db:expenses:createRecurring', data),
+  deleteRecurringExpense: (expenseId: string) => ipcRenderer.invoke('db:expenses:deleteRecurring', expenseId),
+  // Reports (additional)
+  getDashboard: () => ipcRenderer.invoke('db:reports:dashboard'),
+  getDashboardSales: (period?: string) => ipcRenderer.invoke('db:reports:dashboardSales', period),
+  getDashboardStock: () => ipcRenderer.invoke('db:reports:dashboardStock'),
+  getDashboardDebt: () => ipcRenderer.invoke('db:reports:dashboardDebt'),
 }

@@ -63,9 +63,9 @@ async function run(): Promise<void> {
   const bizSvc = new BusinessService(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     repo as any,
-    asShopId('test-device'),
+    asShopId('test-device') as string as import('@soostori/core').DeviceId,
   )
-  const personId = asUserId(randomUUID())
+  const personId = asUserId(randomUUID()) as string as import('@soostori/core').PersonId
   await bizSvc.createBusiness({
     name: 'Test Shop',
     slug: 'test-shop',
@@ -85,7 +85,7 @@ async function run(): Promise<void> {
   assert('[3] findBusiness returns mapped Business', biz?.name === 'Test Shop' && biz?.slug === 'test-shop')
 
   // [4] inviteEmployee registers a membership (createPerson + createMembership).
-  const personId2 = asUserId(randomUUID())
+  const personId2 = asUserId(randomUUID()) as string as import('@soostori/core').PersonId
   const member = await bizSvc.inviteEmployee({
     businessId: asShopId(inserted.id),
     personId: personId2,

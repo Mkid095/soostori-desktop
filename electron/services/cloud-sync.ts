@@ -17,15 +17,42 @@ function nowIso(): string {
 
 // ── Push sync events ──────────────────────────────────────────────────────────
 
-export async function pushSyncEvents(): Promise<number> {
+/** Shape of an item when passed directly from the sync_queue (queue replay path). */
+interface SyncQueueItem {
+  id: string
+  event_type: string
+  payload: string
+}
+
+/**
+ * Push sync events to the cloud.
+ * @param items - When provided, pushes only these specific queue items.
+ *                When omitted, queries and pushes ALL unsynced events (default behaviour).
+ */
+export async function pushSyncEvents(items?: SyncQueueItem[]): Promise<number> {
   if (!APP_ID) return 0
   const db = getDatabase()
   try {
-    const rows = db.prepare(
-      "SELECT id, entity_type, entity_id, operation, payload FROM sync_events WHERE synced_at IS NULL ORDER BY created_at"
-    ).all() as Array<{ id: string; entity_type: string; entity_id: string; operation: string; payload: string }>
+    let rows: Array<{ id: string; entity_type: string; entity_id: string; operation: string; payload: string }>
 
-    if (!rows.length) return 0
+    if (items) {
+      // Push specific items passed directly (one-at-a-time replay from sync_queue)
+      if (!items.length) return 0
+      rows = items.map(item => ({
+        id: item.id,
+        entity_type: item.event_type,
+        entity_id: '',
+        operation: 'queue_replay',
+        payload: item.payload,
+      }))
+    } else {
+      // Default: push all unsynced events
+      rows = db.prepare(
+        "SELECT id, entity_type, entity_id, operation, payload FROM sync_events WHERE synced_at IS NULL ORDER BY created_at"
+      ).all() as Array<{ id: string; entity_type: string; entity_id: string; operation: string; payload: string }>
+      if (!rows.length) return 0
+    }
+
     const steps = rows.map(r => [
       'update', 'syncEvents', r.id, {
         entity: r.entity_type, entityId: r.entity_id,

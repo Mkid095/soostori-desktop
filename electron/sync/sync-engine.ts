@@ -16,8 +16,10 @@ import { getDatabase } from '../database'
 import { CloudClient } from '@soostori/cloud'
 import type { SyncEvent, SyncCursor } from '@soostori/contracts'
 import { resolveActiveShopId } from '../database/active-shop'
-import { asSyncEventId, asIdempotencyKey, asBusinessId, asDeviceId, asEmployeeId } from '@soostori/core'
+import { v4 as uuidv4 } from 'uuid'
+import { asSyncEventId, asIdempotencyKey, asBusinessId, asDeviceId, asEmployeeId, asProductId, type UUID } from '@soostori/core'
 import log from 'electron-log'
+import { getInventoryLedger } from '../services/inventory-repository'
 
 const APP_ID = process.env.INSTANT_APP_ID || ''
 
@@ -460,6 +462,7 @@ export class RealSyncEngine {
         items_summary?: string | null
         version?: number
         idempotency_key?: string
+        items?: Array<{ product_id?: string; productId?: string; quantity?: number }>
       }
       const saleId = s.id ?? event.entityId
       if (!saleId) {
@@ -528,6 +531,31 @@ export class RealSyncEngine {
         new Date().toISOString(),
         new Date().toISOString(),
       )
+
+      // Decrement stock via StockMovementLedger — same ledger used by local sales.
+      // Cloud-origin sale events carry items in the payload; call apply() for each.
+      const ledger = getInventoryLedger()
+      const saleItems = s.items ?? []
+      for (const item of saleItems) {
+        const productId = item.product_id ?? item.productId
+        if (!productId || item.quantity === undefined) continue
+        try {
+          await ledger.apply({
+            productId: asProductId(productId),
+            type: 'sold',
+            quantity: -item.quantity,
+            referenceId: saleId,
+            referenceType: 'sale',
+            actorType: 'employee',
+            actorId: asEmployeeId(event.originatingEmployeeId) as UUID,
+            idempotencyKey: `remote-sale:${saleId}:${productId}` as UUID,
+          })
+          log.debug(`RealSyncEngine: apply sale stock decrement productId=${productId} qty=${item.quantity}`)
+        } catch (err) {
+          log.error(`RealSyncEngine: apply sale stock decrement failed productId=${productId} qty=${item.quantity}`, err)
+        }
+      }
+
       this.processedKeys.add(event.idempotencyKey)
       this.persistProcessedKey(event.idempotencyKey, event.id, event.originatingDeviceId as string)
       return { state: 'applied' }

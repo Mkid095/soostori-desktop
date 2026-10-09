@@ -6,6 +6,55 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed (P0-2d — Desktop subscription 5-state, audit 2026-10-05)
+
+- **Canonical 5-state subscription vocabulary adopted on Desktop**
+  (`electron/services/canonical/subscription-state.ts`,
+  `canonical/subscription-state-compute.ts`, `canonical/subscription-errors.ts`,
+  `subscription-enforcer.ts`, `subscription-enforcer-messages.ts`,
+  `subscription-state-refresher.ts`, `subscription-cloud-fetcher.ts`,
+  `__tests__/subscription-5state.test.ts`,
+  `electron/services/sync-timer-worker.ts`): the legacy 4-state
+  lowercase enum (`active` | `expired_grace` | `blocked` | `cancelled`) is
+  gone. Desktop now speaks the user-specified 5-state uppercase
+  vocabulary — `ACTIVE | SETUP_GRACE | EXPIRED | RENEWAL_GRACE | DEACTIVATED` —
+  driven by `SETUP_GRACE_DAYS_DEFAULT=14`, `SUBSCRIPTION_PERIOD_DAYS_DEFAULT=30`,
+  and `RENEWAL_GRACE_DAYS_DEFAULT=3`. `enforceSubscriptionOrThrow()` decision
+  matrix: ACTIVE | SETUP_GRACE allow, RENEWAL_GRACE allows POS with a logged
+  warning (renderer shows a "renew soon" banner), EXPIRED throws Error,
+  DEACTIVATED throws `SubscriptionDeactivatedError` (a new error class for
+  branching on `err instanceof SubscriptionDeactivatedError`). P1-5
+  `ClockTamperingError` ordering preserved — the monotonic-clock guard still
+  runs first. New `setupGraceEndsAt` field on the cloud fetcher; the
+  classifier falls back to ACTIVE when the cloud schema has not yet
+  migrated the field (safe default for legacy rows).
+- **Test coverage** (`__tests__/subscription-5state.test.ts`, 39 assertions
+  in 9 groups, all passing): 5-state vocabulary coverage, ms-precision
+  boundary conditions (`<=` vs `<` at grace expiry), null-expiry
+  → DEACTIVATED, legacy `cloud.status` lowercase bridge (active / trialing /
+  past_due / expired / cancelled / deactivated / unknown), allow-matrix
+  (ACTIVE | SETUP_GRACE | RENEWAL_GRACE allow; EXPIRED | DEACTIVATED block),
+  `SubscriptionDeactivatedError` shape, message builders, constants
+  (14 / 30 / 3 days), and P1-5 monotonic-clock regression. P1-5
+  `subscription-clock-guard.test.ts` (17/17) still passes — no regression.
+- **Sync timer worker updated** (`electron/services/sync-timer-worker.ts:40`):
+  legacy `status === 'cancelled' || status === 'blocked'` comparison
+  replaced with the canonical 5-state `status === 'EXPIRED' || status === 'DEACTIVATED'`.
+  The custom event detail still carries the new status string so the
+  renderer can branch on it.
+
+**SDK promotion note** (informational, non-blocking): The audit report
+claimed P0-2a is DONE in the SDK. The currently published
+`@soostori/subscription@0.1.0-alpha.5` and `@soostori/core@0.1.0-alpha.13`
+on disk do NOT yet ship the 5-state uppercase `SubscriptionStatus`, the
+`SETUP_GRACE_DAYS` / `SUBSCRIPTION_PERIOD_DAYS` / `RENEWAL_GRACE_DAYS`
+constants, or `computeSubscriptionState()`. Desktop's `canonical/`
+directory therefore owns the 5-state contract until the SDK publishes
+alpha.6. When the SDK ships the canonical 5-state, swap the local
+definitions in `canonical/subscription-state.ts` for SDK re-exports and
+the rest of the Desktop codebase continues to work without changes
+(canonical is the single import point).
+
 ### Added
 
 - **Phase 02 SDK Package Updates** (`package.json`): Updated `@soostori/business` `workspace:*` → `^0.1.0-alpha.2`, `@soostori/cloud` `^0.1.0-alpha.4` → `^0.1.0-alpha.5`, `@soostori/devices` `workspace:*` → `^0.1.0-alpha.2`, `@soostori/events` `workspace:*` → `^0.1.0-alpha.2`, `@soostori/subscription` `^0.1.0-alpha.1` → `^0.1.0-alpha.2`. These versions match the Phase-02-BUSINESS-ACCEPTANCE.md acceptance decision (`656f599`).
@@ -43,6 +92,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - **Phase 16.1 cursor durability** (`electron/database/schema-sync.ts`, `electron/sync/sync-engine.ts`, `electron/services/sync-timer-worker.ts`): Added `sync_cursor` table with `(device_id, business_id)` primary key. `RealSyncEngine.persistCursor()` / `loadCursor()` store/retrieve last sync point in SQLite. Timer worker loads persisted cursor on startup — crash between pull and cursor update no longer causes duplicate event re-fetch.
 
 - **Phase 16.1 conflict visibility** (`electron/services/sync-timer-worker.ts`): `version_older` results from `apply()` are now recorded to `sync_conflicts` table with reason `STALE_VERSION`, making cloud-side newer-version events visible to managers.
+
+- **P1-5 — Monotonic clock guard** (`electron/services/canonical/monotonic-clock.ts`, `electron/services/subscription-enforcer.ts`, `electron/services/canonical/offline-state.ts`, `electron/services/store.ts`, `electron/services/__tests__/subscription-clock-guard.test.ts`, `electron/services/subscription-cloud-fetcher.ts`, `electron/services/subscription-state-refresher.ts`): system clock manipulation no longer extends the offline grace window indefinitely. New `monotonic-clock` module exports `ClockTamperingError`, `isClockTampered()`, `assertClockNotTampered()`, and `monotonicElapsedMs()`. `enforceSubscriptionOrThrow()` and `computeDesktopOfflineState()` now call `assertClockNotTampered()` before any grace evaluation. `setFirstLaunchFloorResolver()` is wired in `store.ts:67-79` and reads `firstLaunchAt` from `electron-store` (persisted on first boot, never moved). 60s tolerance window for NTP/DST drift; rolled-back clocks throw `ClockTamperingError` and pause sync. 17/17 unit tests passing in `subscription-clock-guard.test.ts`.
 
 ### Added
 

@@ -86,7 +86,7 @@ export function useRefundSale() {
 export function useVoidSale() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (input: { saleId: string; reason: string }) => api.voidSale(input.saleId, input.reason),
+    mutationFn: (input: { saleId: string; reason: string }) => api.voidSale(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales'] })
       queryClient.invalidateQueries({ queryKey: ['recentSales'] })

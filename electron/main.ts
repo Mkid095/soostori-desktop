@@ -68,8 +68,8 @@ app.whenReady().then(async () => {
     const pollUnread = () => {
       try {
         const db = getDatabase()
-        const session = desktopLoadSession?.() ?? {}
-        const uid = session.employeeId ?? getEmployeeId?.() ?? 'system'
+        const syncStore = getSyncStore()
+        const uid = (syncStore.get('userId') ?? syncStore.get('employeeId')) as string | undefined ?? 'system'
         const row = db.prepare(
           `SELECT COUNT(*) as n FROM notifications WHERE user_id = ? AND read_at IS NULL`
         ).get(uid) as { n: number } | undefined

@@ -38,7 +38,7 @@ export default function TeamSettings() {
       await window.electronAPI.db.updateUser(editTarget.id, { name: f.name.trim(), role: f.role, pin: newPin || undefined })
       setModal(null); setEditTarget(null)
     } else {
-      const r = await window.electronAPI.db.createInvite({ shopId, employeeName: f.name.trim(), role: f.role, createdBy: authUser?.id ?? '' })
+      const r = await window.electronAPI.db.createInvite({ employeeName: f.name.trim(), role: f.role, deviceName: 'POS' })
       setInvite(r as InviteResult)
       setModal(null)
     }

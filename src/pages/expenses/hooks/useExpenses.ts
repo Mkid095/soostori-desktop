@@ -20,11 +20,10 @@ export function useExpenses(month?: string) {
   })
 }
 
-export function useExpenseSummary(month: string) {
+export function useExpenseSummary() {
   return useQuery({
-    queryKey: ['expenseSummary', month],
-    queryFn: () => api.getExpenseSummary(month) as Promise<{ total: number; byCategory: Record<string, number>; pendingCount: number }>,
-    enabled: !!month,
+    queryKey: ['expenseSummary'],
+    queryFn: () => api.getExpenseSummary() as Promise<{ total: number; pending: number }>,
   })
 }
 
@@ -54,7 +53,7 @@ export function useDeleteExpense() {
 export function useApproveExpense() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) => api.approveExpense(id) as Promise<ExpenseRow>,
+    mutationFn: (id: string) => api.approveExpense(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] })
       queryClient.invalidateQueries({ queryKey: ['expenseSummary'] })
@@ -77,7 +76,7 @@ export function useExpenseStats() {
 export function useMarkExpensePaid() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) => api.markExpensePaid(id) as Promise<ExpenseRow>,
+    mutationFn: (id: string) => api.markExpensePaid(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] })
       queryClient.invalidateQueries({ queryKey: ['expenseSummary'] })

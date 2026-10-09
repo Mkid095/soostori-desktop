@@ -36,8 +36,10 @@ async function runCloudPull(): Promise<void> {
   if (!isOnline()) return
 
   // Phase 19: check subscription before applying cloud events
+  // P0-2d: status is the canonical 5-state uppercase. EXPIRED and DEACTIVATED
+  // are the blocked states (RENEWAL_GRACE allows with warning, ACTIVE / SETUP_GRACE allow).
   const sub = checkCloudSubscription()
-  if (sub.status === 'cancelled' || sub.status === 'blocked') {
+  if (sub.status === 'EXPIRED' || sub.status === 'DEACTIVATED') {
     log.warn(`SyncTimerWorker: subscription ${sub.status} — pausing cloud sync`)
     dispatchSyncStatus('online')
     window.dispatchEvent(new CustomEvent('soostori:subscription:blocked', { detail: { status: sub.status } }))
@@ -46,7 +48,7 @@ async function runCloudPull(): Promise<void> {
 
   // Phase 19: enforce offline policy
   try {
-    const shopId = await resolveActiveShopId().catch(() => 'default')
+    const shopId = await resolveActiveShopId().catch(() => 'default') as string as import('@soostori/core').BusinessId
     const isOnlineFlag = true
     const lastVerifiedAt = (getSyncStore().get('subscriptionCheckedAt') as string | undefined) ?? new Date().toISOString()
     const offlineState = computeDesktopOfflineState({
@@ -68,7 +70,7 @@ async function runCloudPull(): Promise<void> {
   } catch { /* offline check is best-effort */ }
 
   try {
-    const shopId = await resolveActiveShopId()
+    const shopId = await resolveActiveShopId() as unknown as import('@soostori/core').BusinessId
     const token = getSyncStore().get('cloudToken') as string | undefined
     const deviceId = getSyncStore().get('deviceId') as string || 'local'
     const cloud = new CloudClient({ appId: APP_ID, token })
@@ -195,8 +197,9 @@ function mapSyncEventToNotification(event: SyncEvent): {
   payload: Record<string, unknown>
   priority: 'low' | 'normal' | 'high' | 'urgent'
 } | null {
-  const { entityKind, operation, payload } = event
-  const p = payload as Record<string, unknown> ?? {}
+  const entityKind = (event as { entityKind?: string }).entityKind ?? ''
+  const operation = (event as { operation?: string }).operation ?? ''
+  const p = event.payload as Record<string, unknown> ?? {}
 
   // Sale events
   if (entityKind === 'sale' && operation === 'create') {

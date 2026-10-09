@@ -41,7 +41,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
     window.electronAPI.db.getShop().then(shop => {
       if (!shop) return
       setShopId(shop.id)
-      return window.electronAPI.db.getUsers(shop.id)
+      return window.electronAPI.db.getUsers()
     }).then(allUsers => {
       if (allUsers) setUsers((allUsers as ShopUser[]).filter((u: ShopUser) => u.is_active === 1))
     }).catch(() => {})

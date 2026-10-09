@@ -85,7 +85,7 @@ const MpesaPaymentForm: React.FC<Props> = ({
       )}
 
       {/* Sending spinner */}
-      {phase === 'sending' && (
+      {phase === 'polling' && (
         <div className="flex items-center justify-center py-4 gap-2 text-green-600 dark:text-green-400">
           <Loader2 size={20} className="animate-spin" />
           <span className="text-sm font-medium">Sending request...</span>

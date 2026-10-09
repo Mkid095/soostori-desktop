@@ -7,7 +7,7 @@ import { hashPin } from '@soostori/auth/pin-node'
 // Phase 11.2 Batch B: canonicalize business/identity via the published
 // @soostori/business package.
 import { BusinessService } from '@soostori/business'
-import { asDeviceId, asUserId } from '@soostori/core'
+import { asDeviceId, asPersonId } from '@soostori/core'
 import { DesktopBusinessRepository } from '../services/business'
 import { getOrCreateDeviceId } from '../services/store'
 
@@ -40,7 +40,7 @@ export function registerShopHandlers(): void {
         slug: data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'shop',
         taxRate: 0,
         currency: data.currency || 'KES',
-        ownerPersonId: asUserId(userId),
+        ownerPersonId: asPersonId(userId),
       })
     } catch (err) {
       log.warn('BusinessService.createBusiness availability event failed (non-fatal):', err)

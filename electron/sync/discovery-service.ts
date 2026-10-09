@@ -15,8 +15,6 @@ interface DiscoveryOptions {
   deviceType: 'desktop' | 'mobile'
   isHost: boolean
   wsPort: number
-  employeeId: string
-  employeeName: string
   appVersion: string
 }
 
@@ -71,6 +69,11 @@ export class DiscoveryService extends EventEmitter {
 
   private broadcastAdvert(): void {
     if (!this.socket) return
+    // SECURITY(P2-04): LAN UDP traffic should use TLS or a pre-shared key in production.
+    // The UDP discovery broadcast itself cannot be encrypted (that's normal for discovery
+    // protocols), but the subsequent WebSocket sync connection uses device tokens.
+    // NOTE(P2-05): employeeId and employeeName are deliberately excluded from the
+    // broadcast payload to prevent employee enumeration via LAN access.
     const advert: DiscoveryAdvert = {
       magic: DISCOVERY_MAGIC,
       version: DISCOVERY_VERSION,
@@ -81,8 +84,6 @@ export class DiscoveryService extends EventEmitter {
       deviceType: this.opts.deviceType,
       isHost: this.opts.isHost,
       wsPort: this.opts.wsPort,
-      employeeId: this.opts.employeeId,
-      employeeName: this.opts.employeeName,
       appVersion: this.opts.appVersion,
       last_seen_ms: Date.now(),
     }

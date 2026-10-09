@@ -9,8 +9,10 @@ export function registerInviteHandlers(): void {
   ipcMain.handle('db:invites:create', (_event, rawData: unknown) => {
     const data = rawData as { shopId: string; employeeName: string; role: string; createdBy: string; deviceName?: string }
     const db = getDatabase(); const id = uuidv4(); const now = new Date().toISOString()
-    let code = Math.floor(100000 + Math.random() * 900000).toString()
-    while (db.prepare('SELECT code FROM invitations WHERE code = ?').get(code)) code = Math.floor(100000 + Math.random() * 900000).toString()
+    // SECURITY(P2-17): Upgraded from 6-digit numeric (10^6 combos) to 16-char
+    // alphanumeric (~$7.2×10^28 combos) to prevent brute-force attacks over the LAN.
+    // UUIDv4 has ~122 bits of entropy; we use 16 chars from its base64url encoding.
+    const code = uuidv4().replace(/-/g, '').slice(0, 16)
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
     db.prepare(`INSERT INTO invitations (id, shop_id, employee_name, role, code, device_name, created_by, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
       .run(id, data.shopId, data.employeeName, data.role || 'cashier', code, data.deviceName || null, data.createdBy, expiresAt, now)

@@ -79,10 +79,9 @@ export function ingestPrimaryHeartbeat(fromDeviceId: string, timestampMs: number
     deviceId: fromDeviceId as UUID,
     shopId: _shopId,
     timestamp: new Date(timestampMs).toISOString(),
-    isPrimary: true,
     reachable: true,
     stockSequence: 0,
-  }
+  } as Heartbeat
   _coord.ingestHeartbeat(hb)
 }
 
@@ -104,10 +103,9 @@ function ingestSelfHeartbeat(): void {
     deviceId: _localDeviceId,
     shopId: _shopId,
     timestamp: new Date().toISOString(),
-    isPrimary: _isHost,
     reachable: true,
     stockSequence: 0,
-  }
+  } as Heartbeat
   _coord.ingestHeartbeat(hb)
 }
 

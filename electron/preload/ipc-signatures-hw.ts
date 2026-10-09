@@ -92,10 +92,8 @@ export interface CloudAuthIpc {
   getEmployees: (shopId?: string) => Promise<Record<string, unknown>[]>
 }
 
-/** @soostori/auth CloudAuth SDK — Google OAuth + email/password via FIDScript */
+/** @soostori/auth CloudAuth SDK — email/password via FIDScript. Google OAuth removed. */
 export interface CloudAuthSdkIpc {
-  signInWithGoogle(config: { clientId: string; redirectUri: string; scopes?: string[] }): Promise<{ started: boolean; error?: string }>
-  handleOAuthCallback(code: string, state: string, codeVerifier: string, redirectUri: string): Promise<{ success: boolean; userId?: string; email?: string; isNewUser?: boolean; error?: string }>
   signInWithEmail(email: string, password: string): Promise<{ success: boolean; userId?: string; email?: string; isEmailVerified?: boolean; error?: string }>
   restoreSession(): Promise<{ restored: boolean; userId?: string; email?: string; shopId?: string; employeeId?: string; deviceId?: string; isStale?: boolean }>
   refreshSession(): Promise<{ refreshed: boolean; error?: string }>

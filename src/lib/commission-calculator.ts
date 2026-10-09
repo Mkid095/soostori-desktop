@@ -1,20 +1,30 @@
 /**
  * commission-calculator.ts — Desktop commission calculator.
  *
- * SDK CONTRACT: Commission math lives in @soostori/partners.
+ * SDK CONTRACT: Commission math lives in @soostori/contracts.
  * This file re-exports the canonical function so existing desktop imports
  * continue to work without path changes.
  */
 
-import { calculateCommission, type CommissionBreakdown } from '@soostori/contracts'
+import { calculateCommission, type CommissionSplit } from '@soostori/contracts'
+import type { Money } from '@soostori/core'
 
-export { calculateCommission, type CommissionBreakdown }
+export { calculateCommission }
+export type { CommissionSplit, Money }
 
-/** Worked examples as shown in the brief. */
-export const COMMISSION_EXAMPLES: CommissionBreakdown[] = [
-  calculateCommission(600),
-  calculateCommission(1000),
-  calculateCommission(2000),
+/** Worked examples as shown in the brief — plain objects with packageAmount for display. */
+export interface CommissionExample {
+  packageAmount: Money
+  companyShare: Money
+  salespersonShare: Money
+  influencerShare: Money
+  total: Money
+}
+
+export const COMMISSION_EXAMPLES: CommissionExample[] = [
+  { packageAmount: 600 as Money, ...calculateCommission(600 as Money) },
+  { packageAmount: 1000 as Money, ...calculateCommission(1000 as Money) },
+  { packageAmount: 2000 as Money, ...calculateCommission(2000 as Money) },
 ]
 
 /**

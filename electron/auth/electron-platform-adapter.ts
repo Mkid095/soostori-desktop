@@ -70,6 +70,20 @@ export class ElectronPlatformAuthAdapter implements PlatformAuthAdapter {
   randomString(byteLength: number): string {
     return randomBytes(byteLength).toString('base64url')
   }
+
+  /**
+   * Set a cookie — no-op on Electron since cookies are not used for desktop auth.
+   * Required by PlatformAuthAdapter interface.
+   */
+  setCookie(_name: string, _value: string, _options?: {
+    httpOnly?: boolean;
+    secure?: boolean;
+    sameSite?: 'Lax' | 'Strict' | 'None';
+    maxAge?: number;
+    path?: string;
+  }): void {
+    // Cookies are not used in the Electron PKCE flow — this is a no-op stub.
+  }
 }
 
 // Singleton

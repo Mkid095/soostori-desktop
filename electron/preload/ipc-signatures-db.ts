@@ -88,7 +88,7 @@ export interface DbIpc {
   // Customers
   getCustomers: () => Promise<unknown[]>
   getCustomer: (id: string) => Promise<unknown | null>
-  createCustomer: (data: unknown) => Promise<unknown>
+  createCustomer: (data: unknown, idempotencyKey?: string) => Promise<unknown>
   updateCustomer: (id: string, data: unknown) => Promise<unknown>
   deleteCustomer: (id: string) => Promise<void>
   // Debts
@@ -105,8 +105,8 @@ export interface DbIpc {
   // Shop / Auth / Team
   getShop: () => Promise<Shop | null>
   createShop: (data: { name: string; currency: string; ownerName: string; ownerPin: string }) => Promise<Shop>
-  getUsers: () => Promise<ShopUser[]>
-  login: (userId: string, pin: string, deviceId: string) => Promise<{ user: ShopUser; sessionId: string }>
+  getUsers: (shopId?: string) => Promise<ShopUser[]>
+  login: (userId: string, pin: string, deviceId: string, shopId?: string) => Promise<{ user: ShopUser; sessionId: string }>
   createUser: (data: { name: string; pin: string; role: string }) => Promise<ShopUser>
   updateUser: (id: string, data: { name?: string; pin?: string; role?: string }) => Promise<ShopUser>
   deleteUser: (id: string) => Promise<void>
@@ -117,7 +117,7 @@ export interface DbIpc {
   listInvites: () => Promise<Invitation[]>
   // Devices
   listDevices: () => Promise<Device[]>
-  registerDevice: (data: { name: string; employeeId?: string }) => Promise<Device>
+  registerDevice: (data: { deviceId?: string; shopId?: string; deviceName: string; employeeId?: string }) => Promise<Device>
   deviceHeartbeat: (deviceId: string) => Promise<void>
   setHostDevice: (deviceId: string, masterPin: string) => Promise<{ success: boolean }>
   requestPairing: (deviceId: string) => Promise<DevicePairing>
@@ -195,4 +195,49 @@ export interface DbIpc {
   updateBusinessProfile: (data: Record<string, unknown>) => Promise<Record<string, unknown>>
   updateOwnerProfile: (data: Record<string, unknown>) => Promise<Record<string, unknown>>
   updateMpesaConfig: (data: Record<string, unknown>) => Promise<Record<string, unknown>>
+  // Device management
+  getDeviceId: () => Promise<{ deviceId: string }>
+  getPairings: () => Promise<{ pairings: Array<{ id: string; deviceName: string; status: string; createdAt: string }> }>
+  getPrimaryStatus: () => Promise<{ isPrimary: boolean; primaryDeviceId: string | null }>
+  transferPrimaryDevice: (targetDeviceId: string) => Promise<{ success: boolean }>
+  // Business context
+  getActiveBusinessId: () => Promise<string | null>
+  setActiveBusiness: (businessId: string) => Promise<{ success: boolean }>
+  listBusinessesForUser: () => Promise<Array<{ id: string; name: string }>>
+  // Business setup
+  businessSetup: (data: { businessName: string; currency: string; ownerName: string; ownerPin: string }) => Promise<{ success: boolean; businessId: string }>
+  // Customers (additional)
+  searchCustomers: (query: string) => Promise<unknown[]>
+  getCustomerPurchaseHistory: (customerId: string) => Promise<unknown>
+  attachCustomerToSale: (customerId: string, saleId: string) => Promise<{ success: boolean }>
+  // Inventory (additional)
+  receiveStock: (data: { productId: string; quantity: number; supplier?: string; notes?: string }) => Promise<unknown>
+  transferStock: (data: { productId: string; fromBusinessId: string; toBusinessId: string; quantity: number }) => Promise<unknown>
+  countStock: (data: { counts: Array<{ productId: string; counted: number }> }) => Promise<unknown>
+  getLowStockProducts: () => Promise<unknown[]>
+  // Sales (additional)
+  getRecentSales: (limit?: number) => Promise<unknown[]>
+  voidSale: (input: { saleId: string; reason: string }) => Promise<{ success: boolean }>
+  refundSale: (input: { saleId: string; lineItems?: Array<{ productId: string; quantity: number }>; refundAmount: number; reason: string; paymentMethod: 'cash' | 'mobile_money' | 'card' }) => Promise<{ success: boolean }>
+  // Team (additional)
+  teamListMembers: () => Promise<unknown[]>
+  teamListInvitations: () => Promise<unknown[]>
+  teamInvite: (data: { email: string; role: string; invitedByEmployeeId: string }) => Promise<unknown>
+  teamUpdateMember: (memberId: string, data: { role?: string; permissions?: string[] }) => Promise<unknown>
+  teamRemoveMember: (memberId: string) => Promise<{ success: boolean }>
+  teamCancelInvitation: (invitationId: string) => Promise<{ success: boolean }>
+  // Debts (additional)
+  getCustomerDebts: (customerId: string) => Promise<unknown[]>
+  // Expenses (additional)
+  getExpenseSummary: () => Promise<{ total: number; pending: number }>
+  approveExpense: (expenseId: string) => Promise<{ success: boolean }>
+  markExpensePaid: (expenseId: string) => Promise<{ success: boolean }>
+  getRecurringExpenses: () => Promise<unknown[]>
+  createRecurringExpense: (data: unknown) => Promise<unknown>
+  deleteRecurringExpense: (expenseId: string) => Promise<{ success: boolean }>
+  // Reports (additional)
+  getDashboard: () => Promise<unknown>
+  getDashboardSales: (period?: string) => Promise<unknown>
+  getDashboardStock: () => Promise<unknown>
+  getDashboardDebt: () => Promise<unknown>
 }

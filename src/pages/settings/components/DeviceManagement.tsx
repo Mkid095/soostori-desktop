@@ -38,10 +38,10 @@ export default function DeviceManagement() {
       const shop = await window.electronAPI.db.getShop()
       if (shop) {
         const [d, p] = await Promise.all([
-          window.electronAPI.db.listDevices(shop.id) as Promise<Device[]>,
-          window.electronAPI.db.getPairings(shop.id) as Promise<DevicePairing[]>,
+          window.electronAPI.db.listDevices() as Promise<Device[]>,
+          window.electronAPI.db.getPairings() as unknown as Promise<DevicePairing[]>,
         ])
-        const ps = await window.electronAPI.db.getPrimaryStatus(shop.id) as PrimaryStatus
+        const ps = await window.electronAPI.db.getPrimaryStatus() as unknown as PrimaryStatus
         setDevices(d ?? [])
         setPairings(p ?? [])
         setPrimaryStatus(ps)
@@ -52,7 +52,7 @@ export default function DeviceManagement() {
   useEffect(() => { if (canView) load() }, [canView, load])
 
   const approve = async (id: string) => {
-    await window.electronAPI.db.approvePairing(id, authUser?.id ?? '')
+    await window.electronAPI.db.approvePairing(id)
     load()
   }
 
@@ -67,7 +67,7 @@ export default function DeviceManagement() {
     if (!shop) return
     setTransferring(true)
     try {
-      await window.electronAPI.db.transferPrimaryDevice(transferTarget, shop.id)
+      await window.electronAPI.db.transferPrimaryDevice(transferTarget)
       setTransferOpen(false)
       setTransferTarget(null)
       load()

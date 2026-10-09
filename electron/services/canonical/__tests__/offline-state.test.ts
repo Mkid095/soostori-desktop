@@ -23,7 +23,10 @@ async function run(): Promise<void> {
   console.log('\n=== Phase 11.2 Batch D offline-state contract tests ===\n')
 
   const shopId = asShopId('shop-1')
-  const now = new Date('2026-09-05T00:00:00Z')
+  // Anchor at the current wall clock so the P1-5 monotonic-clock guard
+  // (assertClockNotTampered) doesn't trip on a fixed past fixture. Offsets
+  // remain deterministic; only the absolute anchor is now-relative.
+  const now = new Date()
   const lastVer = new Date(now.getTime() - 1000).toISOString()
 
   // [1] Locked grace is 3 days.

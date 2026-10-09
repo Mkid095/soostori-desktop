@@ -22,6 +22,9 @@ export interface SyncEvent {
   payload: unknown
   timestamp: string
   sequenceNumber?: number
+  entityKind?: string
+  entityId?: string
+  operation?: string
 }
 
 export interface SyncMessage {
@@ -49,8 +52,8 @@ export interface DiscoveryAdvert {
   deviceType: 'desktop' | 'mobile'
   isHost: boolean
   wsPort: number
-  employeeId: string
-  employeeName: string
+  // SECURITY(P2-05): employeeId and employeeName deliberately excluded to prevent
+  // employee enumeration via LAN broadcast (an unauthenticated, broadcast channel).
   appVersion: string
   last_seen_ms: number  // Unix-ms timestamp of last heartbeat from Primary
 }

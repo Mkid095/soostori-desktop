@@ -18,7 +18,7 @@
  */
 
 import type {
-  AuthApiClient, AuthApiResponse, GoogleSignInResult,
+  AuthApiClient, AuthApiResponse,
   EmailRegistrationResult, EmailVerificationResult, PasswordResetRequestResult,
   PasswordResetCompleteResult, SignInResult, SessionRefreshResult,
   TrustedDevice, TrustedDeviceResult,
@@ -44,17 +44,18 @@ async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<Auth
 
 export class FIDScriptAuthApiClient implements AuthApiClient {
   // ── OAuth / Identity ────────────────────────────────────────────────
+  // Google Sign-In has been removed from the app.
 
-  async exchangeGoogleCode(code: string, codeVerifier: string, redirectUri: string): Promise<AuthApiResponse<GoogleSignInResult>> {
-    return apiFetch<GoogleSignInResult>(authUrl('/exchange-google-code'), { method: 'POST', body: JSON.stringify({ code, code_verifier: codeVerifier, redirect_uri: redirectUri }) })
+  async exchangeGoogleCode(): Promise<AuthApiResponse<never>> {
+    return { data: undefined, error: { code: 'UNSUPPORTED', message: 'Google Sign-In has been removed' } }
   }
 
-  async linkGoogleAccount(idToken: string, sessionAccessToken: string): Promise<AuthApiResponse<GoogleSignInResult>> {
-    return apiFetch<GoogleSignInResult>(authUrl('/link-google'), { method: 'POST', headers: { Authorization: `Bearer ${sessionAccessToken}` }, body: JSON.stringify({ id_token: idToken }) })
+  async linkGoogleAccount(): Promise<AuthApiResponse<never>> {
+    return { data: undefined, error: { code: 'UNSUPPORTED', message: 'Google Sign-In has been removed' } }
   }
 
-  async signInWithIdToken(clientName: string, idToken: string): Promise<AuthApiResponse<GoogleSignInResult>> {
-    return apiFetch<GoogleSignInResult>(authUrl('/signin-with-id-token'), { method: 'POST', body: JSON.stringify({ client_name: clientName, id_token: idToken }) })
+  async signInWithIdToken(): Promise<AuthApiResponse<never>> {
+    return { data: undefined, error: { code: 'UNSUPPORTED', message: 'Google Sign-In has been removed' } }
   }
 
   async registerEmail(email: string, password: string, employeeName: string): Promise<AuthApiResponse<EmailRegistrationResult>> {
@@ -271,6 +272,32 @@ export class FIDScriptAuthApiClient implements AuthApiClient {
       method: 'POST',
       body: JSON.stringify({ shop_id: shopId }),
     })
+  }
+
+  // ── Passwordless challenges ─────────────────────────────────────────
+
+  async requestPasswordlessChallenge(_params: {
+    email: string
+    purpose: 'salesperson_activation' | 'normal_passwordless_login' | 'influencer_account_setup' | 'salesperson_onboarding'
+    codeLength?: number
+    expiresInMinutes?: number
+  }): Promise<AuthApiResponse<{ expiresAt: string; cooldownSeconds: number }>> {
+    return { data: undefined, error: { code: 'UNSUPPORTED', message: 'Passwordless login is not supported on desktop' } }
+  }
+
+  async verifyPasswordlessChallenge(_params: {
+    email: string
+    purpose: 'salesperson_activation' | 'normal_passwordless_login' | 'influencer_account_setup' | 'salesperson_onboarding'
+    code: string
+  }): Promise<AuthApiResponse<SignInResult>> {
+    return { data: undefined as unknown as SignInResult, error: { code: 'UNSUPPORTED', message: 'Passwordless login is not supported on desktop' } }
+  }
+
+  async completePasswordSetup(_params: {
+    setupToken: string
+    password: string
+  }): Promise<AuthApiResponse<SignInResult>> {
+    return { data: undefined as unknown as SignInResult, error: { code: 'UNSUPPORTED', message: 'Password setup is not supported on desktop' } }
   }
 }
 

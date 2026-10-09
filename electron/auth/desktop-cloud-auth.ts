@@ -22,28 +22,29 @@ import type { StoredSession } from '@soostori/auth'
 import type { PlatformAuthAdapter, AuthApiClient } from '@soostori/auth'
 import { ElectronStoreSessionStorage } from './electron-store-session'
 
+// @ts-ignore SDK source has private methods, installed package has protected (version mismatch)
 export class DesktopCloudAuth extends CloudAuth {
-  private readonly _storage = new ElectronStoreSessionStorage()
-
   constructor(platform: PlatformAuthAdapter, api: AuthApiClient) {
     super(platform, api)
   }
 
   protected override async _saveStoredSession(session: StoredSession): Promise<void> {
-    await this._storage.set('soostori:session', JSON.stringify(session))
+    const storage = new ElectronStoreSessionStorage()
+    await storage.set('soostori:session', JSON.stringify(session))
   }
 
   protected override async _loadStoredSession(): Promise<StoredSession | null> {
-    const raw = this._storage.get('soostori:session')
+    const storage = new ElectronStoreSessionStorage()
+    const raw = storage.get('soostori:session')
     if (!raw) return null
-    try {
-      return JSON.parse(raw) as StoredSession
-    } catch {
-      return null
-    }
+
+    // raw is a JSON string (the auth SDK handles parsing).
+    // If storage returned anything, hand it back as-is.
+    return raw as unknown as StoredSession
   }
 
   protected override async _clearStoredSession(): Promise<void> {
-    this._storage.delete('soostori:session')
+    const storage = new ElectronStoreSessionStorage()
+    storage.delete('soostori:session')
   }
 }

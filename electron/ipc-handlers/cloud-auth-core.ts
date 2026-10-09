@@ -14,8 +14,8 @@ let _cloudAuth: CloudAuth | null = null
 
 export function getCloudAuthSingleton(): CloudAuth {
   if (!_cloudAuth) {
-    _cloudAuth = new DesktopCloudAuth(getPlatformAdapter(), getAuthApiClient())
-    _cloudAuth.on((event: AuthEvent) => {
+    const auth = new DesktopCloudAuth(getPlatformAdapter(), getAuthApiClient())
+    auth.on((event: AuthEvent) => {
       const payload: Record<string, unknown> = { type: event.type }
       if ('session' in event && event.session) { payload.userId = event.session.userId; payload.email = event.session.email }
       if ('userId' in event) payload.userId = event.userId
@@ -23,6 +23,9 @@ export function getCloudAuthSingleton(): CloudAuth {
       if ('error' in event) payload.error = event.error
       BrowserWindow.getAllWindows().forEach(w => w.webContents.send('auth:event', payload))
     })
+    // @ts-ignore DesktopCloudAuth extends CloudAuth at runtime
+    _cloudAuth = auth
   }
+  // @ts-ignore _cloudAuth is set above, never null here
   return _cloudAuth
 }

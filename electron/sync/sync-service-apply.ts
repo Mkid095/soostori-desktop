@@ -205,10 +205,8 @@ export function applyDebtCreated(event: SyncEvent): void {
     shop_id?: string; version?: number
   }
   const db = getDatabase()
-  const debtId = payload.id ?? event.entityId
+  const debtId = payload.id ?? (event as { businessId?: string }).businessId ?? 'default'
   if (!debtId) return
-
-  const shopId = payload.shop_id ?? shopId ?? 'default'
 
   const existing = db.prepare('SELECT id FROM debts WHERE id = ?').get(debtId)
   if (existing) {
@@ -229,7 +227,7 @@ export function applyDebtCreated(event: SyncEvent): void {
     payload.status ?? 'pending',
     payload.due_date ?? null,
     payload.notes ?? null,
-    shopId,
+    payload.shop_id ?? 'default',
     new Date().toISOString(),
     new Date().toISOString(),
     payload.version ?? 1,
@@ -246,10 +244,8 @@ export function applyDebtPaymentRecorded(event: SyncEvent): void {
     version?: number
   }
   const db = getDatabase()
-  const paymentId = payload.id ?? event.entityId
+  const paymentId = payload.id ?? (event as { businessId?: string }).businessId ?? 'default'
   if (!paymentId) return
-
-  const shopId = payload.shop_id ?? shopId ?? 'default'
 
   // Idempotent: skip if already recorded
   const existing = db.prepare(
@@ -271,7 +267,7 @@ export function applyDebtPaymentRecorded(event: SyncEvent): void {
     payload.amount ?? 0,
     payload.payment_method ?? 'cash',
     payload.reference ?? null,
-    shopId,
+    payload.shop_id ?? 'default',
     new Date().toISOString(),
     payload.version ?? 1,
     `remote:${event.id}`,

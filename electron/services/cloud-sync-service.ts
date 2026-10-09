@@ -213,8 +213,7 @@ export async function cloudSyncSales(): Promise<{ pushed: number; failed: number
   const shopId = await resolveActiveShopId()
   if (!shopId) return { pushed: 0, failed: 0 }
 
-  const pending: Array<{ id: string; sale_id: string; employee_id: string; device_id: string; total: number; payload: string }> =
-    db.prepare(`SELECT * FROM sync_sales WHERE shop_id = ? AND status = 'pending' LIMIT 50`).all(shopId) as ReturnType<typeof db.prepare>['all'] extends (q: string, ...a: unknown[]) => infer R ? R : never
+  const pending = db.prepare(`SELECT * FROM sync_sales WHERE shop_id = ? AND status = 'pending' LIMIT 50`).all(shopId) as Array<{ id: string; sale_id: string; employee_id: string; device_id: string; total: number; payload: string }>
 
   if (!pending.length) return { pushed: 0, failed: 0 }
 

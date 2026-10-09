@@ -4,30 +4,35 @@
  * Used by desktop (main process) to communicate with apiinstant.fidscript.com.
  * Entity field names match the shared cloud schema used by web and mobile.
  *
- * ─── @soostori/cloud replacement assessment ─────────────────────────────────
+ * ─── Why magic-code auth uses REST helpers instead of CloudClient ─────────────
  *
- * `@soostori/cloud`'s CloudClient covers InstaQL queries, Instaml transactions,
- * upsert, getById, and health — all the same REST endpoints used here.
- * Migration is feasible: replace the three helpers below with a CloudClient
- * instance (token managed via setToken/getToken), which gives a typed,
- * timeout-aware SDK with the same network behaviour.
+ * `CloudClient` (@soostori/cloud, tested at v0.1.0-alpha.11) does NOT expose
+ * magic-code auth on its public surface. Its supported operations are:
+ *   query, transact, upsert, getById, health,
+ *   shop CRUD, employee CRUD, invitation CRUD + accept,
+ *   subscription CRUD, device CRUD.
  *
- * Gaps vs. current implementation:
- *   1. Magic-code auth (sendMagicCode / verifyMagicCode) is not exposed on
- *      CloudClient's public surface, though the underlying API supports it.
- *      Desktop would need thin wrappers around CloudClient.request() or a
- *      separate auth helper — same effort as keeping instant-api.ts.
- *   2. WebSocket realtime is not implemented in CloudClient. If realtime
- *      subscriptions are added later, that would be net-new on top of CloudClient.
- *   3. Shop sync and employee sync custom endpoints (desktop-specific REST
- *      helpers not in the SDK) would need to stay as custom helpers or be
- *      folded into a desktop-specific CloudClient subclass.
+ * There is NO `sendMagicCode` / `verifyMagicCode` / `auth` namespace.
+ * The underlying FIDScript REST API does support magic-code flow, but that
+ * surface is intentionally omitted from `CloudClient` — likely to keep the SDK
+ * focused on data operations and avoid surfacing auth stateful concerns.
  *
- * Migration cost: LOW. CloudClient can replace the InstaQL/Instaml helpers
- * with a one-line-per-call swap. The auth helpers and custom sync endpoints
- * need small wrappers. WebSocket realtime is a future item. Recommended: replace
- * instaqQuery and instamlTx with CloudClient equivalents in a follow-up PR,
- * keeping the auth helpers here until CloudClient exposes them natively.
+ * Therefore, desktop MUST use direct REST calls for magic-code auth.
+ * These helpers (sendMagicCode, verifyMagicCode) are NOT legacy fallback code
+ * to be removed — they are the correct and only current path for auth.
+ *
+ * ─── Re-assessment trigger ───────────────────────────────────────────────────
+ *
+ * If @soostori/cloud ever adds `sendMagicCode` / `verifyMagicCode` to
+ * CloudClient (or a new `CloudAuth` class), migrate the two auth helpers in
+ * this file to use CloudClient internally and remove the raw fetch calls.
+ * The migration is low-effort: the request shape is identical.
+ *
+ * ─── Other REST helpers (instaqQuery, instamlTx) ─────────────────────────────
+ *
+ * These CAN be replaced with CloudClient equivalents today (CloudClient.query /
+ * CloudClient.transact). That migration is tracked separately and is low-cost.
+ * The auth helpers above are the ones that must stay until CloudClient adds them.
  *
  * ───────────────────────────────────────────────────────────────────────────
  */

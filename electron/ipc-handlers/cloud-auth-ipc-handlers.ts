@@ -1,11 +1,10 @@
 /**
  * cloud-auth-ipc-handlers.ts — CloudAuth IPC handler registration.
- * Split per ANPAS: Google → cloud-auth-google-handlers.ts,
  * Session → cloud-auth-session-handlers.ts, shared singleton → cloud-auth-core.ts.
+ * Google Sign-In was removed.
  */
 
 import { ipcMain } from 'electron'
-import { registerCloudAuthGoogleHandlers } from './cloud-auth-google-handlers'
 import { registerCloudAuthSessionHandlers } from './cloud-auth-session-handlers'
 import { getCloudAuthSingleton } from './cloud-auth-core'
 import { setNetworkStatus } from '../auth/electron-platform-adapter'
@@ -64,17 +63,6 @@ export function registerCloudAuthIpcHandlers(): void {
     } catch (err) { log.error('[auth:completePasswordReset]', err); return { success: false, error: String(err) } }
   })
 
-  // Google ID token sign-in (mobile flow)
-  ipcMain.handle('auth:signInWithGoogleIdToken', async (_event, params: { idToken: string; clientName: string }) => {
-    try {
-      const auth = getCloudAuthSingleton()
-      const result = await auth.signInWithGoogleIdToken(params)
-      if (result.ok) return { success: true, userId: result.data.userId, email: result.data.email,
-        isNewUser: result.data.isNewUser }
-      return { success: false, error: result.error?.message ?? 'Google ID token sign-in failed' }
-    } catch (err) { log.error('[auth:signInWithGoogleIdToken]', err); return { success: false, error: String(err) } }
-  })
-
   // Trusted device management
   ipcMain.handle('auth:registerTrustedDevice', async (_event, deviceName: string) => {
     try {
@@ -105,7 +93,6 @@ export function registerCloudAuthIpcHandlers(): void {
 
   ipcMain.on('auth:setNetworkStatus', (_event, isOnline: boolean) => { setNetworkStatus(isOnline) })
 
-  registerCloudAuthGoogleHandlers()
   registerCloudAuthSessionHandlers()
   log.info('CloudAuth IPC handlers registered')
 }

@@ -1,41 +1,24 @@
 /**
- * subscription-enforcer.ts — Subscription status checking and enforcement.
- *
- * Behavior:
- *   - ONLINE: checks cloud `subscriptions` entity on startup + every hour
- *   - OFFLINE: uses cached status with grace period (3 days)
- *   - EXPIRED: blocks POS operations (renderer should show banner)
- *
- * Grace period: when offline or when cloud unreachable, POS continues
- * working until the 3-day grace window expires. After that, all sales
- * are blocked until cloud re-verification succeeds.
+ * subscription-enforcer.ts — Subscription status check + POS enforcement gate.
+ * P1-5 adds ClockTamperingError guard. P0-2d switches to canonical 5-state
+ * (ACTIVE | SETUP_GRACE | EXPIRED | RENEWAL_GRACE | DEACTIVATED) from
+ * `canonical/subscription-state`. The 4-state lowercase vocabulary is gone.
+ * File split: cloud-fetcher / state-refresher / enforcer-messages / monotonic-clock.
  */
 
 import { getSyncStore } from './store'
-import * as instant from './instant-api'
+import { refreshState } from './subscription-state-refresher'
+import { assertClockNotTampered, ClockTamperingError } from './canonical/monotonic-clock'
+import {
+  SubscriptionDeactivatedError,
+  type SubscriptionStatus,
+} from './canonical/subscription-state'
+import {
+  buildExpiredMessage,
+  buildDeactivatedMessage,
+  buildUnknownStateMessage,
+} from './subscription-enforcer-messages'
 import log from 'electron-log'
-
-const APP_ID = process.env.INSTANT_APP_ID || ''
-
-async function fetchCloudSubscription(shopId: string): Promise<{ valid: boolean; plan: string | null; deviceLimit: number | null; expiryDate: string | null }> {
-  if (!APP_ID) return { valid: true, plan: null, deviceLimit: null, expiryDate: null }
-  try {
-    const result = await instant.instaqQuery(APP_ID, {
-      subscriptions: { $: { where: { shopId, status: 'active' }, limit: 1 } }
-    })
-    const subs = (result as { subscriptions?: unknown[] })?.subscriptions ?? []
-    if (!subs.length) return { valid: true, plan: 'trial', deviceLimit: null, expiryDate: null }
-    const sub = subs[0] as Record<string, unknown>
-    return {
-      valid: true,
-      plan: String(sub.planKey ?? 'trial'),
-      deviceLimit: Number(sub.deviceLimit) || null,
-      expiryDate: String(sub.currentPeriodEnd ?? ''),
-    }
-  } catch {
-    return { valid: true, plan: null, deviceLimit: null, expiryDate: null }
-  }
-}
 
 export interface SubscriptionState {
   valid: boolean
@@ -48,9 +31,20 @@ export interface SubscriptionState {
   graceDaysRemaining: number
   source: 'cloud' | 'cache' | 'default'
   checkedAt: string
+  /** Canonical 5-state (P0-2d). Authoritative for decision logic. */
+  canonicalStatus: SubscriptionStatus
+  /** ISO 8601 or null. Set only on the first payment cycle in the canonical model. */
+  setupGraceEndsAt: string | null
 }
 
-const GRACE_PERIOD_DAYS = 3
+export { ClockTamperingError }
+
+/** Re-exported for callers that want to match against the user-specified
+ * vocabulary. Same as `canonical/subscription-state`'s `SubscriptionStatus`,
+ * but kept here so existing call sites
+ * (`electron/services/sync-timer-worker.ts:checkCloudSubscription`)
+ * don't need to import from `canonical/` directly. */
+export type CloudSubscriptionStatus = SubscriptionStatus
 
 let _state: SubscriptionState | null = null
 let _lastCheck = 0
@@ -61,12 +55,9 @@ export function getSubscriptionState(): SubscriptionState | null {
   return _state
 }
 
-export type CloudSubscriptionStatus = 'active' | 'expired_grace' | 'blocked' | 'cancelled'
-
 /**
  * Lightweight subscription status check for the sync timer path.
- * Returns the current cached state without a network call.
- * Use recheckSubscription() to force a cloud refresh first.
+ * Returns the canonical 5-state uppercase vocabulary.
  */
 export function checkCloudSubscription(): {
   status: CloudSubscriptionStatus
@@ -74,91 +65,29 @@ export function checkCloudSubscription(): {
   plan: string
 } {
   const state = _state
-
   if (!state) {
-    // Not yet initialized — treat as active, let the hourly enforcer catch it
-    return { status: 'active', expiresAt: null, plan: '' }
+    // Pre-init: default to ACTIVE so the renderer doesn't briefly block
+    // sales before the first cloud refresh resolves.
+    return { status: 'ACTIVE', expiresAt: null, plan: '' }
   }
-
-  if (state.isExpired) {
-    return { status: 'cancelled', expiresAt: state.expiresAt, plan: state.plan ?? '' }
+  return {
+    status: state.canonicalStatus,
+    expiresAt: state.expiresAt,
+    plan: state.plan ?? '',
   }
-
-  if (state.isInGracePeriod) {
-    return { status: 'expired_grace', expiresAt: state.expiresAt, plan: state.plan ?? '' }
-  }
-
-  if (!state.valid) {
-    return { status: 'blocked', expiresAt: state.expiresAt, plan: state.plan ?? '' }
-  }
-
-  return { status: 'active', expiresAt: state.expiresAt, plan: state.plan ?? '' }
-}
-
-/** Update state from cloud or cache. */
-async function refreshState(shopId: string): Promise<SubscriptionState> {
-  const now = Date.now()
-  const store = getSyncStore()
-
-  // Try cloud first
-  let cloudSub: { valid: boolean; plan: string | null; deviceLimit: number | null; expiryDate: string | null } | null = null
-  try {
-    cloudSub = await fetchCloudSubscription(shopId)
-    log.info(`Subscription cloud check: plan=${cloudSub.plan}, expires=${cloudSub.expiryDate}`)
-    store.set('subscription', JSON.stringify(cloudSub))
-    store.set('subscriptionCheckedAt', new Date().toISOString())
-  } catch (err) {
-    log.warn('Subscription cloud check failed:', err)
-  }
-
-  const expiresAt = cloudSub?.expiryDate ?? null
-  const plan = cloudSub?.plan ?? null
-  const deviceLimit = cloudSub?.deviceLimit ?? null
-
-  // Compute days until expiry
-  let daysUntilExpiry: number | null = null
-  let isExpired = false
-  if (expiresAt) {
-    const expiry = new Date(expiresAt).getTime()
-    daysUntilExpiry = Math.floor((expiry - now) / (1000 * 60 * 60 * 24))
-    isExpired = expiry < now
-  }
-
-  // Grace period logic
-  const lastSuccessAt = (store.get('subscriptionLastSuccess') as string | undefined) ?? null
-  let graceDaysRemaining = GRACE_PERIOD_DAYS
-  if (lastSuccessAt) {
-    const elapsed = Math.floor((now - new Date(lastSuccessAt).getTime()) / (1000 * 60 * 60 * 24))
-    graceDaysRemaining = Math.max(0, GRACE_PERIOD_DAYS - elapsed)
-  }
-
-  const source: SubscriptionState['source'] = cloudSub ? 'cloud' : (lastSuccessAt ? 'cache' : 'default')
-  const valid = !!cloudSub || (!isExpired && graceDaysRemaining > 0)
-  const isInGracePeriod = !cloudSub && !isExpired && graceDaysRemaining > 0
-
-  _state = {
-    valid,
-    expiresAt,
-    plan,
-    deviceLimit,
-    daysUntilExpiry,
-    isExpired,
-    isInGracePeriod,
-    graceDaysRemaining,
-    source,
-    checkedAt: new Date().toISOString(),
-  }
-  return _state
 }
 
 /** Start background subscription check (every hour). */
 export function startSubscriptionEnforcer(shopId: string): void {
   if (_checkInterval) return
-  // Initial check
-  refreshState(shopId).catch(() => {})
-
-  // Re-check every hour
-  _checkInterval = setInterval(() => { refreshState(shopId).catch(() => {}) }, 60 * 60 * 1000)
+  refreshState(shopId)
+    .then((s) => { _state = s })
+    .catch((err) => { log.warn('SubscriptionEnforcer: initial refresh failed:', err) })
+  _checkInterval = setInterval(() => {
+    refreshState(shopId)
+      .then((s) => { _state = s })
+      .catch((err) => { log.warn('SubscriptionEnforcer: hourly refresh failed:', err) })
+  }, 60 * 60 * 1000)
   _lastCheck = Date.now()
   log.info('SubscriptionEnforcer: started')
 }
@@ -170,7 +99,9 @@ export function stopSubscriptionEnforcer(): void {
 
 /** Force a re-check (used by UI). */
 export async function recheckSubscription(shopId: string): Promise<SubscriptionState> {
-  return refreshState(shopId)
+  const next = await refreshState(shopId)
+  _state = next
+  return next
 }
 
 /** Mark current check as successful — resets grace period clock. */
@@ -180,27 +111,36 @@ export function markSubscriptionSuccess(): void {
 }
 
 /**
- * Throws a descriptive Error if the current subscription state is not valid.
- * Call this before any monetizable operation (sale, refund, etc.).
+ * P0-2d: decision uses the canonical 5-state.
+ *   ACTIVE | SETUP_GRACE | RENEWAL_GRACE → allow
+ *   EXPIRED → throw Error (renewal grace exhausted)
+ *   DEACTIVATED → throw SubscriptionDeactivatedError
+ * Also throws ClockTamperingError if the system clock has been rolled back
+ * past the persisted first-launch timestamp (P1-5).
  */
 export function enforceSubscriptionOrThrow(): void {
+  // P1-5: detect clock manipulation BEFORE evaluating the grace window.
+  assertClockNotTampered()
+
   const state = _state
-  if (!state) return // Not yet initialized — allow through, initial check will catch it
+  if (!state) return
 
-  if (state.valid) return
-
-  if (state.isExpired) {
-    const msg = state.expiresAt
-      ? `Subscription expired on ${new Date(state.expiresAt).toLocaleDateString()}. Please renew to continue.`
-      : 'Subscription has expired. Please renew to continue.'
-    throw new Error(msg)
+  if (state.canonicalStatus === 'ACTIVE' || state.canonicalStatus === 'SETUP_GRACE') {
+    return
   }
 
-  if (state.isInGracePeriod) {
-    const msg = `Subscription grace period active. ${state.graceDaysRemaining} day${state.graceDaysRemaining === 1 ? '' : 's'} remaining to renew.`
-    throw new Error(msg)
+  if (state.canonicalStatus === 'RENEWAL_GRACE') {
+    log.warn(`SubscriptionEnforcer: RENEWAL_GRACE (${state.graceDaysRemaining}d remaining) — sales allowed with warning`)
+    return
   }
 
-  // Fallback: blocked for unspecified reason
-  throw new Error('Subscription is not active. Please check your subscription status.')
+  if (state.canonicalStatus === 'EXPIRED') {
+    throw new Error(buildExpiredMessage(state.expiresAt))
+  }
+
+  if (state.canonicalStatus === 'DEACTIVATED') {
+    throw new SubscriptionDeactivatedError(buildDeactivatedMessage())
+  }
+
+  throw new Error(buildUnknownStateMessage(state.canonicalStatus))
 }

@@ -39,7 +39,7 @@ export const fromLocalSale = (r: SalesRow): Sale => ({
   subtotal: r.subtotal, discountAmount: r.discount_amount, taxAmount: r.tax_amount,
   totalAmount: r.total_amount, paidAmount: r.paid_amount,
   paymentMethod: (r.payment_method as Sale['paymentMethod']) || 'cash',
-  note: r.note ?? null, customerId: (r as { customer_id?: string | null }).customer_id ?? null, employeeId: asEI(''), deviceId: asDI(''),
+  note: r.note ?? null, customerId: (asCustI((r as { customer_id?: string | null }).customer_id ?? '') ?? null) as string as CustomerId | null, employeeId: asEI(''), deviceId: asDI(''),
   idempotencyKey: asIK(r.id), items: [],
   createdAt: r.created_at ?? new Date().toISOString(),
   updatedAt: r.updated_at ?? new Date().toISOString(),

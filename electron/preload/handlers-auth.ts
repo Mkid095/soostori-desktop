@@ -2,6 +2,7 @@
  * handlers-auth.ts — Preload bridge for @soostori/auth CloudAuth.
  *
  * Exposes CloudAuth methods to the renderer via contextBridge.
+ * Google Sign-In methods are removed.
  *
  * IMPORTANT: Renderer NEVER has direct access to:
  *   - AuthApiClient (secret REST calls)
@@ -19,27 +20,7 @@
 import { ipcRenderer } from 'electron'
 
 export interface CloudAuthIpc {
-  signInWithGoogle(config: {
-    clientId: string
-    redirectUri: string
-    scopes?: string[]
-  }): Promise<{ started: boolean; error?: string }>
-
-  handleOAuthCallback(code: string, state: string, codeVerifier: string, redirectUri: string): Promise<{
-    success: boolean
-    userId?: string
-    email?: string
-    isNewUser?: boolean
-    error?: string
-  }>
-
-  signInWithGoogleIdToken(params: { idToken: string; clientName: string }): Promise<{
-    success: boolean
-    userId?: string
-    email?: string
-    isNewUser?: boolean
-    error?: string
-  }>
+  // Google Sign-In has been removed.
 
   signInWithEmail(email: string, password: string): Promise<{
     success: boolean
@@ -129,14 +110,7 @@ let _unsubscribe: (() => void) | null = null
 
 export function exposeAuthHandlers(): void {
   const handlers: CloudAuthIpc = {
-    signInWithGoogle: (config) =>
-      ipcRenderer.invoke('auth:signInWithGoogle', config),
-
-    handleOAuthCallback: (code, state, codeVerifier, redirectUri) =>
-      ipcRenderer.invoke('auth:handleOAuthCallback', code, state, codeVerifier, redirectUri),
-
-    signInWithGoogleIdToken: (params) =>
-      ipcRenderer.invoke('auth:signInWithGoogleIdToken', params),
+    // Google Sign-In methods removed.
 
     signInWithEmail: (email, password) =>
       ipcRenderer.invoke('auth:signInWithEmail', email, password),

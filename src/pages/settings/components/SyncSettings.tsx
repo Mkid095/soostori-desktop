@@ -11,7 +11,7 @@ export default function SyncSettings() {
 
   const loadMode = useCallback(async () => {
     const r = await window.electronAPI.db.syncGetMode()
-    setMode((r as { mode: 'host' | 'client' | 'offline' }).mode)
+    setMode(r as 'host' | 'client' | 'offline')
   }, [])
 
   useEffect(() => { loadMode() }, [loadMode])

@@ -3,7 +3,7 @@ import { Plus, Receipt, RefreshCw, TrendingUp } from 'lucide-react'
 import {
   useExpenses, useCreateExpense, useDeleteExpense,
   useApproveExpense, useMarkExpensePaid,
-  useExpenseSummary, useRecurringExpenses,
+  useExpenseStats, useRecurringExpenses,
   useCreateRecurringExpense, useDeleteRecurringExpense,
   type ExpenseRow
 } from './hooks/useExpenses'
@@ -31,7 +31,7 @@ const ExpensesPage: React.FC = () => {
   const approveExpense = useApproveExpense()
   const markPaid = useMarkExpensePaid()
 
-  const { data: summary } = useExpenseSummary(selectedMonth)
+  const stats = useExpenseStats()
   const { data: recurringExpenses = [] } = useRecurringExpenses()
   const createRecurring = useCreateRecurringExpense()
   const deleteRecurring = useDeleteRecurringExpense()
@@ -46,12 +46,12 @@ const ExpensesPage: React.FC = () => {
   const totalFiltered = filteredExpenses.reduce((sum, e) => sum + e.amount, 0)
 
   // Top category this month
-  const topCategory = useMemo(() => {
-    if (!summary?.byCategory) return null
-    const entries = Object.entries(summary.byCategory)
+  const topCategory = useMemo((): [string, number] | null => {
+    if (!stats?.byCategory) return null
+    const entries = Object.entries(stats.byCategory)
     if (entries.length === 0) return null
-    return entries.reduce((a, b) => b[1] > a[1] ? b : a)
-  }, [summary])
+    return entries.reduce((a: [string, number], b: [string, number]) => b[1] > a[1] ? b : a)
+  }, [stats])
 
   const handleSave = async (data: { amount: number; category: string; note: string; date: string }) => {
     await createExpense.mutateAsync(data)
@@ -115,11 +115,11 @@ const ExpensesPage: React.FC = () => {
         </div>
 
         {/* Summary Widget */}
-        {summary && (
+        {stats && (
           <div className="grid grid-cols-2 gap-2 mb-3">
             <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-2.5">
               <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-0.5">{t('exp.totalThisMonth') || 'Total This Month'}</p>
-              <p className="text-sm font-black text-slate-800 dark:text-slate-100">{formatCurrency(summary.total)}</p>
+              <p className="text-sm font-black text-slate-800 dark:text-slate-100">{formatCurrency(stats.total)}</p>
             </div>
             <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-2.5">
               <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-0.5">{t('exp.topCategory') || 'Top Category'}</p>

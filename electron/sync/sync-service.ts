@@ -45,8 +45,7 @@ class SyncService {
     this.discovery = new DiscoveryService({
       shopId: opts.shopId, shopName: opts.shopName, deviceId: opts.deviceId,
       deviceName: opts.deviceName, deviceType: opts.deviceType, isHost: false,
-      wsPort: this.wsPort, employeeId: opts.employeeId, employeeName: opts.employeeName,
-      appVersion: opts.appVersion,
+      wsPort: this.wsPort, appVersion: opts.appVersion,
     })
     this.discovery.on('host discovered', (adv: DiscoveryAdvert) => {
       if (adv.isHost) ingestPrimaryHeartbeat(adv.deviceId, adv.last_seen_ms)
@@ -63,7 +62,7 @@ class SyncService {
     this.discovery = new DiscoveryService({
       shopId: this.shopId, shopName: this.shopName, deviceId: this.deviceId,
       deviceName: this.deviceName, deviceType: 'desktop', isHost: true, wsPort: p,
-      employeeId: this.userId, employeeName: '', appVersion: '',
+      appVersion: '',
     })
     this.discovery.on('host discovered', (adv: DiscoveryAdvert) => {
       if (adv.isHost) ingestPrimaryHeartbeat(adv.deviceId, adv.last_seen_ms)
@@ -86,8 +85,8 @@ class SyncService {
       else if (event.eventType === 'SALE_CONFIRMED') await applySaleConfirmed(event)
       else if (event.eventType === 'SALE_REFUNDED') applySaleRefunded(event)
       else if (event.eventType === 'SALE_VOIDED') applySaleVoided(event)
-      else if (event.eventType === 'DEBT_CREATED') applyDebtCreated(event)
-      else if (event.eventType === 'DEBT_PAYMENT_RECORDED') applyDebtPaymentRecorded(event)
+      else if ((event.eventType as string) === 'DEBT_CREATED') applyDebtCreated(event)
+      else if ((event.eventType as string) === 'DEBT_PAYMENT_RECORDED') applyDebtPaymentRecorded(event)
       else if (['PRODUCT_CREATED','PRODUCT_UPDATED','PRODUCT_DELETED','CATEGORY_CREATED','CATEGORY_UPDATED','PRICE_CHANGED'].includes(event.eventType)) applyProductEvent(event)
       this.eventListeners.forEach(cb => cb(event))
       dispatchSyncStatus('syncing'); setTimeout(() => dispatchSyncStatus('online'), 500)

@@ -32,11 +32,9 @@ const BusinessListPage: React.FC<Props> = ({ onClose }) => {
     setLoading(true)
     setError('')
     try {
-      const [list, activeId] = await Promise.all([
-        window.electronAPI.db.listBusinessesForUser(),
-        window.electronAPI.db.getActiveBusinessId(),
-      ])
-      setBusinesses(list)
+      const list = await window.electronAPI.db.listBusinessesForUser() as Business[]
+      const activeId = await window.electronAPI.db.getActiveBusinessId()
+      setBusinesses(list as Business[])
       setActiveBusinessId(activeId)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load businesses')
