@@ -50,6 +50,15 @@ jobs:
           ref: main
           path: soostori-sdk
 
+      - name: Install and build soostori-sdk
+        run: |
+          cd soostori-sdk
+          npm install -g pnpm@9
+          pnpm install --no-frozen-lockfile
+          pnpm run build
+        env:
+          NPM_CONFIG_REGISTRY: https://registry.nextmavens.com/
+
       - name: Patch tsconfig paths to use built .d.ts files (not .ts sources)
         run: |
           node -e "
@@ -81,6 +90,31 @@ jobs:
           ref: main
           path: soostori-sdk
 
+      - name: Write Verdaccio .npmrc
+        run: |
+          echo "@soostori:registry=https://registry.nextmavens.com/" > .npmrc
+          echo "//registry.nextmavens.com/:_authToken=${{ secrets.VERDACCIO_AUTH_TOKEN }}" >> .npmrc
+
+      - name: Install and build soostori-sdk
+        run: |
+          cd soostori-sdk
+          npm install -g pnpm@9
+          pnpm install --no-frozen-lockfile
+          pnpm run build
+
+      - name: Patch tsconfig for build
+        run: |
+          node -e "
+          const fs = require('fs');
+          const cfg = JSON.parse(fs.readFileSync('tsconfig.json', 'utf8'));
+          for (const [k, v] of Object.entries(cfg.compilerOptions.paths)) {
+            if (Array.isArray(v) && v[0].includes('/src/index.ts')) {
+              cfg.compilerOptions.paths[k] = v.map(p => p.replace('/src/index.ts', '/dist/index.d.ts'));
+            }
+          }
+          fs.writeFileSync('tsconfig.json', JSON.stringify(cfg, null, 2));
+          "
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -96,11 +130,6 @@ jobs:
           key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-
-
-      - name: Write Verdaccio .npmrc
-        run: |
-          echo "@soostori:registry=https://registry.nextmavens.com/" > .npmrc
-          echo "//registry.nextmavens.com/:_authToken=${{ secrets.VERDACCIO_AUTH_TOKEN }}" >> .npmrc
 
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
