@@ -48,10 +48,10 @@ jobs:
         with:
           repository: Mkid095/soostori-sdk
           ref: main
-          path: ../soostori-sdk
+          path: soostori-sdk
 
       - name: TypeScript check
-        run: pnpm exec tsc --noEmit
+        run: pnpm exec tsc --noEmit -p tsconfig.ci.json
 
   build:
     name: Build Electron App
@@ -65,7 +65,7 @@ jobs:
         with:
           repository: Mkid095/soostori-sdk
           ref: main
-          path: ../soostori-sdk
+          path: soostori-sdk
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

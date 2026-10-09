@@ -9,3 +9,9 @@ Thumbs.db
 settings.local.json
 .env
 .env.*
+
+# Claude agent worktrees
+.claude/worktrees/
+
+# soostori-sdk — checked out by CI from soostori-sdk repo
+soostori-sdk/
