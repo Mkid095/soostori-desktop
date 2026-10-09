@@ -44,5 +44,6 @@ nsis:
 
 publish:
   provider: github
-  owner: soostori
+  owner: Mkid095
   repo: soostori-desktop
+  releaseType: release
