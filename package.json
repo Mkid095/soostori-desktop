@@ -30,7 +30,7 @@
     "@soostori/partners": "^0.1.3-alpha.5",
     "@soostori/offline": "^0.1.3-alpha.3",
     "@soostori/products": "^0.1.3-alpha.2",
-    "@soostori/sales": "^0.1.3-alpha.4",
+    "@soostori/sales": "^0.1.4-alpha.1",
     "@soostori/storage": "^0.2.3-alpha.5",
     "@soostori/subscription": "^0.2.6",
     "@tanstack/react-query": "^5.62.0",
