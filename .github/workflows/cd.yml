@@ -1,0 +1,91 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'desktop-v*'
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  build:
+    name: Package Windows
+    runs-on: windows-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm
+        run: npm install -g pnpm@9
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Electron app
+        run: pnpm run build
+
+      - name: Package Windows executable
+        run: pnpm run package
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: soostori-pos-win32-x64
+          path: dist-electron/win-unpacked/**
+          retention-days: 30
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: build
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: soostori-pos-win32-x64
+          path: dist
+
+      - name: Find installer
+        run: |
+          ls dist/*.exe 2>/dev/null || ls dist/win-unpacked/*.exe 2>/dev/null || ls dist/win-unpacked/Soostori\ POS.exe 2>/dev/null
+
+      - name: Generate checksum
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem dist -Filter "*.exe" -Recurse | Select-Object -First 1
+          if ($exe) {
+            $hash = (Get-FileHash $exe.FullName -Algorithm SHA256).Hash.ToLower()
+            "$hash  $($exe.Name)" | Out-File -FilePath "dist/SHA256SUMS.txt" -Encoding utf8
+            Write-Host "Checksum: $hash"
+          }
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/**/*.exe
+            dist/SHA256SUMS.txt
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
