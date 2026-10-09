@@ -32,6 +32,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-
 
+      - name: Write Verdaccio .npmrc
+        run: |
+          echo "@soostori:registry=https://registry.nextmavens.com/" > .npmrc
+          echo "//registry.nextmavens.com/:_authToken=${{ secrets.VERDACCIO_AUTH_TOKEN }}" >> .npmrc
+
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
