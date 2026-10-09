@@ -84,6 +84,9 @@
       "@serialport/bindings-cpp",
       "better-sqlite3",
       "electron"
-    ]
+    ],
+    "overrides": {
+      "@soostori/partners>@soostori/contracts": "npm:@soostori/contracts@^0.2.0"
+    }
   }
 }
