@@ -44,7 +44,7 @@ jobs:
         run: pnpm run build
 
       - name: Package Windows executable
-        run: pnpm run package
+        run: pnpm run package -- --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -52,7 +52,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: soostori-pos-win32-x64
-          path: dist-electron/win-unpacked/**
+          path: dist-electron/*.exe
+          if-no-files-found: error
           retention-days: 30
 
   release:
@@ -70,10 +71,13 @@ jobs:
         with:
           name: soostori-pos-win32-x64
           path: dist
+          merge-multiple: true
 
       - name: Find installer
+        shell: bash
         run: |
-          ls dist/*.exe 2>/dev/null || ls dist/win-unpacked/*.exe 2>/dev/null || ls dist/win-unpacked/Soostori\ POS.exe 2>/dev/null
+          set -euo pipefail
+          ls -1 dist/*.exe
 
       - name: Generate checksum
         shell: pwsh
@@ -83,6 +87,8 @@ jobs:
             $hash = (Get-FileHash $exe.FullName -Algorithm SHA256).Hash.ToLower()
             "$hash  $($exe.Name)" | Out-File -FilePath "dist/SHA256SUMS.txt" -Encoding utf8
             Write-Host "Checksum: $hash"
+          } else {
+            throw "No Windows installer found in dist/"
           }
 
       - name: Create GitHub Release
