@@ -42,8 +42,6 @@ nsis:
   shortcutName: Soostori POS
   artifactName: ${productName}-Setup-${version}.${ext}
 
-publish:
-  provider: github
-  owner: Mkid095
-  repo: soostori-desktop
-  releaseType: release
+# Publish is handled in the release workflow via softprops/action-gh-release.
+# Keeping publishing disabled here prevents electron-builder from trying to
+# create a GitHub release during the packaging phase and failing with 403s.
